@@ -259,7 +259,7 @@
 
 <header>
   <h1>空間線型產生器</h1>
-  <span class="stage">組式架構 v3.9</span>
+  <span class="stage">組式架構 v3.10</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -664,6 +664,11 @@ function solveCatenaryA(Lx, f){
   for (let k = 0; k < 200; k++){ const m = (lo+hi)/2; if (gfn(m) < 0) lo = m; else hi = m; }
   return Lx / (2*((lo+hi)/2));
 }
+/* 垂度的量測基準(v3.10)。
+   弦線 = 傳統作法(垂距自兩端連線量);高/低側端點與指定高程則是
+   「自某個水平面往下量到曲線最低點」—— 不等高鞍座時這三者差很多。 */
+const SAG_BASE = [["chord","弦線(兩端連線)"], ["high","高側端點"], ["low","低側端點"],
+                  ["z","指定高程"]];
 function curveSAG(g, warns){
   const p1 = { x:num(g.x1), y:num(g.y1), z:num(g.z1) };
   const p2 = { x:num(g.x2), y:num(g.y2), z:num(g.z2) };
@@ -674,19 +679,47 @@ function curveSAG(g, warns){
   const f = g.fMode === "ratio" ? (num(g.f) || 0) * Lx : (num(g.f) || 0);
   if (Lx < 1e-9 && Math.abs(f) > 1e-9)
     return curveErr("兩端點平面位置重合(鉛直索),無法定義垂度");
-  let dip;
-  if (g.curve === "catenary"){
-    const a = solveCatenaryA(Lx, f);
-    if (a) dip = u => { const x = u*Lx;
-      return a*Math.cosh((x - Lx/2)/a) - a*Math.cosh(Lx/(2*a)); };
-    else { if (warns && f > 0) warns.push(`「${g.name}」垂度超出懸鏈線可解範圍,已改用拋物線`);
-           dip = u => -4*f*u*(1-u); }
-  } else dip = u => -4*f*u*(1-u);
+
+  // 給定「自弦線量的垂度 fc」時的下垂函式
+  const dipOf = fc => {
+    if (g.curve === "catenary"){
+      const a = solveCatenaryA(Lx, fc);
+      if (a) return u => { const x = u*Lx;
+        return a*Math.cosh((x - Lx/2)/a) - a*Math.cosh(Lx/(2*a)); };
+      return null;                                    // 超出懸鏈線可解範圍
+    }
+    return u => -4*fc*u*(1-u);
+  };
+  let fellBack = false;
+  const dipSafe = fc => { const d = dipOf(fc); if (d) return d; fellBack = true; return u => -4*fc*u*(1-u); };
+  const zAt = (d, u) => p1.z + (p2.z-p1.z)*u + d(u);
+  const minZ = fc => { const d = dipSafe(fc); let m = Infinity;
+    for (let i = 0; i <= 200; i++) m = Math.min(m, zAt(d, i/200)); return m; };
+
+  const base = g.fBase || "chord";
+  let fc = f;                                          // 實際要用的「自弦線」垂度
+  if (base !== "chord"){
+    const datum = base === "high" ? Math.max(p1.z, p2.z)
+                : base === "low"  ? Math.min(p1.z, p2.z)
+                : num(g.fz);
+    if (!Number.isFinite(datum)) return curveErr("垂度基準高程無效");
+    // 目標:datum − 曲線最低點 = f。垂度越大最低點越低,單調 → 二分找 fc
+    if (datum - minZ(0) > f + 1e-9)
+      return curveErr(`基準高程 ${datum.toFixed(3)} 距曲線最低點已超過 ${f.toFixed(3)},垂度無法再小`);
+    let lo = 0, hi = Math.max(1, Math.abs(f) + Math.abs(datum - p1.z) + Math.abs(datum - p2.z) + Lx);
+    let guard = 0;
+    while (datum - minZ(hi) < f && guard++ < 60) hi *= 2;
+    for (let k = 0; k < 80; k++){ const m = (lo+hi)/2; if (datum - minZ(m) < f) lo = m; else hi = m; }
+    fc = (lo+hi)/2;
+  }
+  const dip = dipSafe(fc);
+  if (fellBack && warns && f > 0)
+    warns.push(`「${g.name}」垂度超出懸鏈線可解範圍,已改用拋物線`);
   return makeCurve(u => ({
     x: p1.x + (p2.x-p1.x)*u,
     y: p1.y + (p2.y-p1.y)*u,
-    z: p1.z + (p2.z-p1.z)*u + dip(u)
-  }), { p1, p2, f, Lx, chord, curve:g.curve });
+    z: zAt(dip, u)
+  }), { p1, p2, f, fc, fBase:base, Lx, chord, curve:g.curve });
 }
 
 /* ---- 螺旋線:圓心 + 半徑 + 起始方位角 + 圈數 + 螺距 ---- */
@@ -852,7 +885,8 @@ function defaultPiece(type){
   if (type === "LINE")  return { ...b, endMode:"point", x2:dL(100), y2:0, z2:0, len:dL(50), az:90, el:0 };
   if (type === "ARC")   return { ...b, arcMode:"endpoints", plane:"H", dir:1, major:false,
     x2:dL(100), y2:0, z2:0, R:dL(80), cx:dL(50), cy:dL(-50), delta:90 };
-  if (type === "SAG")   return { ...b, x2:dL(200), y2:0, z2:0, curve:"parabola", fMode:"ratio", f:0.1 };
+  if (type === "SAG")   return { ...b, x2:dL(200), y2:0, z2:0, curve:"parabola",
+    fMode:"ratio", f:0.1, fBase:"chord", fz:0 };
   if (type === "HELIX") return { ...b, R:dL(50), R2:"", az0:0, turns:2, pitch:dL(12), dir:1,
     split:{ ...sp, count:72 } };
   if (type === "CHAIN") return { ...b, az:90, sta:0, segments:[{ type:"LINE", L:dL(50) }],
@@ -1435,8 +1469,10 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     const edits = g.edits || {}, dels = new Set((g.dels || []).map(Number));
     let nDel = 0, nEdit = 0, pendBrk = false;
     const kept = [];
+    // 哪些段的節點被人動過 —— 這些段的「原始參數曲線」已經不代表現況,不要再畫出來
+    const touched = new Set();
     raw.forEach((p, ri) => {
-      if (dels.has(ri)){ if (p.brk) pendBrk = true; nDel++; return; }
+      if (dels.has(ri)){ if (p.brk) pendBrk = true; nDel++; touched.add(p.pi); return; }
       const e = edits[ri];
       const q = { ...p, ri };
       if (e){                                          // 逐軸套用:某軸無效就沿用原始值
@@ -1445,7 +1481,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
         if (Number.isFinite(ax)){ q.x = ax; any = true; }
         if (Number.isFinite(ay)){ q.y = ay; any = true; }
         if (Number.isFinite(az2)){ q.z = az2; any = true; }
-        if (any){ q.edited = true; nEdit++; }
+        if (any){ q.edited = true; nEdit++; touched.add(p.pi); }
       }
       if (pendBrk){ q.brk = true; pendBrk = false; }
       kept.push(q);
@@ -1480,6 +1516,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
       info.e0 = R.elems.indexOf(el[0]); info.e1 = info.e0 + el.length;
       if (info.e0 < 0){ info.e0 = 0; info.e1 = 0; }
     });
+    infos.forEach(info => { if (touched.has(info.pi)) info.touched = true; });
     R.pieces = infos;
     R.raw = raw;
     R.stat.nDel = nDel; R.stat.nEdit = nEdit;
@@ -2408,13 +2445,26 @@ function pieceCard(g, pc, pi, info){
     }
   }
   else if (pc.type === "SAG"){
+    const fb = pc.fBase || "chord";
+    const selNode = (SELNODE && MODEL.byId.get(SELNODE.gid))
+      ? MODEL.byId.get(SELNODE.gid).nodes.find(n => n.num === SELNODE.num) : null;
     body = startRow + `<div class="fields g4" style="margin-top:8px">${endSel + (ec ? "" : P2())}</div>
       ${endHint}
       <div class="fields g3" style="margin-top:8px">${
         fld("曲線", k + "curve", pc.curve, { select:[["parabola","拋物線"],["catenary","懸鏈線"]] }) +
         fld("垂度定義", k + "fMode", pc.fMode, { select:[["ratio","垂跨比 f/L"],["abs",`絕對值 (${UL()})`]] }) +
         fld(pc.fMode === "ratio" ? "垂跨比" : `垂度 f (${UL()})`, k + "f", pc.f)}</div>
-      <div class="hint">垂度自<b>弦線</b>量測、沿 −Z 下垂;跨距取兩端點的<b>平面</b>距離。</div>`;
+      <div class="fields g3" style="margin-top:8px">${
+        fld("垂度基準", k + "fBase", fb, { select:SAG_BASE }) +
+        (fb === "z" ? fld(`基準高程 Z (${UL()})`, k + "fz", pc.fz) : "")}</div>
+      ${fb === "z" ? `<div class="btns" style="margin-top:8px">
+         <button class="btn" data-op="sagz" data-p="${pi}"${selNode ? "" : " disabled"}>${
+           selNode ? `用選取節點 #${selNode.num} 的高程(${selNode.z.toFixed(3)} ${UL()})`
+                   : "先在 3D 視圖點一個節點,再按這裡帶入它的高程"}</button></div>` : ""}
+      <div class="hint">跨距取兩端點的<b>平面</b>距離。垂度基準決定 f 從哪裡往下量:
+        <b>弦線</b>= 自兩端連線量垂距(傳統作法);<b>高側 / 低側端點</b>與<b>指定高程</b>
+        = 自那個<b>水平面</b>往下量到<b>曲線最低點</b>。兩端不等高時這幾種差很多,
+        鞍座高度不同的主索通常要用「高側端點」或直接指定高程。</div>`;
   }
   else if (pc.type === "HELIX"){
     body = startRow + (cont ? "" : `<div class="fields g4" style="margin-top:8px">${
@@ -3041,6 +3091,13 @@ $("#pane").addEventListener("click", e => {
   if (op === "medel" && g){ g.addE.splice(+b.dataset.i, 1); recompute(true); return; }
   if (op === "nclrall" && g){ g.edits = {}; g.dels = []; SELNODE = null; recompute(true); return; }
   if (op === "xfrst"){ g.xf = XF_DEF(); recompute(true); return; }
+  if (op === "sagz" && g){
+    const pc0 = (g.pieces || [])[+b.dataset.p];
+    const rr = SELNODE && MODEL.byId.get(SELNODE.gid);
+    const nd = rr && rr.nodes.find(n => n.num === SELNODE.num);
+    if (pc0 && nd){ pc0.fBase = "z"; pc0.fz = +nd.z.toFixed(6); }
+    recompute(true); return;
+  }
   if (op === "pxfrst"){ const p0 = (g.pieces || [])[+b.dataset.p]; if (p0) p0.xf = XF_DEF(); recompute(true); return; }
   if (op === "eclr"){ SELELEM = null; recompute(true); return; }
   if (op === "xfnode"){
@@ -3458,11 +3515,14 @@ function elemPolysBy(r){
   });
   return out;
 }
-// 參數曲線的取樣(只作為淡色參考底線;節點被手動移動後兩者會不一致)
+/* 參數曲線的取樣(只作為淡色參考底線)。
+   節點被手動移動或刪除之後,這條線還停在原本的位置 —— 留著會看到「舊的那一條」的殘影,
+   所以動過的段就整段不畫,畫面上只剩實際元素串出來的折線。 */
 function curvePolys(r){
   if (!r.pieces || !r.pieces.length) return r.nodes.length ? [{ pi:-1, pts:r.nodes }] : [];
   const out = [];
   r.pieces.forEach(info => {
+    if (info.touched) return;
     let pts = [];
     if (info.curve){ for (let i = 0; i <= 160; i++) pts.push(info.curve.pt(i/160)); }
     else if (info.chain && info.evalAt){
@@ -4853,6 +4913,69 @@ function runTests(){
         { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
     chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
     chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
+  }
+  {
+    // v3.10:懸垂的垂度基準
+    const sag = (base, f, fz, curve) => curveSAG({ name:"T", x1:0,y1:0,z1:100, x2:200,y2:0,z2:130,
+      curve:curve || "catenary", fMode:"abs", f, fBase:base, ...(fz !== undefined ? { fz } : {}) }, []);
+    const lowest = cv => { let m = Infinity; for (let i = 0; i <= 400; i++) m = Math.min(m, cv.pt(i/400).z); return m; };
+    const cLow = sag("low", 15);
+    chk("T1","基準=低側端點:自低側量到最低點 = f", 100 - lowest(cLow), 15, 1e-3, "");
+    const cHigh = sag("high", 40);
+    chk("T1","基準=高側端點:自高側量到最低點 = f", 130 - lowest(cHigh), 40, 1e-3, "");
+    const cZ = sag("z", 25, 120);
+    chk("T1","基準=指定高程:自該高程量到最低點 = f", 120 - lowest(cZ), 25, 1e-3, "");
+    yes("T1","端點不因基準改變而移動",
+      Math.abs(cHigh.pt(0).z - 100) < 1e-9 && Math.abs(cHigh.pt(1).z - 130) < 1e-9,
+      `${cHigh.pt(0).z},${cHigh.pt(1).z}`, "100,130");
+    const cPar = sag("low", 15, undefined, "parabola");
+    chk("T1","拋物線也吃同一套基準", 100 - lowest(cPar), 15, 1e-3, "");
+    // 基準比曲線最低點還高不了那麼多 → 報錯而不是硬算
+    const bad = sag("high", 20);
+    yes("T1","垂度小於兩端高差時報錯", !bad.ok && String(bad.err).indexOf("垂度無法再小") >= 0,
+      bad.ok ? "沒報錯" : bad.err, "有錯誤訊息");
+    // 弦線基準維持原本行為
+    const cCh = sag("chord", 20, undefined, "parabola");
+    const cOld = curveSAG({ name:"T", x1:0,y1:0,z1:100, x2:200,y2:0,z2:130,
+      curve:"parabola", fMode:"abs", f:20 }, []);
+    yes("T1","弦線基準與舊版完全相同",
+      Math.abs(lowest(cCh) - lowest(cOld)) < 1e-12, lowest(cCh), lowest(cOld));
+    // 等高兩端時,四種基準應該一致
+    const flat = base => { const cv = curveSAG({ name:"F", x1:0,y1:0,z1:100, x2:200,y2:0,z2:100,
+      curve:"parabola", fMode:"abs", f:20, fBase:base, fz:100 }, []); return lowest(cv); };
+    yes("T1","兩端等高時各基準一致",
+      Math.abs(flat("chord") - flat("low")) < 1e-3 && Math.abs(flat("high") - flat("z")) < 1e-3,
+      `${flat("chord").toFixed(3)}/${flat("low").toFixed(3)}/${flat("high").toFixed(3)}/${flat("z").toFixed(3)}`,
+      "四者相同");
+  }
+  {
+    // v3.10:節點被動過的段不再畫「原始參數曲線」的殘影
+    const mkT = (edits, dels) => {
+      const st2 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"tt", name:"T",
+        pieces:[
+          { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } },
+          { ...defaultPiece("LINE"), sRef:"prev", x2:200,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } },
+          { ...defaultPiece("LINE"), sRef:"prev", x2:300,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } }],
+        ...(edits ? { edits } : {}), ...(dels ? { dels } : {}) }] });
+      return buildModel(st2, [], []).groups[0];
+    };
+    const r0 = mkT(null, null);
+    yes("T2","沒動過時三段都畫參考曲線",
+      curvePolys(r0).map(p2 => p2.pi).join(",") === "0,1,2",
+      curvePolys(r0).map(p2 => p2.pi).join(","), "0,1,2");
+    const nMid = r0.nodes.find(n => n.pi === 1 && Number.isFinite(n.ri));
+    const rE = mkT({ [nMid.ri]:{ x:nMid.x, y:nMid.y + 20, z:nMid.z } }, null);
+    yes("T2","改過座標的那一段不再畫參考曲線",
+      curvePolys(rE).map(p2 => p2.pi).join(",") === "0,2",
+      curvePolys(rE).map(p2 => p2.pi).join(","), "0,2");
+    yes("T2","只影響被動到的段", rE.pieces.filter(i => i.touched).map(i => i.pi).join(",") === "1",
+      rE.pieces.filter(i => i.touched).map(i => i.pi).join(","), "1");
+    const nEnd = r0.nodes.find(n => n.pi === 2 && Number.isFinite(n.ri));
+    const rD = mkT(null, [nEnd.ri]);
+    yes("T2","刪過節點的那一段也不畫",
+      curvePolys(rD).map(p2 => p2.pi).join(",") === "0,1",
+      curvePolys(rD).map(p2 => p2.pi).join(","), "0,1");
+    yes("T2","實際元素折線照樣完整", elemPolysBy(rE).length > 0, elemPolysBy(rE).length, ">0");
   }
   {
     // v3.9:編號一律自動,每組不再有自己的起始號
