@@ -870,7 +870,7 @@ function fixFirstPiece(g){
 
 function defaultGroup(type, n){
   const base = { id:newId(), type, name:TYPES[type].name + (n || ""), on:true, xf:XF_DEF(),
-    etype:"BEAM", mat:1, sect:1, autoNum:true, nodeBase:1001, elemBase:1001,
+    etype:"BEAM", mat:1, sect:1,
     addN:[], addE:[],              // 手動節點(自己輸座標)/ 手動元素(點兩個節點)
     cable:CABLE_DEF() };           // 只受拉元素的子類型與初始值(元素類型是 CABLE 時才用得到)
   if (type === "CURVE") return { ...base, name:"曲線組" + (n || ""),
@@ -1272,8 +1272,9 @@ function buildOne(g, idx, built, st, inc, prefix, errs, warns){
 function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
   const tag = `「${g.name}」`;
   const T = TYPES[g.type];
-  const nodeBase = g.autoNum ? num(st.numbering.nodeBase) + idx*inc : (Math.round(num(g.nodeBase)) || 1);
-  const elemBase = g.autoNum ? num(st.numbering.elemBase) + idx*inc : (Math.round(num(g.elemBase)) || 1);
+  // v3.9:編號一律自動 —— 全域起始 + 本組在清單中的順序 × 號段增量
+  const nodeBase = num(st.numbering.nodeBase) + idx*inc;
+  const elemBase = num(st.numbering.elemBase) + idx*inc;
   const gname = prefix + mctName(g.name, "G" + p2(idx+1));   // 暫定值,buildModel 會統一去重
   const R = { g, idx, gname, nodeBase, elemBase, nodes:[], elems:[],
               color:GCOLORS[idx % GCOLORS.length], stat:{}, pieces:[] };
@@ -1876,6 +1877,7 @@ function normState(s){
     g.addN = (Array.isArray(g.addN) ? g.addN : [])
       .map(q => ({ x:num(q && q.x) || 0, y:num(q && q.y) || 0, z:num(q && q.z) || 0 }));
     g.cable = { ...CABLE_DEF(), ...(g.cable || {}) };
+    delete g.autoNum; delete g.nodeBase; delete g.elemBase;   // v3.9:編號一律自動
     g.addE = (Array.isArray(g.addE) ? g.addE : [])
       .map(q => ({ i:Math.round(num(q && q.i)) || 0, j:Math.round(num(q && q.j)) || 0 }))
       .filter(q => q.i && q.j && q.i !== q.j);
@@ -2527,7 +2529,7 @@ function usesCable(g){
   if ((g.etype || "BEAM") === "CABLE") return true;
   return (g.pieces || []).some(pc => pc.ovr && pc.etype === "CABLE");
 }
-function cableSec(g){
+function cableFields(g){
   if (!usesCable(g)) return "";
   const c = { ...CABLE_DEF(), ...(g.cable || {}) };
   const sub = Math.round(num(c.sub)) || 3;
@@ -2535,16 +2537,15 @@ function cableSec(g){
   const valLab = sub !== 3
     ? (sub === 1 ? `容許壓力 (${UF()})` : `間隙距離 (${UL()})`)
     : (kind === 3 ? `無應力長度 Lu (${UL()})` : `${kind === 1 ? "預拉力" : "水平分力"} (${UF()})`);
-  const subName = (CABLE_SUB.find(x => x[0] === String(sub)) || ["", "?"])[1];
-  return SEC("纜索(Tension-only)", esc(subName),
-    `<div class="fields g3">${
+  return `<div class="subh">纜索(Tension-only)</div>
+    <div class="fields g3">${
       fld("子類型", "cable.sub", sub, { select:CABLE_SUB }) +
       (sub === 3 ? fld("初始值種類", "cable.kind", kind,
         { select:[["3","Lu(無應力長度)"],["1","Pretension(預拉力)"],["2","Horizontal(水平分力)"]] }) : "") +
       fld(valLab, "cable.val", c.val)}</div>
       <div class="hint">對應 midas 的<b>只受拉元素</b>設定。子類型 <b>Cable</b> 要給初始狀態:
         <b>Lu</b> 是長度(用目前的長度單位 ${esc(UL())}),<b>Pretension / Horizontal</b> 是力(用 ${esc(UF())})。
-        程式<b>不會替你換算</b>,請照目前單位填。</div>`);
+        程式<b>不會替你換算</b>,請照目前單位填。</div>`;
 }
 
 /* ---- 手動節點與元素(每一組都有)---- */
@@ -2611,9 +2612,6 @@ function paneFor(g){
       <button class="btn d" data-op="del">刪除</button></div>`;
   // .mct 匯出用的群組名必須是 ASCII;名字全是中文時會退回 G01 這種序號,要讓使用者看得到
   const fellBack = !!r && /_G\d+(_\d+)?$/.test(r.gname) && !/^[A-Za-z0-9_]+$/.test(String(g.name || ""));
-  const auto = g.autoNum !== false;
-  const nb = auto && r ? r.nodeBase : g.nodeBase;
-  const eb = auto && r ? r.elemBase : g.elemBase;
   const nameSec = SEC("基本", `群組名 ${r ? esc(r.gname) : ""}`,
     `<div class="fields g3">${fld("名稱", "name", g.name, { text:true })}</div>
      <div class="hint" style="margin-top:8px">匯出的 .mct <b>一律純英數</b>(中文在 midas 匯入會變亂碼),
@@ -2623,15 +2621,14 @@ function paneFor(g){
      <div class="fields g3">${
        fld("類型", "etype", g.etype, { select:ELEM_TYPES }) +
        matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
-     <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。</div>
-     <div class="subh">編號</div>
-     <div class="btns" style="margin-bottom:9px">
-       <button class="tgl${auto ? " on" : ""}" data-op="autonum"><span class="dot"></span>自動編號</button></div>
-     <div class="fields g3">${
-       fld(auto ? "節點起始(自動)" : "節點起始", "nodeBase", nb, { disabled:auto }) +
-       fld(auto ? "元素起始(自動)" : "元素起始", "elemBase", eb, { disabled:auto })}</div>
-     <div class="hint"><b>按下(主題色)= 自動編號</b>:全域起始 + 本組在清單中的順序 × 號段增量;彈起就自己填起始號。
-       ${r ? `目前:節點 <b>${numRange(r.nodes)}</b> · 元素 <b>${numRange(r.elems)}</b>` : ""}</div>`);
+     <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。${
+       libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
+         到左下角<b>「輸出 → 材料與斷面名稱」</b>匯入一份 midas 匯出的 .mct
+         (或直接把那個檔案<b>拖進本頁面</b>)。`}</div>
+     ${cableFields(g)}
+     <div class="hint" data-ro style="margin-top:12px;padding-top:9px;border-top:1px solid var(--line-2)">
+       <b>編號</b>(全自動:全域起始 + 本組順序 × 號段增量,可在「編號總表」調整)${
+       r ? ` —— 節點 <b>${numRange(r.nodes)}</b> · 元素 <b>${numRange(r.elems)}</b>` : ""}</div>`);
 
   let body = "";
   if (g.type === "CURVE"){
@@ -2702,7 +2699,7 @@ function paneFor(g){
     if (g.type === "OFFSET") rows.push(["基準組", esc(st.ref || "")]);
   } else if (r && r.stat.err) rows.push(["狀態", `<span style="color:var(--err)">${esc(r.stat.err)}</span>`]);
 
-  return head + nameSec + body + cableSec(g) + nodeSec(g, r) + elemPickSec(g, r) +
+  return head + nameSec + body + nodeSec(g, r) + elemPickSec(g, r) +
     manualSec(g, r) + SEC("結果", "", OUT(rows));
 }
 
@@ -2785,8 +2782,13 @@ const restoreOpen = (root, keys) => root.querySelectorAll("details").forEach(d =
 
 function renderPane(){
   const el = $("#pane");
-  if (SEL === "_num"){ el.innerHTML = paneNumbering(); return; }
-  if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); return; }
+  /* 整塊 innerHTML 重寫時捲動位置會跑掉:新內容一貼上去,所有 <details> 都是 HTML 裡寫的
+     「收合」狀態 → 內容瞬間變矮 → 瀏覽器把 scrollTop 夾到新的上限;等 restoreOpen() 再把卡片
+     展開回來,scrollTop 已經被夾小了,畫面就往上跳一截。所以要自己存回去。 */
+  const st0 = el.scrollTop;
+  const keepScroll = () => { if (el.scrollTop !== st0) el.scrollTop = st0; };
+  if (SEL === "_num"){ el.innerHTML = paneNumbering(); keepScroll(); return; }
+  if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); keepScroll(); return; }
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
     el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
@@ -2799,9 +2801,11 @@ function renderPane(){
     return;
   }
   const openKeys = FORCE_OPEN || captureOpen(el);
+  const forced = !!FORCE_OPEN;
   FORCE_OPEN = null;
   el.innerHTML = paneFor(g);
   restoreOpen(el, openKeys);
+  if (!forced) keepScroll();      // 明確要展開某張卡片時就讓它自己捲過去,不要硬拉回原位
 }
 function renderMctPrev(){
   const el = $("#mctprev"); if (!el) return;
@@ -3036,7 +3040,6 @@ $("#pane").addEventListener("click", e => {
   if (op === "mecancel"){ PICK = null; recompute(true); return; }
   if (op === "medel" && g){ g.addE.splice(+b.dataset.i, 1); recompute(true); return; }
   if (op === "nclrall" && g){ g.edits = {}; g.dels = []; SELNODE = null; recompute(true); return; }
-  if (op === "autonum"){ g.autoNum = (g.autoNum === false); recompute(true); return; }
   if (op === "xfrst"){ g.xf = XF_DEF(); recompute(true); return; }
   if (op === "pxfrst"){ const p0 = (g.pieces || [])[+b.dataset.p]; if (p0) p0.xf = XF_DEF(); recompute(true); return; }
   if (op === "eclr"){ SELELEM = null; recompute(true); return; }
@@ -3926,13 +3929,12 @@ function runTests(){
     const gs = groups.map(g => {
       if (PIECE_T[g.type]){
         // addN / addE / xf 是「組」的欄位,不能跟著段參數一起被塞進 pieces[0]
-        const { id, name, etype, mat, sect, autoNum, nodeBase, elemBase, on,
+        const { id, name, etype, mat, sect, on,
                 addN, addE, xf, cable, ...rest } = g;
         const pc = { ...defaultPiece(g.type), ...rest, cont:false };
         return { ...defaultGroup("CURVE"), ...(id ? { id } : {}), name:name || "組",
           pieces:[pc], etype:etype || "BEAM", mat:mat || 1, sect:sect || 1,
-          ...(autoNum !== undefined ? { autoNum } : {}), ...(nodeBase ? { nodeBase } : {}),
-          ...(elemBase ? { elemBase } : {}), ...(on !== undefined ? { on } : {}),
+          ...(on !== undefined ? { on } : {}),
           ...(addN ? { addN } : {}), ...(addE ? { addE } : {}), ...(xf ? { xf } : {}),
           ...(cable ? { cable } : {}) };
       }
@@ -4696,20 +4698,25 @@ function runTests(){
   }
   {
     // 手動元素:端點可以跨組
-    const L = build([
-      { id:"x1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 },
-        nodeBase:101, elemBase:101, autoNum:false },
+    // 編號一律自動,所以先算一次拿到實際編號,再用它組出手動元素
+    const mkL = addE => build([
+      { id:"x1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
       { id:"x2", type:"LINE", name:"B", x1:0,y1:30,z1:0, x2:100,y2:30,z2:0, split:{ ...SPLIT_DEF, count:2 },
-        nodeBase:201, elemBase:201, autoNum:false, addE:[{ i:101, j:201 }] }
+        ...(addE ? { addE } : {}) }
     ]);
+    const L0 = mkL(null);
+    const nA = L0.md.byId.get("x1").nodes[0].num, nB = L0.md.byId.get("x2").nodes[0].num;
+    const autoE = L0.md.byId.get("x2").elems.length;
+    const L = mkL([{ i:nA, j:nB }]);
     const B = L.md.byId.get("x2");
     const me = B.elems.filter(e => e.manual);
-    yes("M3","手動元素可跨組連接", me.length === 1 && me[0].i === 101 && me[0].j === 201,
-      me.length ? `${me[0].i}-${me[0].j}` : "無", "101-201");
-    yes("M3","手動元素編號接在自動元素之後", me[0].num === 203, me[0].num, 203);
+    yes("M3","手動元素可跨組連接", me.length === 1 && me[0].i === nA && me[0].j === nB,
+      me.length ? `${me[0].i}-${me[0].j}` : "無", `${nA}-${nB}`);
+    yes("M3","手動元素編號接在自動元素之後", me[0].num === B.elemBase + autoE,
+      me[0].num, B.elemBase + autoE);
     chk("M3","手動元素長度", me[0].len3d, 30, 1e-9, "");
     const bad = build([{ id:"y1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:10,y2:0,z2:0,
-      nodeBase:101, elemBase:101, autoNum:false, addE:[{ i:101, j:999 }] }]);
+      addE:[{ i:999999, j:999998 }] }]);
     yes("M3","手動元素端點不存在 → 報錯不當掉",
       bad.errs.some(t => t.indexOf("找不到節點") >= 0), bad.errs.join("|") || "無", "有錯誤訊息");
   }
@@ -4846,6 +4853,34 @@ function runTests(){
         { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
     chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
     chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
+  }
+  {
+    // v3.9:編號一律自動,每組不再有自己的起始號
+    const gA = defaultGroup("CURVE");
+    yes("R9","組不再帶自己的編號欄位",
+      gA.autoNum === undefined && gA.nodeBase === undefined && gA.elemBase === undefined,
+      `${gA.autoNum}/${gA.nodeBase}/${gA.elemBase}`, "都是 undefined");
+    // 舊檔的手動編號要被清掉並改用自動
+    const oldSt = normState({ ...DEF_STATE(), groups:[
+      { ...defaultGroup("CURVE"), id:"o1", name:"A", autoNum:false, nodeBase:77, elemBase:88 },
+      { ...defaultGroup("CURVE"), id:"o2", name:"B" }] });
+    yes("R9","舊檔的 autoNum / 起始號會被清掉",
+      oldSt.groups[0].autoNum === undefined && oldSt.groups[0].nodeBase === undefined,
+      JSON.stringify([oldSt.groups[0].autoNum, oldSt.groups[0].nodeBase]), "[null,null]");
+    const mdA = buildModel(oldSt, [], []);
+    chk("R9","第一組用全域起始", mdA.byId.get("o1").nodeBase, oldSt.numbering.nodeBase, 0, "");
+    chk("R9","第二組 = 全域起始 + 號段增量",
+      mdA.byId.get("o2").nodeBase, oldSt.numbering.nodeBase + oldSt.numbering.inc, 0, "");
+    // 纜索欄位只有用 CABLE 時才出現,而且是接在元素預設後面
+    const gCab = { ...defaultGroup("CURVE"), etype:"CABLE" };
+    const gBeam = { ...defaultGroup("CURVE"), etype:"BEAM" };
+    yes("R9","元素類型是 CABLE 才出現纜索欄位",
+      cableFields(gCab).length > 0 && cableFields(gBeam) === "",
+      (cableFields(gCab) ? "有" : "無") + " / " + (cableFields(gBeam) ? "有" : "無"), "有 / 無");
+    const gOvr = { ...defaultGroup("CURVE"), etype:"BEAM" };
+    gOvr.pieces = [{ ...defaultPiece("LINE"), ovr:true, etype:"CABLE" }];
+    yes("R9","某一段覆寫成 CABLE 也會出現", cableFields(gOvr).length > 0,
+      cableFields(gOvr) ? "有" : "無", "有");
   }
   {
     // 段參照的兩層下拉:先選段(…RefG)再選位置(…RefA),存回去仍是單一字串
