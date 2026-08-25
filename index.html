@@ -860,13 +860,21 @@ function defaultPiece(type){
   if (type === "POINT") return { ...b, x2:0, y2:0, z2:0 };
   return b;
 }
+// 第一段沒有「前一段」可以接 —— 新增 / 刪除 / 拖曳排序之後都要補一次。
+// 注意只清掉 "prev":第一段指到「別的段」是合法的(例如反過來接第 3 段的起點)。
+function fixFirstPiece(g){
+  const pc = g && g.pieces && g.pieces[0];
+  if (pc && pc.sRef === "prev") pc.sRef = "";
+  return g;
+}
+
 function defaultGroup(type, n){
   const base = { id:newId(), type, name:TYPES[type].name + (n || ""), on:true, xf:XF_DEF(),
     etype:"BEAM", mat:1, sect:1, autoNum:true, nodeBase:1001, elemBase:1001,
     addN:[], addE:[],              // 手動節點(自己輸座標)/ 手動元素(點兩個節點)
     cable:CABLE_DEF() };           // 只受拉元素的子類型與初始值(元素類型是 CABLE 時才用得到)
   if (type === "CURVE") return { ...base, name:"曲線組" + (n || ""),
-    pieces:[{ ...defaultPiece("LINE"), cont:false }] };
+    pieces:[{ ...defaultPiece("LINE"), sRef:"" }] };
   if (type === "OFFSET")return { ...base, ref:"", d:dL(5), h:0 };
   if (type === "LINK2") return { ...base, a:"", b:"", from:1, to:0, every:1 };
   if (type === "LINKZ") return { ...base, ref:"", targetZ:0, from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5), etype:"CABLE" };
@@ -1874,7 +1882,7 @@ function normState(s){
     if (g.type === "CURVE"){
       if (!g.edits || typeof g.edits !== "object") g.edits = {};
       if (!Array.isArray(g.dels)) g.dels = [];
-      if (!Array.isArray(g.pieces) || !g.pieces.length) g.pieces = [{ ...defaultPiece("LINE"), cont:false }];
+      if (!Array.isArray(g.pieces) || !g.pieces.length) g.pieces = [{ ...defaultPiece("LINE"), sRef:"" }];
       g.pieces = g.pieces.map((pc, i) => {
         const d = defaultPiece(pc.type || "LINE");
         const out = { ...d, ...pc };
@@ -1942,7 +1950,8 @@ function scaleModel(st, k){
 function demoState(){
   const s = DEF_STATE();
   const G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
-    pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p, cont:i === 0 ? false : (p.cont !== false) })), ...o });
+    pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p,
+      sRef:i === 0 ? "" : (p.cont === false ? "" : "prev") })), ...o });
   const D = (t, o) => ({ type:t, ...o });
 
   // 主曲線:線形鏈(含縱斷面)
@@ -2344,7 +2353,8 @@ function pieceCard(g, pc, pi, info){
   const P2 = (l) => fld((l||"終點") + " X", k + "x2", pc.x2) + fld((l||"終點") + " Y", k + "y2", pc.y2) + fld((l||"終點") + " Z", k + "z2", pc.z2);
   let body = "";
 
-  const sv = sRefOf(pc);
+  // 第一段就算殘留 "prev" 也要當成自訂座標,否則下拉選不到值、座標欄位會被藏起來
+  const sv = (first && sRefOf(pc) === "prev") ? "" : sRefOf(pc);
   const sOpts = [["","自訂座標"], ...(first ? [] : [["prev","接續前段終點"]]), ...refOpts];
   const startRow = `<div class="fields g4">${
       fld("起點", k + "sRef", sv, { select:sOpts }) +
@@ -3015,11 +3025,11 @@ $("#pane").addEventListener("click", e => {
   if (op === "addpc"){
     g.pieces = g.pieces || [];
     const pc = defaultPiece(b.dataset.t);
-    if (!g.pieces.length) pc.sRef = "";
     pc._c = freeSlot(g);
-    g.pieces.push(pc); FORCE_OPEN = new Set(["pc:" + (g.pieces.length - 1)]);
+    g.pieces.push(pc); fixFirstPiece(g);
+    FORCE_OPEN = new Set(["pc:" + (g.pieces.length - 1)]);
   }
-  if (op === "pdel"){ g.pieces.splice(+b.dataset.p, 1); FORCE_OPEN = new Set(); }
+  if (op === "pdel"){ g.pieces.splice(+b.dataset.p, 1); fixFirstPiece(g); FORCE_OPEN = new Set(); }
   const pc = pcOf();
   if (op === "addseg" && pc){ pc.segments = pc.segments || [];
     const t = b.dataset.t;
@@ -3074,7 +3084,7 @@ $("#pane").addEventListener("drop", e => {
   if (g && g.pieces && from !== to){
     snapshot("dragp:" + Date.now());
     g.pieces.splice(to, 0, g.pieces.splice(from, 1)[0]);
-    if (g.pieces[0]) g.pieces[0].cont = false;
+    fixFirstPiece(g);
     FORCE_OPEN = new Set(["pc:" + to]);
     recompute(true);
   }
@@ -4807,6 +4817,40 @@ function runTests(){
         { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
     chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
     chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
+  }
+  {
+    // 第一段一定要能自己給起點座標 —— 新建的組不會經過 normState,所以 defaultGroup 本身就要對
+    const gNew = defaultGroup("CURVE");
+    yes("R7","新建曲線組的第一段是自訂座標", gNew.pieces[0].sRef === "",
+      JSON.stringify(gNew.pieces[0].sRef), '""');
+    yes("R7","新建的第一段沒有殘留舊的 cont 欄位", gNew.pieces[0].cont === undefined,
+      String(gNew.pieces[0].cont), "undefined");
+    // 第一段的 x1/y1/z1 真的會被用到
+    const g1 = { ...defaultGroup("CURVE"), id:"n1", name:"N" };
+    g1.pieces[0] = { ...g1.pieces[0], x1:37, y1:-12, z1:55, endMode:"point",
+      x2:137, y2:-12, z2:55, split:{ ...SPLIT_DEF, count:1 } };
+    const rN = buildModel({ ...DEF_STATE(), groups:[g1] }, [], []).groups[0];
+    yes("R7","第一段的起點座標有生效",
+      Math.abs(rN.nodes[0].x-37) < 1e-9 && Math.abs(rN.nodes[0].y+12) < 1e-9 &&
+      Math.abs(rN.nodes[0].z-55) < 1e-9,
+      `${rN.nodes[0].x},${rN.nodes[0].y},${rN.nodes[0].z}`, "37,-12,55");
+    // 刪掉 / 搬走第一段之後,遞補上來的那一段也要能給座標
+    const g2 = { ...defaultGroup("CURVE"), id:"n2", name:"M" };
+    g2.pieces = [{ ...defaultPiece("LINE"), sRef:"" }, { ...defaultPiece("LINE"), sRef:"prev" }];
+    g2.pieces.splice(0, 1); fixFirstPiece(g2);
+    yes("R7","刪掉第一段後遞補的那段變成自訂座標", g2.pieces[0].sRef === "",
+      JSON.stringify(g2.pieces[0].sRef), '""');
+    const g3 = { ...defaultGroup("CURVE"), id:"n3", name:"D" };
+    g3.pieces = [{ ...defaultPiece("LINE"), sRef:"" }, { ...defaultPiece("LINE"), sRef:"prev" }];
+    g3.pieces.splice(0, 0, g3.pieces.splice(1, 1)[0]); fixFirstPiece(g3);
+    yes("R7","拖到第一位的那段也變成自訂座標", g3.pieces[0].sRef === "",
+      JSON.stringify(g3.pieces[0].sRef), '""');
+    // 第一段指到「別的段」仍然合法,不可以被一起清掉
+    const g4 = { ...defaultGroup("CURVE"), id:"n4", name:"R" };
+    g4.pieces = [{ ...defaultPiece("LINE"), sRef:"1:e" }, { ...defaultPiece("LINE"), sRef:"" }];
+    fixFirstPiece(g4);
+    yes("R7","第一段指到別段的參照不會被清掉", g4.pieces[0].sRef === "1:e",
+      JSON.stringify(g4.pieces[0].sRef), '"1:e"');
   }
   {
     yes("R4","長度單位用公制小寫", UNIT_LENGTH[0][1].indexOf("m(") === 0, UNIT_LENGTH[0][1], "m(…");
