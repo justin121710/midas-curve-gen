@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI 簡化方案比較 — 曲線節點/元素產生器</title>
+<style>
+  :root{
+    --paper:#f7f6f2; --ink:#1e2430; --ink-2:#5a6472; --ink-3:#8b95a3;
+    --line:#d6d2c8; --line-2:#e6e3db; --panel:#fff;
+    --accent:#1c5d99; --accent-soft:#e8f0f8;
+    --ok:#1a7f4b; --warn:#a8710d; --err:#b3261e;
+    --mono:"Cascadia Mono","Consolas",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; font-size:13px; line-height:1.5}
+
+  /* ---------- 外框 ---------- */
+  .top{position:sticky; top:0; z-index:20; background:var(--panel); border-bottom:1px solid var(--line); padding:10px 18px}
+  .top h1{margin:0 0 8px; font-size:15px; font-weight:650}
+  .top .sub{font-size:11.5px; color:var(--ink-3); margin-bottom:9px}
+  .switch{display:flex; gap:6px; flex-wrap:wrap}
+  .switch button{
+    font:inherit; font-size:12.5px; padding:6px 13px; border-radius:5px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--ink-2);
+  }
+  .switch button:hover{border-color:var(--accent); color:var(--accent)}
+  .switch button.on{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+
+  main{padding:16px 18px 60px; max-width:1500px}
+  .why{
+    background:#fffdf6; border:1px solid #ecdfbf; border-left:3px solid var(--warn);
+    border-radius:5px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#6b5518;
+  }
+  .why b{color:#4d3d10}
+  .why ul{margin:6px 0 0; padding-left:18px}
+  .why li{margin:2px 0}
+  .cost{color:var(--err)}
+
+  /* ---------- 模擬視窗 ---------- */
+  .win{border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--panel);
+       box-shadow:0 2px 14px rgba(30,36,48,.06)}
+  .win-bar{display:flex; align-items:center; gap:8px; padding:7px 12px;
+    background:#fafaf7; border-bottom:1px solid var(--line); font-size:12px; color:var(--ink-2)}
+  .win-bar .dot{width:9px; height:9px; border-radius:50%; background:#dcd8cf}
+  .win-bar b{color:var(--ink); font-weight:650; font-size:12.5px}
+  .win-body{display:grid; min-height:520px}
+
+  /* ---------- 通用元件 ---------- */
+  .fields{display:grid; gap:8px 10px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2)}
+  .inp{font-family:var(--mono); font-size:12.5px; padding:0 7px; border:1px solid var(--line);
+       border-radius:4px; background:#fff; height:27px; line-height:25px; position:relative;
+       white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .inp.sel{font-family:inherit; padding-right:19px}
+  .inp.sel::after{content:"▾"; position:absolute; right:6px; top:0; color:var(--ink-3); font-size:10px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:11px 13px; margin-bottom:9px}
+  .card > h4{margin:0 0 9px; font-size:12px; font-weight:650; display:flex; align-items:center; gap:7px}
+  .pill{font-size:10px; padding:1px 7px; border-radius:9px; background:var(--accent-soft); color:var(--accent); font-weight:600}
+  .pill.g{background:#e8f4ec; color:var(--ok)}
+  .pill.m{background:#f0eaf6; color:#6f4a9b}
+  h3.sec{font-size:10.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-3);
+    margin:16px 0 8px; font-weight:700}
+  h3.sec:first-child{margin-top:0}
+  table.t{width:100%; border-collapse:collapse; font-size:11.5px}
+  table.t th{text-align:left; font-size:10px; color:var(--ink-3); font-weight:600;
+    padding:4px 7px; border-bottom:1px solid var(--line); white-space:nowrap}
+  table.t td{padding:4px 7px; border-bottom:1px solid var(--line-2); font-family:var(--mono)}
+  table.t td.n{font-family:inherit}
+  table.t tr:last-child td{border-bottom:none}
+  .btn{font:inherit; font-size:12px; padding:5px 11px; border-radius:4px; border:1px solid var(--line);
+    background:#fff; color:var(--ink); cursor:pointer}
+  .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btns{display:flex; gap:6px; flex-wrap:wrap}
+  .prev{background:#fff; border-left:1px solid var(--line); padding:12px; display:flex; flex-direction:column; gap:10px}
+  .prev .kpi{display:grid; grid-template-columns:repeat(auto-fit,minmax(84px,1fr)); gap:3px 12px;
+    font-family:var(--mono); font-size:12px}
+  .prev .kpi span{font-family:inherit; font-size:9.5px; color:var(--ink-3); display:block}
+  .prev .kpi b{font-size:12.5px}
+  svg.plan{width:100%; height:auto; background:#fff; border:1px solid var(--line-2); border-radius:5px}
+  .muted{color:var(--ink-3); font-size:11px}
+
+  /* ---------- 方案 A:分頁 ---------- */
+  .steps{display:flex; border-bottom:1px solid var(--line); background:#fafaf7}
+  .steps button{
+    flex:1; font:inherit; font-size:12.5px; padding:10px 8px; border:0; background:transparent;
+    color:var(--ink-3); cursor:pointer; border-bottom:2px solid transparent; text-align:center;
+  }
+  .steps button .num{
+    display:inline-flex; width:17px; height:17px; border-radius:50%; background:#e4e1da; color:#fff;
+    align-items:center; justify-content:center; font-size:10px; margin-right:5px; font-weight:700;
+  }
+  .steps button.on{color:var(--accent); border-bottom-color:var(--accent); font-weight:650; background:#fff}
+  .steps button.on .num{background:var(--accent)}
+  .steps button.done .num{background:var(--ok)}
+
+  /* ---------- 方案 B:模型樹 ---------- */
+  .tree{background:#fafaf7; border-right:1px solid var(--line); padding:8px 0; overflow:auto; font-size:12px}
+  .tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+    padding:9px 12px 4px; text-transform:uppercase}
+  .tree .it{display:flex; align-items:center; gap:7px; padding:5px 12px 5px 20px; cursor:pointer; color:var(--ink-2)}
+  .tree .it:hover{background:#f0eee8}
+  .tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600;
+    box-shadow:inset 2px 0 0 var(--accent)}
+  .tree .it .sw{width:8px; height:8px; border-radius:2px; flex:0 0 auto}
+  .tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
+  .tree .it.on .meta{color:var(--accent)}
+  .tree .add{padding:5px 12px 5px 20px; color:var(--accent); cursor:pointer; font-size:11.5px}
+
+  /* ---------- 方案 C:摺疊 ---------- */
+  .acc{border:1px solid var(--line); border-radius:6px; margin-bottom:8px; background:var(--panel); overflow:hidden}
+  .acc > summary{
+    list-style:none; cursor:pointer; padding:9px 13px; display:flex; align-items:center; gap:9px;
+    font-size:12.5px; font-weight:650; background:#fafaf7;
+  }
+  .acc > summary::-webkit-details-marker{display:none}
+  .acc > summary::before{content:"▸"; color:var(--ink-3); font-size:10px; transition:transform .12s}
+  .acc[open] > summary::before{transform:rotate(90deg)}
+  .acc[open] > summary{border-bottom:1px solid var(--line-2); background:#fff}
+  .acc .sum{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--ink-3); font-weight:400}
+  .acc .inner{padding:11px 13px}
+  .acc.off > summary{opacity:.5}
+  .kind{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+  .kind button{
+    font:inherit; font-size:12px; padding:8px 14px; border-radius:6px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--ink-2); text-align:left; line-height:1.35;
+  }
+  .kind button small{display:block; font-size:10px; color:var(--ink-3)}
+  .kind button.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:650}
+  .kind button.on small{color:var(--accent)}
+
+  /* ---------- 現況對照 ---------- */
+  .now{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px}
+  .now .b{border:1px solid var(--line); border-radius:5px; padding:9px 11px; background:#fff}
+  .now .b b{font-size:12px; display:block; margin-bottom:3px}
+  .now .b .c{font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+  .now .b.dup{border-color:#e8c9c5; background:#fdf6f5}
+  .now .b.dup .c{color:var(--err)}
+  .tag{display:inline-block; font-size:9.5px; padding:1px 6px; border-radius:8px;
+       background:#fbe9e7; color:var(--err); margin-left:5px}
+
+  .pane{display:none}
+  .pane.on{display:block}
+  .cmp{width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; background:#fff;
+       border:1px solid var(--line); border-radius:6px; overflow:hidden}
+  .cmp th{background:#fafaf7; text-align:left; padding:7px 10px; font-size:11px; color:var(--ink-3); border-bottom:1px solid var(--line)}
+  .cmp td{padding:7px 10px; border-bottom:1px solid var(--line-2); vertical-align:top}
+  .cmp tr:last-child td{border-bottom:none}
+  .cmp td:first-child{font-weight:650; white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>UI 簡化方案比較</h1>
+  <div class="sub">同一份功能、三種資訊架構。左欄目前有 10 個區塊,而且「元素類型/材料/斷面」散在 5 處、編號散在 6 處。</div>
+  <div class="switch">
+    <button data-p="now">現況診斷</button>
+    <button data-p="a" class="on">方案 A ·「四步驟」</button>
+    <button data-p="b">方案 B ·「模型樹」</button>
+    <button data-p="c">方案 C ·「橋型入口 + 摺疊」</button>
+    <button data-p="cmp">三案對照</button>
+  </div>
+</div>
+
+<main>
+
+<!-- ================= 現況診斷 ================= -->
+<section class="pane" id="p-now">
+  <div class="why">
+    <b>問題不是「功能太多」,是「同類東西被拆散」。</b>
+    <ul>
+      <li>左欄 <b>10 個區塊</b>連續堆疊,沒有層級,只能一路往下捲。</li>
+      <li>元素屬性(類型 / 材料 / 斷面)出現在 <b>5 個不同區塊</b>,每次要改材料得四處找。</li>
+      <li>編號資訊出現在 <b>6 個地方</b>:編號區塊 1 處 + 每個構件自己的輸出列 5 處。</li>
+      <li>常用與罕用混在一起:「餘數處理」「吸收容差」「滾轉角」「EXVAL」跟「跨徑」「半徑」同層。</li>
+    </ul>
+  </div>
+  <div class="now">
+    <div class="b"><b>① 起始設定</b><div class="c">4 欄</div></div>
+    <div class="b dup"><b>② 平面線形段落</b><div class="c">每段 4–7 欄 × N 段<span class="tag">內含分割設定</span></div></div>
+    <div class="b"><b>③ 縱斷面 VPI</b><div class="c">每列 3 欄 × N 列</div></div>
+    <div class="b dup"><b>④ 主纜</b><div class="c">24 欄<span class="tag">含屬性 6 欄</span></div></div>
+    <div class="b dup"><b>⑤ 纜索</b><div class="c">10 欄<span class="tag">含屬性 3 欄</span></div></div>
+    <div class="b dup"><b>⑥ 偏置線與橫梁</b><div class="c">每條 6 欄<span class="tag">含屬性 3 欄</span></div></div>
+    <div class="b"><b>⑦ 強制節點與吸收</b><div class="c">2 欄</div></div>
+    <div class="b dup"><b>⑧ 主線屬性</b><div class="c">3 欄<span class="tag">屬性</span></div></div>
+    <div class="b dup"><b>⑨ 編號與群組</b><div class="c">9 欄<span class="tag">編號</span></div></div>
+    <div class="b"><b>⑩ 輸出</b><div class="c">5 欄 + 6 按鈕 + 預覽</div></div>
+  </div>
+  <div class="muted" style="margin-top:10px">
+    紅框 = 有內容散落到別處。三個方案都做同一件事:<b>把散落的收攏</b>,差別在收攏之後怎麼組織。
+  </div>
+</section>
+
+<!-- ================= 方案 A ================= -->
+<section class="pane on" id="p-a">
+  <div class="why">
+    <b>方案 A ·「四步驟」——</b> 依照實際作業順序切成四個分頁:幾何 → 構件 → 節點與屬性 → 輸出。預覽固定在右側永遠看得到。
+    <ul>
+      <li>任何時候畫面上只有一個階段的欄位,捲動大幅減少。</li>
+      <li>屬性與編號各自合併成<b>一張表</b>(每個構件一列),不再散落。</li>
+      <li class="cost">代價:跨階段對照要切分頁(例如一邊調線形一邊看編號)。</li>
+    </ul>
+  </div>
+  <div class="win">
+    <div class="win-bar"><span class="dot"></span><b>曲線節點/元素產生器</b><span>—</span><span id="a-crumb">步驟 1:幾何</span></div>
+    <div class="steps" id="a-steps">
+      <button class="on" data-s="1"><span class="num">1</span>幾何</button>
+      <button data-s="2"><span class="num">2</span>構件</button>
+      <button data-s="3"><span class="num">3</span>節點與屬性</button>
+      <button data-s="4"><span class="num">4</span>輸出</button>
+    </div>
+    <div class="win-body" style="grid-template-columns:1fr 330px">
+      <div style="padding:14px; overflow:auto" id="a-main"></div>
+      <div class="prev" id="a-prev"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 方案 B ================= -->
+<section class="pane" id="p-b">
+  <div class="why">
+    <b>方案 B ·「模型樹」——</b> 左邊是模型清單(像 CAD/BIM 的 outliner),點一項才在中間顯示它的屬性。
+    <ul>
+      <li>畫面上<b>永遠只有一個物件</b>的欄位,認知負擔最低。</li>
+      <li>模型有什麼一眼看完,新增/刪除構件的位置固定。</li>
+      <li>工程師對這種介面熟悉(midas、Civil 3D、Revit 都長這樣)。</li>
+      <li class="cost">代價:要點來點去;想同時比較兩條偏置線的參數做不到。</li>
+    </ul>
+  </div>
+  <div class="win">
+    <div class="win-bar"><span class="dot"></span><b>曲線節點/元素產生器</b></div>
+    <div class="win-body" style="grid-template-columns:232px 1fr 300px">
+      <div class="tree" id="b-tree"></div>
+      <div style="padding:14px; overflow:auto" id="b-main"></div>
+      <div class="prev" id="b-prev"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 方案 C ================= -->
+<section class="pane" id="p-c">
+  <div class="why">
+    <b>方案 C ·「橋型入口 + 摺疊」——</b> 先選這次要做什麼橋,只展開相關區塊;其餘收起但仍可手動打開。摺疊標題右側顯示摘要,收起也看得到重點數字。
+    <ul>
+      <li>單頁捲動,不切換脈絡;<b>與現況最接近,改動最小</b>。</li>
+      <li>選「懸索橋」就不會看到偏置線與橫梁——<b>學習成本降在「不用學不需要的東西」</b>。</li>
+      <li>收合狀態仍顯示 <span class="muted">3 段 · 257.080 m</span> 這類摘要,不必展開就能核對。</li>
+      <li class="cost">代價:仍是一條長捲軸;區塊多時摘要列會變成新的雜訊。</li>
+    </ul>
+  </div>
+  <div class="win">
+    <div class="win-bar"><span class="dot"></span><b>曲線節點/元素產生器</b></div>
+    <div class="win-body" style="grid-template-columns:1fr 320px">
+      <div style="padding:14px; overflow:auto" id="c-main"></div>
+      <div class="prev" id="c-prev"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 對照 ================= -->
+<section class="pane" id="p-cmp">
+  <table class="cmp">
+    <thead><tr><th style="width:120px"></th><th>A 四步驟</th><th>B 模型樹</th><th>C 橋型入口 + 摺疊</th></tr></thead>
+    <tbody>
+      <tr><td>同時可見欄位</td><td>中(一個階段)</td><td><b>最少</b>(一個物件)</td><td>中(展開的區塊)</td></tr>
+      <tr><td>學習成本</td><td>低——步驟即流程</td><td>低——工程師熟悉的介面</td><td><b>最低</b>——先選橋型就自動精簡</td></tr>
+      <tr><td>找東西的速度</td><td>要記得在第幾步</td><td><b>最快</b>——樹上一眼看完</td><td>中——摘要列可掃視</td></tr>
+      <tr><td>跨區對照</td><td class="cost">最差(要切分頁)</td><td class="cost">差(一次一個物件)</td><td><b>最好</b>(同頁展開多塊)</td></tr>
+      <tr><td>改動幅度</td><td>大——要重排全部區塊</td><td><b>最大</b>——需要新的選取狀態機</td><td><b>最小</b>——現有區塊加殼</td></tr>
+      <tr><td>構件變多時</td><td>第 2 步會變長</td><td><b>最耐擴充</b></td><td class="cost">摘要列會變多、變吵</td></tr>
+      <tr><td>適合</td><td>照流程做完一次的新手</td><td>反覆調整既有模型</td><td>不想重學、只想少看東西</td></tr>
+    </tbody>
+  </table>
+  <div class="why" style="margin-top:14px">
+    <b>我的建議:C 先做,B 是終點。</b>
+    <ul>
+      <li><b>C</b> 改動最小、風險最低,而且「先選橋型」直接解掉你說的學習成本——做曲線梁橋的人根本不會看到主纜與纜索。可以先只做這個,一天內能上。</li>
+      <li>三個方案共通的底層改動只有兩件:<b>屬性表合一</b>、<b>編號表合一</b>。這兩件不論選哪案都要做,可以先做,做完現況就已經從 10 塊變 8 塊。</li>
+      <li><b>B</b> 是構件數量長大之後的正解,但需要一套選取狀態機,建議等 C 上線、確定欄位分組穩定之後再換。</li>
+      <li>A 的缺點在你的使用情境比較痛:調線形時常需要同時看檢核與編號,分頁會擋路。</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const el = (h) => { const d = document.createElement("div"); d.innerHTML = h.trim(); return d.firstElementChild; };
+const F = (label, val, sel) => `<label class="f"><span>${label}</span><div class="inp${sel ? " sel" : ""}">${val}</div></label>`;
+
+/* ---------- 共用:預覽面板 ---------- */
+const PLAN_SVG = `
+<svg class="plan" viewBox="0 0 300 165">
+  <defs><pattern id="g" width="25" height="25" patternUnits="userSpaceOnUse">
+    <path d="M25 0H0V25" fill="none" stroke="#f0f2f4" stroke-width="1"/></pattern></defs>
+  <rect width="300" height="165" fill="url(#g)"/>
+  <path d="M18 30 H112" stroke="#1c5d99" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M112 30 A62 62 0 0 1 174 92" stroke="#c1673d" stroke-width="2.4" fill="none"/>
+  <path d="M174 92 V148" stroke="#3f8f5f" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M18 42 H112" stroke="#0f7c8f" stroke-width="1.3" fill="none" opacity=".8"/>
+  <path d="M112 42 A50 50 0 0 1 162 92" stroke="#0f7c8f" stroke-width="1.3" fill="none" opacity=".8"/>
+  <path d="M162 92 V148" stroke="#0f7c8f" stroke-width="1.3" fill="none" opacity=".8"/>
+  ${Array.from({length:19},(_,i)=>`<circle cx="${18+i*5.2}" cy="30" r="1.7" fill="#2c3644"/>`).join("")}
+  ${Array.from({length:11},(_,i)=>`<circle cx="174" cy="${92+i*5.6}" r="1.7" fill="#2c3644"/>`).join("")}
+  <polygon points="18,25 23,30 18,35" fill="#1e2430"/>
+  <circle cx="140" cy="58" r="4" fill="#fff" stroke="#b3406b" stroke-width="1.8"/>
+  <text x="240" y="20" font-size="8" fill="#8b95a3" font-family="monospace">N ↑</text>
+  <path d="M20 155 H70" stroke="#5a6472" stroke-width="1.2"/>
+  <text x="74" y="158" font-size="7.5" fill="#5a6472" font-family="monospace">50 m</text>
+</svg>`;
+
+const PROF_SVG = `
+<svg class="plan" viewBox="0 0 300 96">
+  <rect width="300" height="96" fill="#fff"/>
+  <line x1="30" y1="12" x2="30" y2="76" stroke="#dfe4ea"/><line x1="30" y1="76" x2="292" y2="76" stroke="#dfe4ea"/>
+  ${[24,40,56].map(y=>`<line x1="30" y1="${y}" x2="292" y2="${y}" stroke="#f0f2f4"/>`).join("")}
+  <path d="M36 70 L150 22 L286 70" stroke="#c3cad3" stroke-width="1.1" stroke-dasharray="4 3" fill="none"/>
+  <path d="M36 70 Q150 12 286 70" stroke="#1c5d99" stroke-width="2" fill="none"/>
+  <circle cx="150" cy="22" r="3.6" fill="#fff" stroke="#b3406b" stroke-width="1.8"/>
+  <text x="140" y="16" font-size="7.5" fill="#b3406b" font-family="monospace">VPI1</text>
+  <text x="80" y="44" font-size="7" fill="#7b8592" font-family="monospace">BVC</text>
+  <text x="212" y="44" font-size="7" fill="#7b8592" font-family="monospace">EVC</text>
+  <text x="4" y="26" font-size="7.5" fill="#b8c0cb" font-family="monospace">104</text>
+  <text x="4" y="74" font-size="7.5" fill="#b8c0cb" font-family="monospace">100</text>
+</svg>`;
+
+const KPI = `
+<div class="kpi">
+  <div><span>節點</span><b>159</b></div>
+  <div><span>元素</span><b>210</b></div>
+  <div><span>最大弦線偏差</span><b>31.25 mm</b></div>
+  <div><span>總長縮短</span><b>16.2 mm</b></div>
+  <div><span>3D 元素總長</span><b>257.216 m</b></div>
+  <div><span>最大坡度</span><b>+4.000%</b></div>
+</div>`;
+
+const previewHTML = (extra) => `
+  <div style="font-size:10.5px;letter-spacing:.09em;color:var(--ink-3);font-weight:700">預覽</div>
+  ${PLAN_SVG}${PROF_SVG}
+  <div style="font-size:10.5px;letter-spacing:.09em;color:var(--ink-3);font-weight:700;margin-top:2px">檢核</div>
+  ${KPI}
+  ${extra || ""}`;
+
+/* ---------- 合併後的兩張表(三案共用) ---------- */
+const ATTR_TABLE = `
+<table class="t">
+  <thead><tr><th>構件</th><th>類型</th><th>材料</th><th>斷面</th><th>群組</th></tr></thead>
+  <tbody>
+    <tr><td class="n">主線</td><td>BEAM</td><td>1</td><td>1</td><td>GEN_LINE_01…</td></tr>
+    <tr><td class="n">偏置線 L</td><td>BEAM</td><td>1</td><td>1</td><td>GEN_OFF_L</td></tr>
+    <tr><td class="n">橫梁</td><td>BEAM</td><td>1</td><td>9</td><td>GEN_XBEAM</td></tr>
+    <tr><td class="n">主纜 MC1</td><td>CABLE</td><td>2</td><td>11</td><td>GEN_MAIN_MC1</td></tr>
+    <tr><td class="n">吊索 MC1</td><td>CABLE</td><td>2</td><td>12</td><td>GEN_HANGER_MC1</td></tr>
+    <tr><td class="n">纜索 STAY</td><td>CABLE</td><td>2</td><td>5</td><td>GEN_CABLE_STAY</td></tr>
+  </tbody>
+</table>`;
+
+const NUM_TABLE = `
+<table class="t">
+  <thead><tr><th>構件</th><th>節點</th><th>元素</th><th>數量</th></tr></thead>
+  <tbody>
+    <tr><td class="n">主線</td><td>1001–1053</td><td>1001–1052</td><td>53 / 52</td></tr>
+    <tr><td class="n">偏置線 L</td><td>2001–2053</td><td>2001–2052</td><td>53 / 52</td></tr>
+    <tr><td class="n">橫梁</td><td>—</td><td>8001–8027</td><td>— / 27</td></tr>
+    <tr><td class="n">主纜 MC1</td><td>20001–20100</td><td>20001–20098</td><td>100 / 98</td></tr>
+    <tr><td class="n">纜索 STAY</td><td>9001</td><td>9001–9024</td><td>1 / 24</td></tr>
+  </tbody>
+</table>`;
+
+/* ========================================================================
+   方案 A
+   ======================================================================== */
+const A_STEPS = {
+1:{ crumb:"步驟 1:幾何", html:`
+  <h3 class="sec">平面線形</h3>
+  <div class="card">
+    <div class="fields g4">${F("起點 X","0")}${F("起點 Y","0")}${F("起始方位角","90")}${F("起始樁號","0k+000.000")}</div>
+  </div>
+  <div class="card">
+    <h4>段落 <span class="pill">3 段 · 257.080 m</span></h4>
+    <table class="t">
+      <thead><tr><th>#</th><th>型別</th><th>參數</th><th>起訖樁號</th><th>終點方位角</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="n">直線</td><td>L = 50</td><td>0k+000 → 0k+050</td><td>90.0000°</td><td>✕</td></tr>
+        <tr><td>2</td><td class="n">圓弧</td><td>R = 100 右 Δ90°</td><td>0k+050 → 0k+207</td><td>180.0000°</td><td>✕</td></tr>
+        <tr><td>3</td><td class="n">直線</td><td>L = 50</td><td>0k+207 → 0k+257</td><td>180.0000°</td><td>✕</td></tr>
+      </tbody>
+    </table>
+    <div class="btns" style="margin-top:9px"><button class="btn p">+ 直線</button><button class="btn">+ 圓弧</button><button class="btn">+ 緩和曲線</button></div>
+  </div>
+  <h3 class="sec">縱斷面</h3>
+  <div class="card">
+    <h4>VPI <span class="pill">3 點 · 最大坡度 +4.000%</span></h4>
+    <table class="t">
+      <thead><tr><th></th><th>樁號</th><th>高程 Z</th><th>豎曲線長 L</th><th>坡度</th><th>K</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="n">起</td><td>0k+000.000</td><td>100.0000</td><td>—</td><td>+4.000%</td><td>—</td><td></td></tr>
+        <tr><td class="n">1</td><td>0k+128.540</td><td>105.1416</td><td>100</td><td>±4.000%</td><td>12.5</td><td>✕</td></tr>
+        <tr><td class="n">終</td><td>0k+257.080</td><td>100.0000</td><td>—</td><td>−4.000%</td><td>—</td><td></td></tr>
+      </tbody>
+    </table>
+    <div class="btns" style="margin-top:9px"><button class="btn p">+ VPI</button><button class="btn">起訖對齊線形</button></div>
+  </div>`},
+
+2:{ crumb:"步驟 2:構件", html:`
+  <h3 class="sec">沿線形的構件</h3>
+  <div class="card">
+    <h4>偏置線與橫梁 <span class="pill">1 條 + 橫梁</span></h4>
+    <table class="t">
+      <thead><tr><th>名稱</th><th>橫向 d</th><th>垂直 h</th><th>當地半徑</th><th>弦線偏差</th><th></th></tr></thead>
+      <tbody><tr><td class="n">L</td><td>−5.000</td><td>0.000</td><td>105</td><td>32.81 mm</td><td>✕</td></tr></tbody>
+    </table>
+    <div class="fields g3" style="margin-top:9px">${F("產生橫梁","是",1)}${F("每 n 個樁號","2")}</div>
+    <div class="btns" style="margin-top:9px"><button class="btn p">+ 偏置線</button></div>
+  </div>
+  <h3 class="sec">獨立構件(不需要線形)</h3>
+  <div class="card">
+    <h4>主纜 MC1 <span class="pill m">懸索橋</span> <span class="pill">250 m · 垂度 25 m</span></h4>
+    <div class="fields g4">${F("跨徑 Lx","250")}${F("曲線","拋物線",1)}${F("垂跨比","0.1")}${F("分割 N","25")}</div>
+    <div class="fields g4" style="margin-top:8px">${F("索面數","2",1)}${F("索面間距","16")}${F("橋面局部 z","−30")}${F("吊索每 n 節點","1")}</div>
+    <div class="card" style="margin:10px 0 0; background:#fafaf7">
+      <h4 style="margin-bottom:7px">空間轉換 <span class="pill g">殘差 0.0000 m</span></h4>
+      <div class="fields g4">${F("基準點 P1","左鞍座",1)}${F("目標 X1","0")}${F("目標 Y1","0")}${F("目標 Z1","130")}</div>
+      <div class="fields g4" style="margin-top:8px">${F("方向定義","平面方位角",1)}${F("方位角 θ","90")}${F("滾轉 roll","0")}</div>
+    </div>
+  </div>
+  <div class="card">
+    <h4>纜索 STAY <span class="pill m">斜張索</span> <span class="pill">24 條 · N = 1</span></h4>
+    <div class="fields g4">${F("起點","自訂座標",1)}${F("X","120.711")}${F("Y","−29.289")}${F("Z","144.142")}</div>
+    <div class="fields g3" style="margin-top:8px">${F("目標節點","1015-1038")}${F("分割 N","1")}${F("垂度","停用")}</div>
+  </div>
+  <div class="btns"><button class="btn p">+ 主纜</button><button class="btn">+ 纜索</button></div>`},
+
+3:{ crumb:"步驟 3:節點與屬性", html:`
+  <h3 class="sec">節點分割</h3>
+  <div class="card">
+    <div class="fields g4">${F("預設分割方式","指定間距",1)}${F("間距 d","5")}${F("餘數處理","獨立留一段",1)}${F("吸收容差","0.1")}</div>
+    <div style="margin-top:9px" class="muted">逐段例外:<b style="color:var(--ink)">段 2</b> 弦線偏差容差 20 mm &nbsp;·&nbsp; <span style="color:var(--accent);cursor:pointer">+ 新增例外</span></div>
+    <div class="fields" style="margin-top:9px">${F("強制節點樁號","0k+120.000, 0k+180.500")}</div>
+  </div>
+  <h3 class="sec">元素屬性 <span class="muted" style="text-transform:none;letter-spacing:0">— 原本散在 5 個區塊,合併成一張表</span></h3>
+  <div class="card">${ATTR_TABLE}
+    <div class="fields g3" style="margin-top:9px">${F("群組前綴","GEN_")}</div>
+  </div>
+  <h3 class="sec">編號 <span class="muted" style="text-transform:none;letter-spacing:0">— 原本散在 6 個地方</span></h3>
+  <div class="card">
+    <div class="fields g3">${F("節點起始","1001")}${F("元素起始","1001")}${F("號段增量","1000")}</div>
+    <div style="margin-top:10px">${NUM_TABLE}</div>
+  </div>`},
+
+4:{ crumb:"步驟 4:輸出", html:`
+  <h3 class="sec">單位與格式</h3>
+  <div class="card">
+    <div class="fields g4">${F("MCT 長度單位","M",1)}${F("MCT 力單位","KN",1)}${F("纜索元素類型","TENSTR")}${F("纜索 iSUB / EXVAL","2 / 0")}</div>
+    <div class="muted" style="margin-top:9px">畫面上所有長度以公尺輸入,匯出時才換算。<b style="color:var(--warn)">MCT 格式尚未實機驗證。</b></div>
+  </div>
+  <h3 class="sec">下載</h3>
+  <div class="card">
+    <div class="btns">
+      <button class="btn p">下載 .mct</button><button class="btn">複製 MCT 文字</button>
+      <button class="btn">節點 CSV</button><button class="btn">元素 CSV</button>
+      <button class="btn">參數 JSON</button><button class="btn">載入 JSON / MCT…</button>
+    </div>
+  </div>
+  <h3 class="sec">MCT 預覽</h3>
+  <div class="card" style="font-family:var(--mono);font-size:11px;color:var(--ink-2);white-space:pre;overflow:auto;max-height:190px">
+; 曲線節點/元素產生器  (curve-node-gen)
+; 單位     : KN, M
+; 節點     : 159   元素 : 210   群組 : 7
+*UNIT
+; FORCE, LENGTH, HEAT, TEMPER
+   KN, M, KJ, C
+*NODE
+; iNO, X, Y, Z
+; --- 主線 ---
+   1001, 0, 0, 100
+   1002, 5, 0, 100.2
+*ELEMENT
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL
+   1001, BEAM, 1, 1, 1001, 1002, 0, 0
+*GROUP
+; NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE
+   GEN_LINE_01, 1001to1011, 1001to1010, 0</div>`}
+};
+
+function renderA(step){
+  $("#a-main").innerHTML = A_STEPS[step].html;
+  $("#a-crumb").textContent = A_STEPS[step].crumb;
+  $("#a-prev").innerHTML = previewHTML();
+  [...$("#a-steps").children].forEach(b => {
+    const n = +b.dataset.s;
+    b.classList.toggle("on", n === step);
+    b.classList.toggle("done", n < step);
+  });
+}
+$("#a-steps").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (b) renderA(+b.dataset.s);
+});
+
+/* ========================================================================
+   方案 B
+   ======================================================================== */
+const B_ITEMS = [
+  { g:"平面線形", id:"seg1", sw:"#1c5d99", t:"1 直線", meta:"50 m" },
+  { g:"平面線形", id:"seg2", sw:"#c1673d", t:"2 圓弧", meta:"R=100" },
+  { g:"平面線形", id:"seg3", sw:"#3f8f5f", t:"3 直線", meta:"50 m" },
+  { g:"平面線形", id:"prof", sw:"#b3406b", t:"縱斷面", meta:"3 VPI" },
+  { g:"構件", id:"off",  sw:"#0f7c8f", t:"偏置線 L", meta:"d=−5" },
+  { g:"構件", id:"xb",   sw:"#aab3bd", t:"橫梁", meta:"每 2" },
+  { g:"構件", id:"main", sw:"#0f7c8f", t:"主纜 MC1", meta:"250 m" },
+  { g:"構件", id:"stay", sw:"#b3406b", t:"纜索 STAY", meta:"24 條" },
+  { g:"全域", id:"split", sw:"#8b95a3", t:"節點分割", meta:"間距 5" },
+  { g:"全域", id:"attr",  sw:"#8b95a3", t:"屬性與群組", meta:"6 項" },
+  { g:"全域", id:"num",   sw:"#8b95a3", t:"編號", meta:"增量 1000" },
+  { g:"全域", id:"out",   sw:"#8b95a3", t:"輸出", meta:"KN, M" }
+];
+
+const B_PANES = {
+  seg2:`<h3 class="sec">段落 2 · 圓弧</h3>
+    <div class="card">
+      <div class="fields g4">${F("型別","圓弧",1)}${F("半徑 R","100")}${F("偏向","右偏",1)}${F("偏角 Δ","90")}</div>
+      <div class="fields g4" style="margin-top:8px">${F("分割方式","指定間距",1)}${F("間距 d","5")}${F("餘數處理","獨立留一段",1)}${F("獨立起點","否",1)}</div>
+      <div style="border-top:1px dashed var(--line-2);margin-top:11px;padding-top:9px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)">
+        樁號 <b>0k+050.000 → 0k+207.080</b> &nbsp; 長度 <b>157.0796 m</b><br>
+        圓心 <b>50.000, −100.000</b> &nbsp; 終點方位角 <b>180.0000°</b><br>
+        元素 32 根 · 最大弦線偏差 <b>31.25 mm</b> · 餘數 2.080 m
+      </div>
+    </div>`,
+  main:`<h3 class="sec">主纜 MC1</h3>
+    <div class="card">
+      <h4>局部幾何 <span class="pill">250 m · 垂度 25 m</span></h4>
+      <div class="fields g4">${F("跨徑 Lx","250")}${F("左鞍座 z1","0")}${F("右鞍座 z2","0")}${F("曲線","拋物線",1)}</div>
+      <div class="fields g4" style="margin-top:8px">${F("垂度定義","垂跨比",1)}${F("f / L","0.1")}${F("分割 N","25")}${F("索面數","2",1)}</div>
+    </div>
+    <div class="card"><h4>吊索 <span class="pill">48 根</span></h4>
+      <div class="fields g4">${F("產生吊索","是",1)}${F("橋面局部 z","−30")}${F("每 n 節點","1")}${F("下端節點","新增",1)}</div>
+    </div>
+    <div class="card"><h4>空間轉換 <span class="pill g">殘差 0.0000 m</span></h4>
+      <div class="fields g4">${F("基準點 P1","左鞍座",1)}${F("目標 X1","0")}${F("目標 Y1","0")}${F("目標 Z1","130")}</div>
+      <div class="fields g4" style="margin-top:8px">${F("方向定義","平面方位角",1)}${F("方位角 θ","90")}${F("滾轉 roll","0")}</div>
+    </div>`,
+  attr:`<h3 class="sec">屬性與群組</h3><div class="card">${ATTR_TABLE}
+    <div class="fields g3" style="margin-top:10px">${F("群組前綴","GEN_")}</div></div>`,
+  num:`<h3 class="sec">編號</h3><div class="card">
+    <div class="fields g3">${F("節點起始","1001")}${F("元素起始","1001")}${F("號段增量","1000")}</div>
+    <div style="margin-top:10px">${NUM_TABLE}</div></div>`,
+  split:`<h3 class="sec">節點分割</h3><div class="card">
+    <div class="fields g4">${F("預設分割方式","指定間距",1)}${F("間距 d","5")}${F("餘數處理","獨立留一段",1)}${F("吸收容差","0.1")}</div>
+    <div class="fields" style="margin-top:9px">${F("強制節點樁號","0k+120.000, 0k+180.500")}</div></div>`,
+  out:`<h3 class="sec">輸出</h3><div class="card">
+    <div class="fields g4">${F("長度單位","M",1)}${F("力單位","KN",1)}${F("纜索類型","TENSTR")}${F("iSUB / EXVAL","2 / 0")}</div>
+    <div class="btns" style="margin-top:11px">
+      <button class="btn p">下載 .mct</button><button class="btn">複製</button>
+      <button class="btn">節點 CSV</button><button class="btn">元素 CSV</button><button class="btn">參數 JSON</button></div></div>`
+};
+const B_FALLBACK = t => `<h3 class="sec">${t}</h3><div class="card"><div class="muted">(此項的欄位面板 — DEMO 中僅示意)</div></div>`;
+
+function renderB(id){
+  let last = "";
+  $("#b-tree").innerHTML = B_ITEMS.map(it => {
+    const head = it.g !== last ? (last = it.g, `<div class="grp">${it.g}</div>`) : "";
+    const add = "";
+    return head + `<div class="it${it.id === id ? " on" : ""}" data-id="${it.id}">
+      <span class="sw" style="background:${it.sw}"></span>${it.t}<span class="meta">${it.meta}</span></div>` + add;
+  }).join("") + `<div class="add">+ 新增段落 / 構件</div>`;
+  const item = B_ITEMS.find(i => i.id === id);
+  $("#b-main").innerHTML = B_PANES[id] || B_FALLBACK(item ? item.t : "");
+  $("#b-prev").innerHTML = previewHTML();
+}
+$("#b-tree").addEventListener("click", e => {
+  const it = e.target.closest(".it"); if (it) renderB(it.dataset.id);
+});
+
+/* ========================================================================
+   方案 C
+   ======================================================================== */
+const KINDS = {
+  curve:{ label:"曲線梁橋", note:"線形 + 縱斷面 + 偏置線", on:["align","prof","off","split","attr","num","out"] },
+  susp: { label:"懸索橋",   note:"主纜 + 吊索(可不要線形)", on:["main","attr","num","out"] },
+  stay: { label:"斜張橋",   note:"線形 + 塔 + 斜張索",     on:["align","prof","stay","split","attr","num","out"] },
+  free: { label:"自由組合", note:"全部展開",               on:["align","prof","off","main","stay","split","attr","num","out"] }
+};
+const C_BLOCKS = [
+  { id:"align", t:"平面線形", sum:"3 段 · 257.080 m", body:`
+    <div class="fields g4">${F("起點 X","0")}${F("起點 Y","0")}${F("起始方位角","90")}${F("起始樁號","0k+000.000")}</div>
+    <table class="t" style="margin-top:10px">
+      <thead><tr><th>#</th><th>型別</th><th>參數</th><th>分割</th><th>起訖樁號</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="n">直線</td><td>L = 50</td><td>間距 5</td><td>0k+000 → 0k+050</td><td>✕</td></tr>
+        <tr><td>2</td><td class="n">圓弧</td><td>R = 100 右 Δ90°</td><td>間距 5</td><td>0k+050 → 0k+207</td><td>✕</td></tr>
+        <tr><td>3</td><td class="n">直線</td><td>L = 50</td><td>間距 5</td><td>0k+207 → 0k+257</td><td>✕</td></tr>
+      </tbody></table>
+    <div class="btns" style="margin-top:9px"><button class="btn p">+ 直線</button><button class="btn">+ 圓弧</button><button class="btn">+ 緩和曲線</button></div>` },
+  { id:"prof", t:"縱斷面", sum:"3 VPI · 最大 +4.000%", body:`
+    <table class="t">
+      <thead><tr><th></th><th>樁號</th><th>高程 Z</th><th>豎曲線長</th><th>坡度</th><th>K</th></tr></thead>
+      <tbody>
+        <tr><td class="n">起</td><td>0k+000.000</td><td>100.0000</td><td>—</td><td>+4.000%</td><td>—</td></tr>
+        <tr><td class="n">1</td><td>0k+128.540</td><td>105.1416</td><td>100</td><td>±4.000%</td><td>12.5</td></tr>
+        <tr><td class="n">終</td><td>0k+257.080</td><td>100.0000</td><td>—</td><td>−4.000%</td><td>—</td></tr>
+      </tbody></table>` },
+  { id:"off", t:"偏置線與橫梁", sum:"1 條 · 橫梁每 2 樁號", body:`
+    <table class="t">
+      <thead><tr><th>名稱</th><th>橫向 d</th><th>垂直 h</th><th>當地半徑</th><th>弦線偏差</th><th></th></tr></thead>
+      <tbody><tr><td class="n">L</td><td>−5.000</td><td>0.000</td><td>105</td><td>32.81 mm</td><td>✕</td></tr></tbody></table>
+    <div class="fields g3" style="margin-top:9px">${F("產生橫梁","是",1)}${F("每 n 個樁號","2")}</div>` },
+  { id:"main", t:"主纜(懸索橋)", sum:"250 m · 垂度 25 m · 48 吊索", body:`
+    <div class="fields g4">${F("跨徑 Lx","250")}${F("曲線","拋物線",1)}${F("垂跨比","0.1")}${F("分割 N","25")}</div>
+    <div class="fields g4" style="margin-top:8px">${F("索面數","2",1)}${F("索面間距","16")}${F("橋面局部 z","−30")}${F("吊索每 n 節點","1")}</div>
+    <details class="acc" style="margin-top:10px"><summary>空間轉換<span class="sum">方位角 90° · 殘差 0.0000 m</span></summary>
+      <div class="inner">
+        <div class="fields g4">${F("基準點 P1","左鞍座",1)}${F("目標 X1","0")}${F("目標 Y1","0")}${F("目標 Z1","130")}</div>
+        <div class="fields g4" style="margin-top:8px">${F("方向定義","平面方位角",1)}${F("方位角 θ","90")}${F("滾轉 roll","0")}</div>
+      </div></details>` },
+  { id:"stay", t:"纜索(斜張索)", sum:"24 條 · N = 1", body:`
+    <div class="fields g4">${F("起點","自訂座標",1)}${F("X","120.711")}${F("Y","−29.289")}${F("Z","144.142")}</div>
+    <div class="fields g3" style="margin-top:8px">${F("目標節點","1015-1038")}${F("分割 N","1")}${F("垂度","停用")}</div>` },
+  { id:"split", t:"節點分割與強制節點", sum:"間距 5 m · 2 個強制節點", body:`
+    <div class="fields g4">${F("預設分割方式","指定間距",1)}${F("間距 d","5")}${F("餘數處理","獨立留一段",1)}${F("吸收容差","0.1")}</div>
+    <div class="fields" style="margin-top:9px">${F("強制節點樁號","0k+120.000, 0k+180.500")}</div>` },
+  { id:"attr", t:"屬性與群組", sum:"6 個構件 · 前綴 GEN_", body:ATTR_TABLE +
+    `<div class="fields g3" style="margin-top:10px">${F("群組前綴","GEN_")}</div>` },
+  { id:"num", t:"編號", sum:"1001 起 · 增量 1000", body:
+    `<div class="fields g3">${F("節點起始","1001")}${F("元素起始","1001")}${F("號段增量","1000")}</div>
+     <div style="margin-top:10px">${NUM_TABLE}</div>` },
+  { id:"out", t:"輸出", sum:"KN, M · 159 節點 / 210 元素", body:`
+    <div class="fields g4">${F("長度單位","M",1)}${F("力單位","KN",1)}${F("纜索類型","TENSTR")}${F("iSUB / EXVAL","2 / 0")}</div>
+    <div class="btns" style="margin-top:11px">
+      <button class="btn p">下載 .mct</button><button class="btn">複製 MCT 文字</button>
+      <button class="btn">節點 CSV</button><button class="btn">元素 CSV</button>
+      <button class="btn">參數 JSON</button><button class="btn">載入…</button></div>` }
+];
+
+function renderC(kind){
+  const K = KINDS[kind];
+  const head = `<div class="kind">` + Object.entries(KINDS).map(([k, v]) =>
+    `<button data-k="${k}" class="${k === kind ? "on" : ""}">${v.label}<small>${v.note}</small></button>`).join("") + `</div>`;
+  const blocks = C_BLOCKS.map(b => {
+    const active = K.on.includes(b.id);
+    return `<details class="acc${active ? "" : " off"}"${active ? " open" : ""}>
+      <summary>${b.t}<span class="sum">${active ? b.sum : "此橋型不需要 — 仍可展開"}</span></summary>
+      <div class="inner">${b.body}</div></details>`;
+  }).join("");
+  $("#c-main").innerHTML = head + blocks;
+  $("#c-prev").innerHTML = previewHTML();
+}
+$("#c-main").addEventListener("click", e => {
+  const b = e.target.closest("[data-k]"); if (b) renderC(b.dataset.k);
+});
+
+/* ---------- 分頁切換 ---------- */
+document.querySelector(".switch").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  [...document.querySelectorAll(".switch button")].forEach(x => x.classList.toggle("on", x === b));
+  ["now","a","b","c","cmp"].forEach(p => $("#p-" + p).classList.toggle("on", p === b.dataset.p));
+});
+
+renderA(1); renderB("seg2"); renderC("curve");
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# 本機暫存
+*.tmp
+*.log
+.DS_Store
+Thumbs.db

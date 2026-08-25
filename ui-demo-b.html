@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新架構:空間線型組 — 方案 B 介面</title>
+<style>
+  :root{
+    --paper:#f7f6f2; --ink:#1e2430; --ink-2:#5a6472; --ink-3:#8b95a3;
+    --line:#d6d2c8; --line-2:#e6e3db; --panel:#fff;
+    --accent:#1c5d99; --accent-soft:#e8f0f8;
+    --ok:#1a7f4b; --warn:#a8710d; --err:#b3261e;
+    --mono:"Cascadia Mono","Consolas",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; font-size:13px; line-height:1.55}
+  main{padding:18px 20px 70px; max-width:1460px}
+  h1{font-size:17px; margin:0 0 4px}
+  .lead{font-size:12.5px; color:var(--ink-3); margin-bottom:16px}
+  h2.s{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-3);
+       margin:26px 0 9px; font-weight:700}
+  h2.s:first-of-type{margin-top:0}
+
+  .big{
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:6px; padding:13px 16px; margin-bottom:14px;
+  }
+  .big .k{font-size:15px; font-weight:650; margin-bottom:5px}
+  .big p{margin:5px 0 0; font-size:12.5px; color:var(--ink-2)}
+  .note{background:#fffdf6; border:1px solid #ecdfbf; border-left:3px solid var(--warn);
+        border-radius:5px; padding:10px 14px; font-size:12.5px; color:#6b5518; margin:12px 0}
+  .note b{color:#4d3d10}
+  .note ul{margin:5px 0 0; padding-left:18px} .note li{margin:2px 0}
+
+  table.t{width:100%; border-collapse:collapse; font-size:12px; background:#fff;
+          border:1px solid var(--line); border-radius:6px; overflow:hidden}
+  table.t th{background:#fafaf7; text-align:left; font-size:10.5px; color:var(--ink-3);
+             font-weight:600; padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
+  table.t td{padding:7px 10px; border-bottom:1px solid var(--line-2); vertical-align:top}
+  table.t tr:last-child td{border-bottom:none}
+  table.t td.m{font-family:var(--mono); font-size:11.5px}
+  table.t td b{font-weight:650}
+  .fam{display:inline-block; font-size:9.5px; padding:1px 7px; border-radius:9px; font-weight:600}
+  .fam.geo{background:var(--accent-soft); color:var(--accent)}
+  .fam.con{background:#f0eaf6; color:#6f4a9b}
+  .del{color:var(--err); text-decoration:line-through}
+
+  /* 視窗 */
+  .win{border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--panel);
+       box-shadow:0 2px 14px rgba(30,36,48,.06)}
+  .win-bar{display:flex; align-items:center; gap:9px; padding:7px 13px; font-size:12px; color:var(--ink-2);
+           background:#fafaf7; border-bottom:1px solid var(--line)}
+  .win-bar .dot{width:9px;height:9px;border-radius:50%;background:#dcd8cf}
+  .win-bar b{color:var(--ink); font-weight:650; font-size:12.5px}
+  .win-body{display:grid; grid-template-columns:236px minmax(0,1fr) 316px; min-height:560px}
+  @media(max-width:1080px){
+    .win-body{grid-template-columns:210px minmax(0,1fr)}
+    .prev{grid-column:1 / -1; border-left:0; border-top:1px solid var(--line);
+          display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:start}
+    .prev .lbl{display:none}
+  }
+  @media(max-width:700px){
+    .win-body{grid-template-columns:minmax(0,1fr)}
+    .tree{border-right:0; border-bottom:1px solid var(--line)}
+    .prev{grid-template-columns:1fr}
+  }
+
+  /* 樹 */
+  .tree{background:#fafaf7; border-right:1px solid var(--line); padding:8px 0; overflow:auto; font-size:12px}
+  .tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+             padding:10px 12px 4px; text-transform:uppercase}
+  .tree .it{display:flex; align-items:center; gap:7px; padding:5px 11px 5px 16px; cursor:pointer; color:var(--ink-2)}
+  .tree .it:hover{background:#f0eee8}
+  .tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
+  .tree .it .sw{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+  .tree .it .ty{font-size:9.5px; color:var(--ink-3); font-family:var(--mono)}
+  .tree .it.on .ty{color:var(--accent)}
+  .tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
+  .tree .it.on .meta{color:var(--accent)}
+  .tree .add{padding:7px 11px 7px 16px; color:var(--accent); cursor:pointer; font-size:11.5px; font-weight:600}
+
+  /* 面板 */
+  .pane{padding:14px 16px; overflow:auto; min-width:0}
+  .ptitle{display:flex; align-items:center; gap:9px; margin-bottom:12px}
+  .ptitle .nm{font-size:15px; font-weight:650}
+  .sec{border:1px solid var(--line); border-radius:6px; margin-bottom:9px; background:#fff}
+  .sec > .h{padding:7px 12px; background:#fafaf7; border-bottom:1px solid var(--line-2);
+            font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); font-weight:700;
+            display:flex; align-items:center; gap:8px}
+  .sec > .h .tail{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0; text-transform:none}
+  .sec > .b{padding:11px 12px}
+  .fields{display:grid; gap:8px 10px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+  label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2)}
+  label.f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .inp{font-family:var(--mono); font-size:12.5px; padding:0 7px; border:1px solid var(--line);
+       border-radius:4px; background:#fff; height:27px; line-height:25px; position:relative;
+       white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .inp.sel{font-family:inherit; padding-right:19px}
+  .inp.sel::after{content:"▾"; position:absolute; right:6px; top:0; color:var(--ink-3); font-size:10px}
+  .inp.ro{background:#f7f6f2; color:var(--ink-3)}
+  .out{font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+       display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:3px 14px}
+  .out b{color:var(--ink); font-weight:650}
+  .out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
+  .btn{font:inherit; font-size:12px; padding:5px 11px; border-radius:4px; border:1px solid var(--line);
+       background:#fff; color:var(--ink); cursor:pointer}
+  .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btns{display:flex; gap:6px; flex-wrap:wrap}
+  .hint{font-size:11px; color:var(--ink-3); margin-top:7px}
+
+  /* 預覽 */
+  .prev{background:#fff; border-left:1px solid var(--line); padding:12px; display:flex; flex-direction:column; gap:10px}
+  .prev .lbl{font-size:10.5px; letter-spacing:.09em; color:var(--ink-3); font-weight:700}
+  svg.p{width:100%; height:auto; background:#fff; border:1px solid var(--line-2); border-radius:5px}
+  .kpi{display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr)); gap:3px 12px;
+       font-family:var(--mono); font-size:12px}
+  .kpi span{font-family:inherit; font-size:9.5px; color:var(--ink-3); display:block}
+  .kpi b{font-size:12.5px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>新架構:一切都是「空間線型組」</h1>
+<div class="lead">目標是補 midas 不擅長的<b>空間線型建模</b>,不是產生一座完整的橋。</div>
+
+<div class="big">
+  <div class="k">一組 = 一串節點 + 連接它們的元素</div>
+  <p>
+    組與組<b>預設互不相干</b>,不共用節點、不繼承方向、不共用編號。<br>
+    每一組自己決定:<b>起點與終點(全域座標直接給)</b>、形狀、要切幾個節點、元素種類/材料/斷面、群組名稱、編號起始。<br>
+    要讓兩組產生關係,必須明確加一個「連接組」——這是唯一的耦合方式。
+  </p>
+</div>
+
+<h2 class="s">型別:兩族,共 8 種</h2>
+<table class="t">
+  <thead><tr><th style="width:74px">族</th><th style="width:110px">型別</th><th>怎麼定義</th><th style="width:180px">取代原本的</th></tr></thead>
+  <tbody>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>直線</b></td><td class="m">起點 → 終點</td><td>直線段落</td></tr>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>圓弧</b></td><td class="m">起點 → 終點 + 半徑 + 偏向 + 優/劣弧<br><span style="color:var(--ink-3)">或 起點 + 圓心 + 轉角</span></td><td>圓弧段落</td></tr>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>懸垂曲線</b></td><td class="m">起點 → 終點 + 垂度(拋物線 / 懸鏈線)</td><td>主纜、纜索垂度</td></tr>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>螺旋線</b></td><td class="m">起點 + 圓心軸 + 半徑 + 螺距 + 圈數</td><td><span style="color:var(--ok)">新增</span>(midas 最痛的一項)</td></tr>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>線形鏈</b></td><td class="m">起點 + 方位角 + 段落串(直線/圓弧/緩和)<br>可選:縱斷面 VPI、樁號</td><td>主線 + 縱斷面</td></tr>
+    <tr><td><span class="fam geo">幾何</span></td><td><b>偏置</b></td><td class="m">依附某一組,橫向 d / 垂直 h</td><td>偏置線</td></tr>
+    <tr><td><span class="fam con">連接</span></td><td><b>組對組</b></td><td class="m">逐節點連接兩組(需節點數相同)</td><td>橫梁</td></tr>
+    <tr><td><span class="fam con">連接</span></td><td><b>組對高程</b></td><td class="m">每個節點垂直連到指定高程,產生新節點</td><td>吊索</td></tr>
+    <tr><td><span class="fam con">連接</span></td><td><b>點對組</b></td><td class="m">一個點連到某組的所有節點(扇形)</td><td>斜張索</td></tr>
+  </tbody>
+</table>
+<div class="hint">
+  「線形鏈」是唯一保留內部串接與樁號的型別——道路線形本來就是那樣定義的。其餘型別一律用起終點直接放在空間裡。
+</div>
+
+<h2 class="s">介面(可點:左邊選一組,中間就是它的全部設定)</h2>
+<div class="win">
+  <div class="win-bar"><span class="dot"></span><b>空間線型產生器</b><span>—</span><span id="crumb">7 組 · 節點 231 · 元素 279</span></div>
+  <div class="win-body">
+    <div class="tree" id="tree"></div>
+    <div class="pane" id="pane"></div>
+    <div class="prev" id="prev"></div>
+  </div>
+</div>
+
+<h2 class="s">這個改動實際刪掉了什麼</h2>
+<table class="t">
+  <thead><tr><th style="width:210px">原本</th><th>新架構</th></tr></thead>
+  <tbody>
+    <tr><td><b>3D 剛體轉換模組</b><br><span class="hint">基準點/方向點/方位角/滾轉,7 個欄位</span></td>
+        <td><b class="del">大部分不需要了</b>。懸垂曲線直接給兩個全域端點就定位完成,不必先在局部座標算完再轉。<br>
+        <span style="color:var(--ink-3)">只在「線形鏈」保留一個進階選項:整組平移旋轉。</span></td></tr>
+    <tr><td><b>主纜模組的 24 個欄位</b><br><span class="hint">跨徑/鞍座高程/索面數/索面間距/吊索/轉換…</span></td>
+        <td>拆成 <b>2 個懸垂曲線組</b>(左右索面,各自給端點)+ <b>1 個組對高程</b>(吊索)。每組欄位不到 8 個,而且全部是通用欄位。</td></tr>
+    <tr><td><b>「主線」的特殊地位</b></td><td>沒有主線了。線形鏈只是其中一種組,可以有 0 個或 5 個。</td></tr>
+    <tr><td><b>全域縱斷面</b></td><td>變成「線形鏈」型別自己的屬性。其他型別用不到。</td></tr>
+    <tr><td><b>橫梁 / 吊索 / 斜張索</b></td><td>三個橋梁名詞 → <b>連接族的 3 種通用型別</b>,元素種類自己設。</td></tr>
+    <tr><td><b>編號散在 6 處</b></td><td>每組自己一個號段,樹上直接顯示;另有一張總表可一次檢視衝突。</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <b>要你確認的三件事:</b>
+  <ul>
+    <li><b>圓弧用「起點→終點+半徑」</b>會有兩組解(左/右 × 優弧/劣弧),所以要多兩個開關。你也可以選「起點+圓心+轉角」。兩種都給,還是只留一種?</li>
+    <li><b>「線形鏈」要不要保留?</b> 它是唯一還帶樁號、緩和曲線、縱斷面的型別。如果你的用途已經不需要道路線形,可以整個拿掉,App 會再小一圈。</li>
+    <li><b>螺旋線是我加的</b>,因為「空間線型 + midas 短板」最典型就是螺旋匝道。不需要的話說一聲就拿掉。</li>
+  </ul>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const F = (l, v, sel, ro) => `<label class="f"><span>${l}</span><div class="inp${sel?" sel":""}${ro?" ro":""}">${v}</div></label>`;
+const SEC = (h, tail, b) => `<div class="sec"><div class="h">${h}${tail?`<span class="tail">${tail}</span>`:""}</div><div class="b">${b}</div></div>`;
+
+/* 共通區塊:分割 / 元素 / 編號 */
+const SPLIT = (mode, val) => SEC("分割", "", `<div class="fields g3">${F("方式",mode,1)}${F("值",val)}${F("餘數處理","均分吸收",1)}</div>`);
+const ELEM  = (t, m, sct) => SEC("元素", "", `<div class="fields g3">${F("類型",t,1)}${F("材料 ID",m)}${F("斷面 ID",sct)}</div>`);
+const NUMB  = (n, e) => SEC("編號", "", `<div class="fields g2">${F("節點起始",n)}${F("元素起始",e)}</div>`);
+const OUT   = rows => SEC("結果", "", `<div class="out">${rows.map(([k,v])=>`<div><span class="k">${k}</span> <b>${v}</b></div>`).join("")}</div>`);
+
+/* ---- 組清單 ---- */
+const GROUPS = [
+  { id:"chain", fam:"幾何", sw:"#1c5d99", nm:"主曲線",   ty:"線形鏈",   meta:"53 節點" },
+  { id:"off",   fam:"幾何", sw:"#0f7c8f", nm:"左緣",     ty:"偏置",     meta:"53 節點" },
+  { id:"cw",    fam:"幾何", sw:"#8a5fb5", nm:"主纜西",   ty:"懸垂",     meta:"26 節點" },
+  { id:"ce",    fam:"幾何", sw:"#8a5fb5", nm:"主纜東",   ty:"懸垂",     meta:"26 節點" },
+  { id:"helix", fam:"幾何", sw:"#8a7a20", nm:"螺旋匝道", ty:"螺旋線",   meta:"73 節點" },
+  { id:"xb",    fam:"連接", sw:"#aab3bd", nm:"橫梁",     ty:"組對組",   meta:"27 元素" },
+  { id:"hang",  fam:"連接", sw:"#b3406b", nm:"吊索",     ty:"組對高程", meta:"48 元素" },
+  { id:"stay",  fam:"連接", sw:"#c1673d", nm:"斜張索",   ty:"點對組",   meta:"24 元素" }
+];
+
+const PANES = {
+chain:{ nm:"主曲線", ty:"線形鏈", body:
+  SEC("放置", "起點 + 方位角", `<div class="fields g4">${F("起點 X","0")}${F("起點 Y","0")}${F("起點 Z","100")}${F("起始方位角","90")}</div>
+    <div class="fields g2" style="margin-top:8px">${F("起始樁號","0k+000.000")}${F("縱斷面","3 個 VPI ▸ 編輯",1)}</div>
+    <div class="hint">唯一保留「內部串接 + 樁號 + 縱斷面」的型別。其他型別直接給起終點。</div>`) +
+  SEC("段落", "3 段 · 257.080 m", `<table class="t" style="border:0">
+    <thead><tr><th>#</th><th>型別</th><th>參數</th><th>起訖樁號</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>直線</td><td class="m">L = 50</td><td class="m">0k+000 → 0k+050</td><td>✕</td></tr>
+      <tr><td>2</td><td>圓弧</td><td class="m">R = 100 右 Δ90°</td><td class="m">0k+050 → 0k+207</td><td>✕</td></tr>
+      <tr><td>3</td><td>直線</td><td class="m">L = 50</td><td class="m">0k+207 → 0k+257</td><td>✕</td></tr>
+    </tbody></table>
+    <div class="btns" style="margin-top:9px"><button class="btn p">+ 直線</button><button class="btn">+ 圓弧</button><button class="btn">+ 緩和曲線</button></div>`) +
+  SPLIT("指定間距","5") + ELEM("BEAM","1","1") + NUMB("1001","1001") +
+  OUT([["節點","53"],["元素","52"],["3D 長度","257.216 m"],["最大弦線偏差","31.25 mm"],["群組名","G_主曲線"]]) },
+
+off:{ nm:"左緣", ty:"偏置", body:
+  SEC("放置", "依附另一組", `<div class="fields g3">${F("基準組","主曲線",1)}${F("橫向 d (右正)","−5")}${F("垂直 h (上正)","0")}</div>
+    <div class="hint">唯一會依附別組的幾何型別。節點沿基準組的法線投影,樁號一一對應。</div>`) +
+  ELEM("BEAM","1","1") + NUMB("2001","2001") +
+  OUT([["節點","53"],["元素","52"],["當地半徑","105"],["最大弦線偏差","32.81 mm"],["群組名","G_左緣"]]) },
+
+cw:{ nm:"主纜西", ty:"懸垂曲線", body:
+  SEC("放置", "起點 → 終點", `<div class="fields g4">${F("起點 X","0")}${F("起點 Y","−8")}${F("起點 Z","130")}${F("","",0,1)}</div>
+    <div class="fields g4" style="margin-top:8px">${F("終點 X","250")}${F("終點 Y","−8")}${F("終點 Z","130")}${F("","",0,1)}</div>
+    <div class="hint"><b>兩個端點直接給全域座標,不需要任何座標轉換。</b>另一條索面就是再開一組,把 Y 改成 +8。</div>`) +
+  SEC("形狀", "垂度 25.000 m", `<div class="fields g3">${F("曲線","拋物線",1)}${F("垂度定義","垂跨比",1)}${F("f / L","0.1")}</div>`) +
+  SPLIT("指定節點數","25") + ELEM("CABLE","2","11") + NUMB("3001","3001") +
+  OUT([["節點","26"],["元素","25"],["弦長","250.000 m"],["纜長","256.505 m"],["群組名","G_主纜西"]]) },
+
+ce:{ nm:"主纜東", ty:"懸垂曲線", body:
+  SEC("放置", "起點 → 終點", `<div class="fields g4">${F("起點 X","0")}${F("起點 Y","8")}${F("起點 Z","130")}${F("","",0,1)}</div>
+    <div class="fields g4" style="margin-top:8px">${F("終點 X","250")}${F("終點 Y","8")}${F("終點 Z","130")}${F("","",0,1)}</div>`) +
+  SEC("形狀", "垂度 25.000 m", `<div class="fields g3">${F("曲線","拋物線",1)}${F("垂度定義","垂跨比",1)}${F("f / L","0.1")}</div>`) +
+  SPLIT("指定節點數","25") + ELEM("CABLE","2","11") + NUMB("4001","4001") +
+  OUT([["節點","26"],["元素","25"],["弦長","250.000 m"],["纜長","256.505 m"],["群組名","G_主纜東"]]) },
+
+helix:{ nm:"螺旋匝道", ty:"螺旋線", body:
+  SEC("放置", "起點 + 軸", `<div class="fields g4">${F("起點 X","400")}${F("起點 Y","0")}${F("起點 Z","0")}${F("軸向","+Z",1)}</div>
+    <div class="fields g4" style="margin-top:8px">${F("圓心 X","350")}${F("圓心 Y","0")}${F("旋向","逆時針",1)}${F("","",0,1)}</div>`) +
+  SEC("形狀", "半徑 50 · 2.5 圈", `<div class="fields g4">${F("半徑","50")}${F("螺距 (每圈升高)","12")}${F("圈數","2.5")}${F("半徑變化","等半徑",1)}</div>
+    <div class="hint">midas 內建的 Rotate Copy 只能做<b>平面</b>圓弧;要一邊繞一邊爬升就得逐點算。這是本工具最有價值的一型。</div>`) +
+  SPLIT("等圓心角","5°") + ELEM("BEAM","3","4") + NUMB("5001","5001") +
+  OUT([["節點","181"],["元素","180"],["總升高","30.000 m"],["展開長度","789.6 m"],["群組名","G_螺旋匝道"]]) },
+
+xb:{ nm:"橫梁", ty:"組對組", body:
+  SEC("連接", "逐節點", `<div class="fields g3">${F("組 A","主曲線",1)}${F("組 B","左緣",1)}${F("每 n 個節點","2")}</div>
+    <div class="hint">兩組節點數必須相同(53 = 53 ✓)。不產生新節點,只產生元素。</div>`) +
+  ELEM("BEAM","1","9") + NUMB("—","8001") +
+  OUT([["新增節點","0"],["元素","27"],["長度範圍","5.000 – 5.000 m"],["群組名","G_橫梁"]]) },
+
+hang:{ nm:"吊索", ty:"組對高程", body:
+  SEC("連接", "垂直投影", `<div class="fields g4">${F("來源組","主纜西",1)}${F("目標高程 Z","100")}${F("每 n 個節點","1")}${F("下端","新增節點",1)}</div>
+    <div class="hint">每個來源節點垂直往下連到指定高程並產生新節點。改成「貼附既有節點」就會找容差內的現有節點。</div>`) +
+  ELEM("CABLE","2","12") + NUMB("6001","6001") +
+  OUT([["新增節點","24"],["元素","24"],["長度範圍","5.040 – 26.160 m"],["群組名","G_吊索"]]) },
+
+stay:{ nm:"斜張索", ty:"點對組", body:
+  SEC("連接", "扇形", `<div class="fields g4">${F("起點來源","自訂座標",1)}${F("X","120.711")}${F("Y","−29.289")}${F("Z","144.142")}</div>
+    <div class="fields g3" style="margin-top:8px">${F("目標組","主曲線",1)}${F("節點範圍","第 15 – 38 個")}${F("每根分割 N","1")}</div>
+    <div class="hint">目標用<b>「第幾個節點」</b>而不是節點編號——改了編號起始也不會壞掉。</div>`) +
+  ELEM("CABLE","2","5") + NUMB("7001","7001") +
+  OUT([["新增節點","1"],["元素","24"],["弦長範圍","40.028 – 70.988 m"],["群組名","G_斜張索"]]) },
+
+_num:{ nm:"編號總表", ty:"全域", body:
+  SEC("配置", "", `<div class="fields g3">${F("號段增量","1000")}${F("群組名前綴","G_")}${F("衝突檢查","無衝突 ✓",0,1)}</div>`) +
+  `<table class="t"><thead><tr><th>組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th></tr></thead><tbody>
+    <tr><td>主曲線</td><td>線形鏈</td><td class="m">1001–1053</td><td class="m">1001–1052</td><td class="m">53 / 52</td></tr>
+    <tr><td>左緣</td><td>偏置</td><td class="m">2001–2053</td><td class="m">2001–2052</td><td class="m">53 / 52</td></tr>
+    <tr><td>主纜西</td><td>懸垂</td><td class="m">3001–3026</td><td class="m">3001–3025</td><td class="m">26 / 25</td></tr>
+    <tr><td>主纜東</td><td>懸垂</td><td class="m">4001–4026</td><td class="m">4001–4025</td><td class="m">26 / 25</td></tr>
+    <tr><td>螺旋匝道</td><td>螺旋線</td><td class="m">5001–5181</td><td class="m">5001–5180</td><td class="m">181 / 180</td></tr>
+    <tr><td>吊索</td><td>組對高程</td><td class="m">6001–6024</td><td class="m">6001–6024</td><td class="m">24 / 24</td></tr>
+    <tr><td>斜張索</td><td>點對組</td><td class="m">7001</td><td class="m">7001–7024</td><td class="m">1 / 24</td></tr>
+    <tr><td>橫梁</td><td>組對組</td><td class="m">—</td><td class="m">8001–8027</td><td class="m">— / 27</td></tr>
+  </tbody></table>` },
+
+_out:{ nm:"輸出", ty:"全域", body:
+  SEC("單位與格式", "", `<div class="fields g4">${F("長度單位","M",1)}${F("力單位","KN",1)}${F("纜索元素類型","TENSTR")}${F("iSUB / EXVAL","2 / 0")}</div>
+    <div class="hint">畫面上所有長度以公尺輸入,匯出時才換算。<b style="color:var(--warn)">MCT 格式尚未實機驗證。</b></div>`) +
+  SEC("下載", "", `<div class="btns">
+    <button class="btn p">下載 .mct</button><button class="btn">複製 MCT 文字</button>
+    <button class="btn">節點 CSV</button><button class="btn">元素 CSV</button>
+    <button class="btn">參數 JSON</button><button class="btn">載入 JSON / MCT…</button></div>`) +
+  SEC("MCT 預覽", "", `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-2);white-space:pre;overflow:auto;max-height:170px">*UNIT
+   KN, M, KJ, C
+*NODE
+; --- 主曲線(線形鏈) ---
+   1001, 0, 0, 100
+; --- 主纜西(懸垂) ---
+   3001, 0, -8, 130
+*ELEMENT
+   1001, BEAM, 1, 1, 1001, 1002, 0, 0
+   3001, TENSTR, 2, 11, 3001, 3002, 0, 2, 0
+*GROUP
+   G_主曲線, 1001to1053, 1001to1052, 0
+   G_主纜西, 3001to3026, 3001to3025, 0</div>`) }
+};
+
+const PREV = {
+  plan:`<svg class="p" viewBox="0 0 300 180">
+    <defs><pattern id="g" width="25" height="25" patternUnits="userSpaceOnUse">
+      <path d="M25 0H0V25" fill="none" stroke="#f0f2f4" stroke-width="1"/></pattern></defs>
+    <rect width="300" height="180" fill="url(#g)"/>
+    <path d="M14 26 H104" stroke="#1c5d99" stroke-width="2.3" fill="none"/>
+    <path d="M104 26 A54 54 0 0 1 158 80" stroke="#1c5d99" stroke-width="2.3" fill="none"/>
+    <path d="M158 80 V132" stroke="#1c5d99" stroke-width="2.3" fill="none"/>
+    <path d="M14 36 H104" stroke="#0f7c8f" stroke-width="1.3" fill="none"/>
+    <path d="M104 36 A44 44 0 0 1 148 80" stroke="#0f7c8f" stroke-width="1.3" fill="none"/>
+    <path d="M148 80 V132" stroke="#0f7c8f" stroke-width="1.3" fill="none"/>
+    ${Array.from({length:8},(_,i)=>`<line x1="${18+i*11}" y1="26" x2="${18+i*11}" y2="36" stroke="#aab3bd" stroke-width=".9"/>`).join("")}
+    <path d="M40 150 H190" stroke="#8a5fb5" stroke-width="2" fill="none"/>
+    <path d="M40 158 H190" stroke="#8a5fb5" stroke-width="2" fill="none"/>
+    ${Array.from({length:9},(_,i)=>`<line x1="${46+i*17}" y1="150" x2="${46+i*17}" y2="158" stroke="#b3406b" stroke-width=".9"/>`).join("")}
+    <ellipse cx="248" cy="72" rx="34" ry="34" fill="none" stroke="#8a7a20" stroke-width="1.9"/>
+    <ellipse cx="248" cy="72" rx="34" ry="34" fill="none" stroke="#8a7a20" stroke-width="1.9" opacity=".45" transform="translate(0,7)"/>
+    <text x="228" y="122" font-size="7.5" fill="#8a7a20" font-family="monospace">螺旋 2.5 圈</text>
+    <text x="60" y="172" font-size="7.5" fill="#8b95a3" font-family="monospace">8 組互不相連</text>
+  </svg>`,
+  prof:`<svg class="p" viewBox="0 0 300 100">
+    <rect width="300" height="100" fill="#fff"/>
+    <line x1="28" y1="10" x2="28" y2="80" stroke="#dfe4ea"/><line x1="28" y1="80" x2="292" y2="80" stroke="#dfe4ea"/>
+    <path d="M34 74 Q150 22 286 74" stroke="#1c5d99" stroke-width="1.9" fill="none"/>
+    <path d="M40 20 Q150 78 272 20" stroke="#8a5fb5" stroke-width="2" fill="none"/>
+    ${Array.from({length:9},(_,i)=>{const x=48+i*28;const t=(x-40)/232;const y=20+(78-20)*4*t*(1-t);return `<line x1="${x}" y1="${y}" x2="${x}" y2="74" stroke="#b3406b" stroke-width=".9"/>`;}).join("")}
+    <text x="240" y="94" font-size="7" fill="#8b95a3" font-family="monospace">m</text>
+  </svg>`
+};
+
+function render(id){
+  let last = "";
+  const items = GROUPS.map(g => {
+    const head = g.fam !== last ? (last = g.fam, `<div class="grp">${g.fam}族</div>`) : "";
+    return head + `<div class="it${g.id === id ? " on" : ""}" data-id="${g.id}">
+      <span class="sw" style="background:${g.sw}"></span>${g.nm}
+      <span class="ty">${g.ty}</span><span class="meta">${g.meta}</span></div>`;
+  }).join("");
+  $("#tree").innerHTML = items + `<div class="add">+ 新增組…</div>` +
+    `<div class="grp">全域</div>
+     <div class="it${id === "_num" ? " on" : ""}" data-id="_num"><span class="sw" style="background:#8b95a3"></span>編號總表<span class="meta">增量 1000</span></div>
+     <div class="it${id === "_out" ? " on" : ""}" data-id="_out"><span class="sw" style="background:#8b95a3"></span>輸出<span class="meta">KN, M</span></div>`;
+
+  const p = PANES[id];
+  $("#pane").innerHTML =
+    `<div class="ptitle"><span class="nm">${p.nm}</span><span class="fam ${id.startsWith("_") ? "" : (GROUPS.find(g=>g.id===id).fam==="幾何"?"geo":"con")}">${p.ty}</span></div>` + p.body;
+  $("#prev").innerHTML = `<div class="lbl">俯視</div>${PREV.plan}<div class="lbl">立面</div>${PREV.prof}
+    <div class="lbl">檢核</div>
+    <div class="kpi">
+      <div><span>組</span><b>8</b></div><div><span>節點</span><b>231</b></div><div><span>元素</span><b>279</b></div>
+      <div><span>最大弦線偏差</span><b>32.81 mm</b></div><div><span>編號衝突</span><b style="color:var(--ok)">無</b></div>
+      <div><span>未連接的組</span><b>5</b></div>
+    </div>`;
+}
+$("#tree").addEventListener("click", e => {
+  const it = e.target.closest(".it"); if (it) render(it.dataset.id);
+});
+render("cw");
+</script>
+</main>
+</body>
+</html>

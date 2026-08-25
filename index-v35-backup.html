@@ -1,0 +1,3832 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空間線型產生器 — midas Civil</title>
+<style>
+  :root{
+    --paper:#f7f6f2; --ink:#1e2430; --ink-2:#5a6472; --ink-3:#8b95a3;
+    --line:#d6d2c8; --line-2:#e6e3db; --panel:#fff;
+    --accent:#1c5d99; --accent-soft:#e8f0f8;
+    --ok:#1a7f4b; --warn:#a8710d; --err:#b3261e;
+    --mono:"Cascadia Mono","Consolas","SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; height:100%}
+  body{background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; font-size:13px; line-height:1.55}
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+  header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
+    padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
+  header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
+  header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
+    background:var(--accent-soft); color:var(--accent); font-weight:600}
+  header .note{font-size:11px; color:var(--ink-3)}
+  header .sp{flex:1}
+  header button{font:inherit; font-size:11.5px; padding:4px 10px; border-radius:4px;
+    border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer}
+  header button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  header button:disabled{opacity:.4; cursor:default}
+  header .units{display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-3);
+    padding:2px 8px 2px 9px; border:1px solid var(--line); border-radius:5px; background:#fbfaf7}
+  header .units select{font:inherit; font-size:11.5px; font-weight:650; width:auto; padding:1px 4px;
+    border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--accent); cursor:pointer}
+
+  #app{display:grid; grid-template-columns:238px minmax(0,1fr) 7px var(--rw,330px); height:calc(100% - 41px)}
+  #tree, #pane, #resizer, #right{grid-row:1}     /* 釘在同一列,否則對調後會被擠到下一列 */
+  #tree{grid-column:1} #pane{grid-column:2} #resizer{grid-column:3} #right{grid-column:4}
+  #app.swap #right{grid-column:2; border-left:0} #app.swap #pane{grid-column:4}
+  #resizer{position:relative; background:#f2f0ea; border-left:1px solid var(--line);
+    border-right:1px solid var(--line); cursor:col-resize; user-select:none}
+  #resizer:hover, #resizer.on{background:var(--accent-soft)}
+  #resizer::after{content:"EE"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    color:var(--ink-3); font-size:12px; line-height:1}
+  @media(max-width:1180px){ #app{grid-template-columns:210px minmax(0,1fr)}
+    #resizer{display:none}
+    #tree{grid-column:1; grid-row:1}
+    #pane, #app.swap #pane{grid-column:2; grid-row:1}
+    #right, #app.swap #right{grid-column:1/-1; grid-row:2; border-left:0; border-top:1px solid var(--line)} }
+  @media(max-width:740px){ #app{grid-template-columns:minmax(0,1fr); height:auto}
+    #tree{grid-column:1; grid-row:1}
+    #pane, #app.swap #pane{grid-column:1; grid-row:2}
+    #right, #app.swap #right{grid-column:1; grid-row:3}
+    #tree{border-right:0; border-bottom:1px solid var(--line); max-height:230px} }
+
+  /* ---- 樹 ---- */
+  #tree{background:#fafaf7; border-right:1px solid var(--line); padding:6px 0; overflow:auto; font-size:12px}
+  #tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+    padding:10px 12px 4px; text-transform:uppercase}
+  #tree .it{display:flex; align-items:center; gap:7px; padding:5px 10px 5px 14px; cursor:pointer; color:var(--ink-2)}
+  #tree .it:hover{background:#f0eee8}
+  #tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
+  #tree .it.err{color:var(--err)}
+  #tree .it .sw{width:8px; height:8px; border-radius:2px; flex:0 0 auto}
+  #tree .it .sw.off{background:#dcd8cf !important}
+  #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  #tree .it .ty{font-size:9.5px; color:var(--ink-3); font-family:var(--mono); flex:0 0 auto}
+  #tree .it.on .ty{color:var(--accent)}
+  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); flex:0 0 auto}
+  #tree .it.on .meta{color:var(--accent)}
+  #tree .addwrap{padding:7px 10px 7px 14px; position:relative}
+  #tree .addbtn{font:inherit; font-size:11.5px; color:var(--accent); background:none; border:0;
+    cursor:pointer; padding:0; font-weight:600}
+  #tree .menu{position:absolute; left:12px; top:28px; z-index:30; background:#fff; border:1px solid var(--line);
+    border-radius:6px; box-shadow:0 6px 22px rgba(30,36,48,.18); padding:5px; min-width:172px}
+  #tree .menu[hidden]{display:none}
+  #tree .menu .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 8px 3px}
+  #tree .menu button{display:flex; width:100%; align-items:center; gap:7px; font:inherit; font-size:12px;
+    padding:5px 8px; border:0; background:none; border-radius:4px; cursor:pointer; color:var(--ink-2); text-align:left}
+  #tree .menu button:hover{background:var(--accent-soft); color:var(--accent)}
+  #tree .menu button .sw{width:8px; height:8px; border-radius:2px}
+
+  /* ---- 面板 ---- */
+  #pane{padding:13px 15px 40px; overflow:auto; min-width:0}
+  .ptitle{display:flex; align-items:center; gap:8px; margin-bottom:11px; flex-wrap:wrap}
+  .ptitle .nm{font-size:15px; font-weight:650}
+  .fam{font-size:9.5px; padding:1px 7px; border-radius:9px; font-weight:600}
+  .fam.geo{background:var(--accent-soft); color:var(--accent)}
+  .fam.con{background:#f0eaf6; color:#6f4a9b}
+  .ptitle .sp{flex:1}
+  .sec{border:1px solid var(--line); border-radius:6px; margin-bottom:9px; background:var(--panel)}
+  .sec > .h{padding:6px 12px; background:#fafaf7; border-bottom:1px solid var(--line-2);
+    font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); font-weight:700;
+    display:flex; align-items:center; gap:8px}
+  .sec > .h .tail{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0; text-transform:none}
+  .sec > .b{padding:10px 12px}
+  .fields{display:grid; gap:8px 10px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2); min-width:0}
+  label.f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  input[type=text], input[type=number], select, textarea{
+    font:inherit; font-family:var(--mono); font-size:12.5px; padding:4px 6px;
+    border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); width:100%; min-width:0}
+  select{font-family:inherit}
+  textarea{resize:vertical}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
+  input.bad{border-color:var(--err); background:#fdf3f2}
+  .chk{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-2); cursor:pointer}
+  .out{font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:3px 14px}
+  .out b{color:var(--ink); font-weight:650}
+  .out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
+  .hint{font-size:11px; color:var(--ink-3); margin-top:7px}
+  .hint b{color:var(--ink-2)}
+
+  .btn{font:inherit; font-size:12px; padding:5px 11px; border-radius:4px; border:1px solid var(--line);
+    background:#fff; color:var(--ink); cursor:pointer}
+  .btn:hover{border-color:var(--accent); color:var(--accent)}
+  .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btn.p:hover{background:#17517f; color:#fff}
+  .btn.d:hover{border-color:var(--err); color:var(--err)}
+  .btns{display:flex; gap:6px; flex-wrap:wrap}
+  /* 切換鈕:按下顯示主題色,未按下維持系統色 */
+  .tgl{font:inherit; font-size:13px; font-weight:650; padding:8px 16px; border-radius:6px;
+    border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px; line-height:1.2}
+  .tgl:hover{border-color:var(--accent); color:var(--accent)}
+  .tgl .dot{width:9px; height:9px; border-radius:50%; border:1.5px solid currentColor; flex:0 0 auto}
+  .tgl.on{background:var(--accent); border-color:var(--accent); color:#fff}
+  .tgl.on:hover{background:#17517f; color:#fff}
+  .tgl.on .dot{background:#fff; border-color:#fff}
+  /* 目前選取的節點/元素:整個區塊高亮,才看得出要在哪裡編輯 */
+  .sec.hot{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  .sec.hot > .h{background:var(--accent-soft); color:var(--accent)}
+
+  table.t{width:100%; border-collapse:collapse; font-size:11.5px}
+  table.t th{text-align:left; font-size:10px; color:var(--ink-3); font-weight:600;
+    padding:4px 6px; border-bottom:1px solid var(--line); white-space:nowrap}
+  table.t td{padding:3px 6px; border-bottom:1px solid var(--line-2); font-family:var(--mono); vertical-align:middle}
+  table.t td.n{font-family:inherit}
+  table.t tr:last-child td{border-bottom:none}
+  table.t td.hot{color:var(--warn); font-weight:600}
+  table.t select, table.t input{padding:2px 4px; font-size:11.5px}
+  .iconbtn{border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;
+    width:21px; height:21px; padding:0; color:var(--ink-2); font-size:11px; line-height:1}
+  .iconbtn:hover{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
+  .iconbtn.danger:hover{background:#fdf0ef; color:var(--err); border-color:var(--err)}
+
+  /* ---- 右欄 ---- */
+  #right{background:#fbfaf7; border-left:1px solid var(--line); display:flex; flex-direction:column;
+    overflow:auto; padding:11px 12px 20px; gap:9px}
+  .lbl{font-size:10.5px; letter-spacing:.09em; color:var(--ink-3); font-weight:700}
+  .cvwrap{position:relative}
+  canvas{width:100%; display:block; background:#fff; border:1px solid var(--line); border-radius:6px; cursor:crosshair}
+  #cv{height:clamp(220px,34vh,560px)} #pv{height:clamp(160px,26vh,460px)}
+  .cvtools{position:absolute; top:6px; right:6px; display:flex; gap:4px; flex-wrap:wrap;
+    justify-content:flex-end; max-width:calc(100% - 12px)}
+  .cvtools button, .cvtools .tag, .cvtools select, .cvtools input{font:inherit; font-size:10.5px;
+    padding:2px 6px; border-radius:4px; width:auto;
+    border:1px solid var(--line); background:rgba(255,255,255,.93); color:var(--ink-2); cursor:pointer}
+  .cvtools button:hover{border-color:var(--accent); color:var(--accent)}
+  .cvtools input{width:58px; font-family:var(--mono); text-align:right; cursor:text}
+  .cvtools .tag{font-family:var(--mono); cursor:default; color:var(--ink-3)}
+  .readout{position:absolute; left:6px; bottom:6px; background:rgba(255,255,255,.94);
+    border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-family:var(--mono);
+    font-size:10.5px; color:var(--ink-2); pointer-events:none; white-space:pre}
+  .kpi{display:grid; grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:4px 12px;
+    font-family:var(--mono); font-size:12px; background:var(--panel);
+    border:1px solid var(--line); border-radius:6px; padding:8px 10px}
+  .kpi .k{font-family:"Noto Sans TC",sans-serif; font-size:9.5px; color:var(--ink-3); display:block}
+  .kpi b{font-size:12.5px; font-weight:650}
+  .kpi b.hot{color:var(--warn)}
+  .msg{display:flex; gap:6px; padding:5px 9px; border-radius:4px; margin-bottom:4px; font-size:11.5px; align-items:flex-start}
+  .msg.err{background:#fdf0ef; color:var(--err); border:1px solid #f2d3d0}
+  .msg.warn{background:#fdf7e8; color:var(--warn); border:1px solid #f0e2bd}
+  #msgs:empty{display:none}
+  .legend{display:flex; gap:9px; flex-wrap:wrap; font-size:10.5px; color:var(--ink-2)}
+  .legend i{display:inline-block; width:11px; height:3px; border-radius:2px; margin-right:4px; vertical-align:middle}
+
+  details.adv{border-top:1px dashed var(--line-2); margin-top:9px; padding-top:7px}
+  details.adv > summary{cursor:pointer; font-size:11px; color:var(--ink-3); font-weight:600; list-style:none}
+  details.adv > summary::-webkit-details-marker{display:none}
+  details.adv > summary::before{content:"▸ "; font-size:9px}
+  details.adv[open] > summary::before{content:"▾ "}
+  details.adv > div{margin-top:8px}
+
+  details.pc{border:1px solid var(--line); border-radius:6px; margin-bottom:7px; background:#fdfdfb; overflow:hidden}
+  details.pc > summary{list-style:none; cursor:pointer; padding:6px 9px; display:flex; align-items:center; gap:7px;
+    background:#fafaf7; font-size:12px}
+  details.pc > summary::-webkit-details-marker{display:none}
+  details.pc > summary::before{content:"▸"; color:var(--ink-3); font-size:9px}
+  details.pc[open] > summary::before{content:"▾"}
+  details.pc[open] > summary{border-bottom:1px solid var(--line-2); background:#fff}
+  details.pc .idx{width:18px; height:18px; border-radius:3px; background:var(--accent); color:#fff;
+    font-family:var(--mono); font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+  details.pc > summary select{width:auto; padding:2px 5px; font-size:11.5px}
+  details.pc .st{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
+  details.pc .pcb{padding:10px 11px}
+  details.pc .grip{cursor:grab; color:var(--ink-3); font-size:13px; line-height:1; padding:0 3px; user-select:none}
+  details.pc .grip:hover{color:var(--accent)}
+  details.pc.drag{opacity:.4}
+  details.pc.over{box-shadow:0 -2px 0 var(--accent)}
+  #tree .it.drag{opacity:.4}
+  #tree .it.over{box-shadow:inset 0 2px 0 var(--accent)}
+  .zbox{display:flex; align-items:center; gap:4px}
+  .zbox input{width:52px; font-family:var(--mono); font-size:10.5px; padding:1px 4px;
+    border:1px solid var(--line); border-radius:3px; text-align:right}
+  .nodepick{position:absolute; pointer-events:none}
+
+  #tests table.tt{width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono)}
+  #tests th{text-align:left; font-family:"Noto Sans TC",sans-serif; font-size:10px; color:var(--ink-3);
+    font-weight:600; padding:3px 6px; border-bottom:1px solid var(--line)}
+  #tests td{padding:2px 6px; border-bottom:1px solid var(--line-2)}
+  .pass{color:var(--ok); font-weight:700} .fail{color:var(--err); font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>空間線型產生器</h1>
+  <span class="stage">組式架構 v3.5</span>
+  <span class="note">X=東 · Y=北 · Z=高程</span>
+  <span class="units">單位
+    <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
+    <select id="u-force" title="力的單位(寫進 .mct 的 *UNIT)"></select>
+  </span>
+  <span class="sp"></span>
+  <button id="btn-undo" disabled>↶ 復原</button>
+  <button id="btn-redo" disabled>↷ 重做</button>
+  <button id="btn-swap" title="輸入區與預覽區左右對調">⇄ 版面</button>
+  <button id="btn-demo">載入範例</button>
+  <button id="btn-clear">全部清空</button>
+</header>
+
+<div id="app">
+  <div id="tree"></div>
+  <div id="pane"></div>
+  <div id="resizer" title="拖曳調整預覽區寬度(雙擊還原)"></div>
+  <div id="right">
+    <div id="msgs"></div>
+    <div class="kpi" id="kpi"></div>
+    <div class="lbl">俯視 <span style="font-weight:400;color:var(--ink-3);letter-spacing:0">— 拖曳平移 · 滾輪縮放 · 點節點或元素可編輯</span></div>
+    <div class="cvwrap">
+      <canvas id="cv"></canvas>
+      <div class="cvtools">
+        <button id="btn-fit">重新框選</button>
+        <button id="btn-nodes">節點:開</button>
+      </div>
+      <div class="readout" id="ro"></div>
+    </div>
+    <div class="lbl">立面 <span style="font-weight:400;color:var(--ink-3);letter-spacing:0">— 拖曳平移 · 滾輪縮放 · Shift+拖曳轉視角 · Shift+滾輪只縮 Z</span></div>
+    <div class="cvwrap">
+      <canvas id="pv"></canvas>
+      <div class="cvtools">
+        <select id="pmode" title="立面圖橫軸方向">
+          <option value="auto">自動</option><option value="x">沿 +X</option>
+          <option value="y">沿 +Y</option><option value="az">自訂</option></select>
+        <button id="paz-l" title="視角左轉 15°">↺</button>
+        <input type="number" step="any" id="paz" title="橫軸方位角(°)">
+        <button id="paz-r" title="視角右轉 15°">↻</button>
+        <span class="tag zbox">Z ×<input type="number" step="any" id="zsc"><button id="zauto" style="border:0;background:none;color:var(--accent);cursor:pointer;padding:0 2px">自動</button></span>
+        <button id="pv-fit">重新框選</button>
+      </div>
+      <div class="readout" id="pro"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <details id="tests-wrap"><summary class="lbl" style="cursor:pointer">驗收測試</summary><div id="tests"></div></details>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   空間線型產生器 v3 — 組式架構
+   一組 = 一串節點 + 連接它們的元素。組與組預設互不相干,起終點在全域座標直接給。
+   ========================================================================== */
+
+/* ==========================================================================
+   1. 基礎工具
+   ========================================================================== */
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const norm360 = a => { a %= 360; return a < 0 ? a + 360 : a; };
+const clamp = (v, lo, hi) => v < lo ? lo : (v > hi ? hi : v);
+const num = v => Number.isFinite(+v) ? +v : NaN;
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function fmtSta(s){
+  // k+ 是「公里 + 公尺」的路線慣例,單位不是公尺時退回純數字才不會誤導
+  if (typeof state !== "undefined" && state && state.units && state.units.length !== "M")
+    return (+s).toFixed(3);
+  const neg = s < 0, v = Math.abs(s);
+  const km = Math.floor(v / 1000), m = v - km * 1000;
+  return (neg ? "-" : "") + km + "k+" + m.toFixed(3).padStart(7, "0");
+}
+function parseSta(txt){
+  if (txt == null) return NaN;
+  const t = String(txt).trim().toLowerCase().replace(/\s+/g, "");
+  if (t === "") return NaN;
+  const m = t.match(/^(-?)(\d+)k\+(\d+(?:\.\d+)?)$/);
+  if (m) return (m[1] ? -1 : 1) * (parseInt(m[2], 10) * 1000 + parseFloat(m[3]));
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+const V = {
+  sub:(a,b) => ({ x:a.x-b.x, y:a.y-b.y, z:a.z-b.z }),
+  add:(a,b) => ({ x:a.x+b.x, y:a.y+b.y, z:a.z+b.z }),
+  mul:(a,k) => ({ x:a.x*k, y:a.y*k, z:a.z*k }),
+  dot:(a,b) => a.x*b.x + a.y*b.y + a.z*b.z,
+  cross:(a,b) => ({ x:a.y*b.z-a.z*b.y, y:a.z*b.x-a.x*b.z, z:a.x*b.y-a.y*b.x }),
+  len:a => Math.hypot(a.x, a.y, a.z),
+  unit:a => { const L = V.len(a) || 1; return { x:a.x/L, y:a.y/L, z:a.z/L }; }
+};
+const dist3 = (a,b) => Math.hypot(b.x-a.x, b.y-a.y, b.z-a.z);
+const distXY = (a,b) => Math.hypot(b.x-a.x, b.y-a.y);
+// 方位角:自 +Y(北)順時針
+const azOf = (dx,dy) => norm360(Math.atan2(dx, dy) * R2D);
+
+/* ==========================================================================
+   2. 縱斷面(VPI + 對稱拋物線豎曲線)— 線形鏈專用
+   ========================================================================== */
+function buildProfile(rows, warns, errs, tag){
+  const P = (rows || []).map(r => ({ sta:num(r.sta), z:num(r.z), L:Math.max(0, num(r.L) || 0) }))
+    .filter(r => Number.isFinite(r.sta) && Number.isFinite(r.z))
+    .sort((a,b) => a.sta - b.sta);
+  if (P.length < 2) return null;                       // 無縱斷面 → 用起點高程
+  P[0].L = 0; P[P.length-1].L = 0;
+
+  const g = [];
+  for (let i = 0; i < P.length - 1; i++){
+    const dS = P[i+1].sta - P[i].sta;
+    if (dS <= 1e-9){ errs.push(`${tag}縱斷面:VPI ${i+1} 與 ${i+2} 樁號重複`); return null; }
+    g.push((P[i+1].z - P[i].z) / dS);
+  }
+  const curves = [];
+  for (let i = 1; i < P.length - 1; i++){
+    const gin = g[i-1], gout = g[i], L = P[i].L, dg = gout - gin;
+    if (L <= 1e-9){
+      if (Math.abs(dg) > 1e-9)
+        warns.push(`${tag}VPI ${i+1}(${fmtSta(P[i].sta)})豎曲線長 = 0,坡度直接折角`);
+      continue;
+    }
+    curves.push({ i, sta:P[i].sta, z:P[i].z, L, gin, gout,
+      BVC:P[i].sta - L/2, EVC:P[i].sta + L/2, E:dg*L/8,
+      K:Math.abs(dg) > 1e-12 ? L / Math.abs(dg*100) : Infinity });
+  }
+  for (let j = 0; j < curves.length; j++){
+    const c = curves[j];
+    if (c.BVC < P[0].sta - 1e-9 || c.EVC > P[P.length-1].sta + 1e-9)
+      errs.push(`${tag}VPI ${c.i+1} 的豎曲線 ${fmtSta(c.BVC)}–${fmtSta(c.EVC)} 超出縱斷面範圍`);
+    if (j > 0 && curves[j-1].EVC > c.BVC + 1e-9)
+      errs.push(`${tag}VPI ${curves[j-1].i+1} 與 ${c.i+1} 的豎曲線重疊`);
+  }
+  return { P, g, curves };
+}
+function zAt(pr, s){
+  if (!pr) return 0;
+  const { P, g, curves } = pr, n = P.length;
+  if (s <= P[0].sta)   return P[0].z + g[0] * (s - P[0].sta);
+  if (s >= P[n-1].sta) return P[n-1].z + g[n-2] * (s - P[n-1].sta);
+  for (const c of curves)
+    if (s >= c.BVC - 1e-9 && s <= c.EVC + 1e-9){
+      const x = s - c.BVC;
+      return c.z - c.gin*(c.L/2) + c.gin*x + (c.gout - c.gin)*x*x/(2*c.L);
+    }
+  for (let i = 0; i < n - 1; i++)
+    if (s >= P[i].sta - 1e-9 && s <= P[i+1].sta + 1e-9) return P[i].z + g[i]*(s - P[i].sta);
+  return P[n-1].z;
+}
+function gradeAt(pr, s){
+  if (!pr) return 0;
+  const { P, g, curves } = pr, n = P.length;
+  if (s <= P[0].sta)   return g[0];
+  if (s >= P[n-1].sta) return g[n-2];
+  for (const c of curves)
+    if (s >= c.BVC - 1e-9 && s <= c.EVC + 1e-9)
+      return c.gin + (c.gout - c.gin)*(s - c.BVC)/c.L;
+  for (let i = 0; i < n - 1; i++)
+    if (s >= P[i].sta - 1e-9 && s <= P[i+1].sta + 1e-9) return g[i];
+  return 0;
+}
+
+/* ==========================================================================
+   3. 線形鏈:直線 / 圓弧 / 緩和曲線 段落(平面里程 = 樁號)
+   ========================================================================== */
+function buildSegment(seg, st, i, errs){
+  const bad = t => { errs.push(`段 ${i+1}:${t}`); return null; };
+  const az0R = st.az * D2R;
+  const fin = (length, evalLocal, extra) => {
+    const e = evalLocal(length);
+    return { i, type:seg.type, src:seg, s0:st.s, s1:st.s + length, length,
+      start:{ x:st.x, y:st.y, az:st.az }, end:{ x:e.x, y:e.y, az:e.az }, evalLocal, extra };
+  };
+
+  if (seg.type === "LINE"){
+    const L = num(seg.L);
+    if (!(L > 0)) return bad("直線長度必須 > 0");
+    return fin(L, t => ({ x:st.x + t*Math.sin(az0R), y:st.y + t*Math.cos(az0R), az:st.az, k:0 }), { R:Infinity });
+  }
+
+  if (seg.type === "ARC"){
+    const R = num(seg.R), dir = num(seg.dir);
+    if (!(R > 0)) return bad("圓弧半徑必須 > 0");
+    let L;
+    if (seg.defBy === "delta"){
+      const d = num(seg.delta);
+      if (!(d > 0)) return bad("圓弧偏角必須 > 0");
+      if (d >= 360) return bad("圓弧偏角必須 < 360°");
+      L = R * d * D2R;
+    } else {
+      L = num(seg.L);
+      if (!(L > 0)) return bad("圓弧弧長必須 > 0");
+      if (L / R >= 2*Math.PI) return bad("圓弧弧長超過一整圈");
+    }
+    const Cx = st.x + R*Math.sin((st.az + dir*90)*D2R);
+    const Cy = st.y + R*Math.cos((st.az + dir*90)*D2R);
+    const b0 = (st.az - dir*90)*D2R;
+    return fin(L, t => {
+      const b = b0 + dir*(t/R);
+      return { x:Cx + R*Math.sin(b), y:Cy + R*Math.cos(b),
+               az:norm360(st.az + dir*(t/R)*R2D), k:dir/R };
+    }, { R, dir, center:{ x:Cx, y:Cy }, delta:L/R*R2D });
+  }
+
+  if (seg.type === "SPIRAL"){
+    const dir = num(seg.dir);
+    const R0 = seg.R0inf ? null : num(seg.R0);
+    const R1 = seg.R1inf ? null : num(seg.R1);
+    if (R0 === null && R1 === null) return bad("緩和曲線 R0、R1 不可同時為 ∞");
+    if (R0 !== null && !(R0 > 0)) return bad("緩和曲線起始半徑必須 > 0");
+    if (R1 !== null && !(R1 > 0)) return bad("緩和曲線終止半徑必須 > 0");
+    let Ls;
+    if (seg.defBy === "A"){
+      const A = num(seg.A);
+      if (!(A > 0)) return bad("緩和曲線 A 值必須 > 0");
+      if (R0 !== null && R1 !== null) return bad("R0、R1 皆有限時 A 值無定義,請改用 Ls");
+      Ls = A*A / (R0 === null ? R1 : R0);
+    } else {
+      Ls = num(seg.Ls);
+      if (!(Ls > 0)) return bad("緩和曲線長度必須 > 0");
+    }
+    const k0 = R0 === null ? 0 : 1/R0, k1 = R1 === null ? 0 : 1/R1;
+    const azAt = t => az0R + dir*(k0*t + (k1-k0)*t*t/(2*Ls));
+    const n = 4000, hh = Ls/n;                      // 固定分割數 → 與長度單位無關
+    const cx = new Float64Array(n+1), cy = new Float64Array(n+1);
+    cx[0] = st.x; cy[0] = st.y;
+    for (let j = 0; j < n; j++){
+      const a = j*hh, m = a + hh/2, b = a + hh;
+      cx[j+1] = cx[j] + (hh/6)*(Math.sin(azAt(a)) + 4*Math.sin(azAt(m)) + Math.sin(azAt(b)));
+      cy[j+1] = cy[j] + (hh/6)*(Math.cos(azAt(a)) + 4*Math.cos(azAt(m)) + Math.cos(azAt(b)));
+    }
+    return fin(Ls, t => {
+      if (t <= 0)  return { x:cx[0], y:cy[0], az:st.az, k:dir*k0 };
+      if (t >= Ls) return { x:cx[n], y:cy[n], az:norm360(azAt(Ls)*R2D), k:dir*k1 };
+      const j = Math.min(n-1, Math.floor(t/hh)), a = j*hh, r = t - a;
+      return {
+        x: cx[j] + (r/6)*(Math.sin(azAt(a)) + 4*Math.sin(azAt(a+r/2)) + Math.sin(azAt(a+r))),
+        y: cy[j] + (r/6)*(Math.cos(azAt(a)) + 4*Math.cos(azAt(a+r/2)) + Math.cos(azAt(a+r))),
+        az: norm360(azAt(t)*R2D), k: dir*(k0 + (k1-k0)*t/Ls)
+      };
+    }, { R0, R1, dir, Ls, A:(R0 === null || R1 === null) ? Math.sqrt(Ls*(R0 === null ? R1 : R0)) : null });
+  }
+  return bad("未知段落型別 " + seg.type);
+}
+
+// 建立整條線形鏈:回傳 { segs, total, prof, errs, warns }
+function buildChain(g, errs, warns){
+  const tag = `「${g.name}」`;
+  let cur = { x:num(g.x), y:num(g.y), az:norm360(num(g.az)), s:num(g.sta) };
+  if (![cur.x, cur.y, cur.az, cur.s].every(Number.isFinite)){
+    errs.push(tag + "起始設定含無效數值"); return null;
+  }
+  const segs = [];
+  (g.segments || []).forEach((seg, i) => {
+    const b = buildSegment(seg, cur, i, errs.map ? { push:t => errs.push(tag + t) } : errs);
+    if (!b) return;
+    segs.push(b);
+    cur = { x:b.end.x, y:b.end.y, az:b.end.az, s:b.s1 };
+  });
+  const total = segs.reduce((a,b) => a + b.length, 0);
+  const prof = buildProfile(g.profile, warns, errs, tag);
+  const z0 = num(g.z) || 0;
+  if (prof && segs.length){
+    const s0 = segs[0].s0, s1 = segs[segs.length-1].s1;
+    if (s0 < prof.P[0].sta - 1e-3 || s1 > prof.P[prof.P.length-1].sta + 1e-3)
+      warns.push(tag + `縱斷面範圍未涵蓋線形,超出部分以端點坡度外插`);
+  }
+  return { segs, total, prof, z0,
+    zAtS: s => prof ? zAt(prof, s) : z0,
+    gradeAtS: s => prof ? gradeAt(prof, s) : 0 };
+}
+
+/* ==========================================================================
+   4. 簡單曲線:直線 / 圓弧 / 懸垂 / 螺旋
+   共同介面 { ok, pt(u) → {x,y,z}, meta, err }
+   u ∈ [0,1] 為型別自然參數;弧長由取樣表求得
+   ========================================================================== */
+const SAMPLES_N = 400;
+
+function makeCurve(pt, meta){
+  // 取樣建立累積 3D 弧長表
+  const us = new Float64Array(SAMPLES_N + 1), cum = new Float64Array(SAMPLES_N + 1);
+  let prev = pt(0);
+  us[0] = 0; cum[0] = 0;
+  for (let i = 1; i <= SAMPLES_N; i++){
+    const u = i / SAMPLES_N, p = pt(u);
+    cum[i] = cum[i-1] + dist3(prev, p);
+    us[i] = u; prev = p;
+  }
+  const len = cum[SAMPLES_N];
+  // 由弧長反求 u
+  const uAtS = s => {
+    if (s <= 0) return 0;
+    if (s >= len) return 1;
+    let lo = 0, hi = SAMPLES_N;
+    while (hi - lo > 1){ const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+    const d = cum[hi] - cum[lo];
+    return us[lo] + (d > 1e-12 ? (s - cum[lo]) / d : 0) / SAMPLES_N;
+  };
+  return { ok:true, pt, len, uAtS, meta:meta || {} };
+}
+const curveErr = m => ({ ok:false, err:m });
+
+/* ---- 直線 ---- */
+function curveLINE(g){
+  const p1 = { x:num(g.x1), y:num(g.y1), z:num(g.z1) };
+  const p2 = { x:num(g.x2), y:num(g.y2), z:num(g.z2) };
+  if (![p1.x,p1.y,p1.z,p2.x,p2.y,p2.z].every(Number.isFinite)) return curveErr("端點座標無效");
+  const L = dist3(p1, p2);
+  if (L < 1e-9) return curveErr("起點與終點重合");
+  return makeCurve(u => ({ x:p1.x + (p2.x-p1.x)*u, y:p1.y + (p2.y-p1.y)*u, z:p1.z + (p2.z-p1.z)*u }),
+    { p1, p2, chord:L });
+}
+
+/* ---- 圓弧 ----
+   端點模式:起點→終點 + 半徑 + 偏向(左/右) + 優弧/劣弧 + 平面(水平/鉛直)
+     圓心側 = 偏向 XOR 優弧   (右轉劣弧 → 圓心在右;右轉優弧 → 圓心在左)
+   圓心模式:起點 + 圓心(水平) + 轉角 + 偏向 + 終點高程                       */
+function curveARC(g){
+  const dir = num(g.dir) >= 0 ? 1 : -1;              // +1 右轉,-1 左轉
+  if (g.arcMode === "center"){
+    const p1 = { x:num(g.x1), y:num(g.y1), z:num(g.z1) };
+    const cx = num(g.cx), cy = num(g.cy), delta = num(g.delta), z2 = num(g.z2);
+    if (![p1.x,p1.y,p1.z,cx,cy,delta,z2].every(Number.isFinite)) return curveErr("參數無效");
+    const R = Math.hypot(p1.x-cx, p1.y-cy);
+    if (R < 1e-9) return curveErr("起點與圓心重合");
+    if (!(delta > 0)) return curveErr("轉角必須 > 0");
+    const a1 = Math.atan2(p1.y-cy, p1.x-cx);
+    const sweep = -dir * delta * D2R;                 // 右轉 = 順時針 = 數學角減少
+    return makeCurve(u => {
+      const a = a1 + sweep*u;
+      return { x:cx + R*Math.cos(a), y:cy + R*Math.sin(a), z:p1.z + (z2-p1.z)*u };
+    }, { R, dir, center:{ x:cx, y:cy }, delta, arcLen:R*Math.abs(sweep), plane:"H" });
+  }
+
+  const p1 = { x:num(g.x1), y:num(g.y1), z:num(g.z1) };
+  const p2 = { x:num(g.x2), y:num(g.y2), z:num(g.z2) };
+  const R  = num(g.R), major = !!g.major;
+  if (![p1.x,p1.y,p1.z,p2.x,p2.y,p2.z,R].every(Number.isFinite)) return curveErr("參數無效");
+  if (!(R > 0)) return curveErr("半徑必須 > 0");
+
+  if (g.plane === "V"){
+    // 鉛直平面:以 (沿平面弦方向 t, z) 為 2D 座標
+    const dxy = distXY(p1, p2);
+    if (dxy < 1e-9) return curveErr("鉛直平面圓弧的兩端點平面位置重合");
+    const ux = (p2.x-p1.x)/dxy, uy = (p2.y-p1.y)/dxy;
+    const q1 = { x:0, y:p1.z }, q2 = { x:dxy, y:p2.z };
+    const a = arc2D(q1, q2, R, dir, major);
+    if (!a.ok) return curveErr(a.err);
+    return makeCurve(u => { const q = a.at(u);
+      return { x:p1.x + ux*q.x, y:p1.y + uy*q.x, z:q.y }; },
+      { R, dir, major, plane:"V", arcLen:a.arcLen, center:{ x:p1.x + ux*a.c.x, y:p1.y + uy*a.c.x, z:a.c.y } });
+  }
+
+  // 水平平面:平面投影為圓弧,高程沿弧線線性內插
+  const a = arc2D({ x:p1.x, y:p1.y }, { x:p2.x, y:p2.y }, R, dir, major);
+  if (!a.ok) return curveErr(a.err);
+  return makeCurve(u => { const q = a.at(u);
+    return { x:q.x, y:q.y, z:p1.z + (p2.z-p1.z)*u }; },
+    { R, dir, major, plane:"H", arcLen:a.arcLen, center:{ x:a.c.x, y:a.c.y } });
+}
+
+// 2D 圓弧:q1 → q2,半徑 R,dir(+1 順時針 / −1 逆時針),major 取另一段
+function arc2D(q1, q2, R, dir, major){
+  const dx = q2.x-q1.x, dy = q2.y-q1.y, d = Math.hypot(dx, dy);
+  if (d < 1e-9) return { ok:false, err:"起點與終點重合" };
+  if (R < d/2 - 1e-9) return { ok:false, err:`半徑 ${R} 小於弦長一半 ${(d/2).toFixed(4)},無解` };
+  const h = Math.sqrt(Math.max(0, R*R - (d/2)*(d/2)));
+  const mx = (q1.x+q2.x)/2, my = (q1.y+q2.y)/2;
+  const ux = dx/d, uy = dy/d;
+  const nx = uy, ny = -ux;                            // 行進方向的右側
+  const useRight = (dir > 0) !== major;
+  const cx = mx + (useRight ? h : -h)*nx, cy = my + (useRight ? h : -h)*ny;
+  const a1 = Math.atan2(q1.y-cy, q1.x-cx), a2 = Math.atan2(q2.y-cy, q2.x-cx);
+  let sw = a2 - a1;
+  if (dir > 0){ while (sw >= 0) sw -= 2*Math.PI; while (sw < -2*Math.PI) sw += 2*Math.PI; }
+  else        { while (sw <= 0) sw += 2*Math.PI; while (sw >  2*Math.PI) sw -= 2*Math.PI; }
+  return { ok:true, c:{ x:cx, y:cy }, sweep:sw, arcLen:R*Math.abs(sw),
+    at:u => { const a = a1 + sw*u; return { x:cx + R*Math.cos(a), y:cy + R*Math.sin(a) }; } };
+}
+
+/* ---- 懸垂曲線:起點 → 終點 + 垂度(拋物線 / 懸鏈線)---- */
+function solveCatenaryA(Lx, f){
+  if (!(Lx > 0) || !(f > 0)) return null;
+  const target = f/Lx, gfn = b => (Math.cosh(b) - 1)/(2*b) - target;
+  let lo = 1e-8, hi = 40;
+  if (gfn(hi) < 0) return null;
+  for (let k = 0; k < 200; k++){ const m = (lo+hi)/2; if (gfn(m) < 0) lo = m; else hi = m; }
+  return Lx / (2*((lo+hi)/2));
+}
+function curveSAG(g, warns){
+  const p1 = { x:num(g.x1), y:num(g.y1), z:num(g.z1) };
+  const p2 = { x:num(g.x2), y:num(g.y2), z:num(g.z2) };
+  if (![p1.x,p1.y,p1.z,p2.x,p2.y,p2.z].every(Number.isFinite)) return curveErr("端點座標無效");
+  const Lx = distXY(p1, p2);                          // 垂度以平面跨距為基準
+  const chord = dist3(p1, p2);
+  if (chord < 1e-9) return curveErr("起點與終點重合");
+  const f = g.fMode === "ratio" ? (num(g.f) || 0) * Lx : (num(g.f) || 0);
+  if (Lx < 1e-9 && Math.abs(f) > 1e-9)
+    return curveErr("兩端點平面位置重合(鉛直索),無法定義垂度");
+  let dip;
+  if (g.curve === "catenary"){
+    const a = solveCatenaryA(Lx, f);
+    if (a) dip = u => { const x = u*Lx;
+      return a*Math.cosh((x - Lx/2)/a) - a*Math.cosh(Lx/(2*a)); };
+    else { if (warns && f > 0) warns.push(`「${g.name}」垂度超出懸鏈線可解範圍,已改用拋物線`);
+           dip = u => -4*f*u*(1-u); }
+  } else dip = u => -4*f*u*(1-u);
+  return makeCurve(u => ({
+    x: p1.x + (p2.x-p1.x)*u,
+    y: p1.y + (p2.y-p1.y)*u,
+    z: p1.z + (p2.z-p1.z)*u + dip(u)
+  }), { p1, p2, f, Lx, chord, curve:g.curve });
+}
+
+/* ---- 螺旋線:圓心 + 半徑 + 起始方位角 + 圈數 + 螺距 ---- */
+function curveHELIX(g){
+  const cx = num(g.cx), cy = num(g.cy), z0 = num(g.z1);
+  const R0 = num(g.R), turns = num(g.turns), pitch = num(g.pitch), az0 = num(g.az0);
+  const dir = num(g.dir) >= 0 ? 1 : -1;               // +1 順時針(俯視)
+  const R1 = (g.R2 === "" || g.R2 == null || !Number.isFinite(num(g.R2))) ? R0 : num(g.R2);
+  if (![cx,cy,z0,R0,turns,pitch,az0].every(Number.isFinite)) return curveErr("參數無效");
+  if (!(R0 > 0) || !(R1 > 0)) return curveErr("半徑必須 > 0");
+  if (!(turns > 0)) return curveErr("圈數必須 > 0");
+  return makeCurve(u => {
+    const az = az0 + dir*u*turns*360, R = R0 + (R1-R0)*u;
+    return { x:cx + R*Math.sin(az*D2R), y:cy + R*Math.cos(az*D2R), z:z0 + pitch*turns*u };
+  }, { R0, R1, turns, pitch, dir, rise:pitch*turns, center:{ x:cx, y:cy } });
+}
+
+
+/* ==========================================================================
+   5. 分割
+   ========================================================================== */
+const SPLIT_DEF = { mode:"count", count:20, spacing:5, tol:0.02, maxSpacing:20, rem:"even" };
+
+// 弦線偏差:曲線在 [u0,u1] 之間離弦線最遠的垂距
+function maxDevOn(cv, u0, u1){
+  const A = cv.pt(u0), B = cv.pt(u1);
+  const dx = B.x-A.x, dy = B.y-A.y, dz = B.z-A.z, L = Math.hypot(dx,dy,dz);
+  if (L < 1e-12) return 0;
+  const u = { x:dx/L, y:dy/L, z:dz/L };
+  let mx = 0;
+  for (let j = 1; j < 20; j++){
+    const P = cv.pt(u0 + (u1-u0)*j/20);
+    const w = { x:P.x-A.x, y:P.y-A.y, z:P.z-A.z };
+    const t = V.dot(w, u);
+    const d = Math.hypot(w.x - u.x*t, w.y - u.y*t, w.z - u.z*t);
+    if (d > mx) mx = d;
+  }
+  return mx;
+}
+
+// 回傳 u 陣列(含 0 與 1)
+function splitCurve(cv, sp, tag, warns){
+  sp = sp || SPLIT_DEF;
+  if (sp.mode === "count"){
+    const N = Math.max(1, Math.round(num(sp.count)) || 1);
+    const us = [];
+    for (let i = 0; i <= N; i++) us.push(i/N);
+    return us;
+  }
+  if (sp.mode === "spacing"){
+    const d = num(sp.spacing);
+    if (!(d > 0)){ warns.push(tag + "間距必須 > 0,已改為整段一個元素"); return [0,1]; }
+    const n = Math.floor(cv.len/d + 1e-9);
+    if (n < 1){ warns.push(tag + `長度 ${cv.len.toFixed(3)} ${UL()} 小於間距 ${d} ${UL()},僅產生 1 個元素`); return [0,1]; }
+    const rem = cv.len - n*d;
+    const us = [];
+    for (let i = 0; i <= n; i++) us.push(cv.uAtS(d*i));
+    return finishRem(us, cv, rem, d, sp.rem, tag, warns);
+  }
+  // 弦線偏差容差:逐步推進,二分找最大可用步長
+  const tol = Math.max(cv.len*1e-9, num(sp.tol) || 0);   // 容差與座標同單位
+  const dmax = (num(sp.maxSpacing) > 0) ? num(sp.maxSpacing) : cv.len;
+  const us = [0];
+  let s = 0, guard = 0, last = dmax;
+  while (s < cv.len - 1e-9 && guard++ < 20000){
+    let lo = 0, hi = Math.min(dmax, cv.len - s);
+    if (maxDevOn(cv, cv.uAtS(s), cv.uAtS(s + hi)) <= tol){ lo = hi; }
+    else {
+      for (let k = 0; k < 24; k++){
+        const m = (lo + hi)/2;
+        if (maxDevOn(cv, cv.uAtS(s), cv.uAtS(s + m)) <= tol) lo = m; else hi = m;
+      }
+    }
+    const step = Math.max(lo, cv.len/20000);
+    last = step; s += step;
+    if (s >= cv.len - 1e-9) break;
+    us.push(cv.uAtS(s));
+  }
+  const rem = cv.len - cv_sOf(cv, us[us.length-1]);
+  return finishRem(us, cv, rem, last, sp.rem, tag, warns);
+}
+const cv_sOf = (cv, u) => {                            // u → 弧長(以取樣表反查)
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 40; k++){ const m = (lo+hi)/2; if (cv.uAtS(m*cv.len) < u) lo = m; else hi = m; }
+  return ((lo+hi)/2)*cv.len;
+};
+
+function finishRem(us, cv, rem, nominal, policy, tag, warns){
+  if (rem <= 1e-9){ us[us.length-1] = 1; return us; }
+  const ratio = nominal > 1e-9 ? rem/nominal : 1;
+  if (ratio < 0.30)
+    warns.push(tag + `餘數 ${rem.toFixed(3)} ${UL()} 僅為間距的 ${(ratio*100).toFixed(1)}%,將產生極短元素`);
+  if (policy === "keep"){ us.push(1); return us; }
+  if (policy === "merge"){ if (us.length >= 2) us.pop(); us.push(1); return us; }
+  if (policy === "trim"){ return us; }                 // 尾端丟棄
+  const n = us.length - 1;                             // even:維持區間數,間距略放大
+  const out = [];
+  for (let i = 0; i <= n; i++) out.push(cv.uAtS(cv.len*i/n));
+  out[n] = 1;
+  return out;
+}
+
+/* ==========================================================================
+   6. 組模型
+   ========================================================================== */
+const TYPES = {
+  CURVE: { fam:"geo", name:"曲線組",   color:"#1c5d99" },
+  OFFSET:{ fam:"geo", name:"偏置",     color:"#0f7c8f" },
+  LINK2: { fam:"con", name:"組對組",   color:"#7b8592" },
+  LINKZ: { fam:"con", name:"組對高程", color:"#b3406b" },
+  FAN:   { fam:"con", name:"點對組",   color:"#c1673d" }
+};
+// 段:一個曲線組由一串段組成,段與段共用接縫節點、編號連續
+const PIECES = {
+  LINE: { name:"直線",   hint:"起點 → 終點(或 長度 + 方位角 + 仰角)" },
+  ARC:  { name:"圓弧",   hint:"端點 + 半徑,或 圓心 + 轉角" },
+  SAG:  { name:"懸垂",   hint:"起點 → 終點 + 垂度(拋物線 / 懸鏈線)" },
+  HELIX:{ name:"螺旋",   hint:"半徑 + 起始方位角 + 圈數 + 螺距" },
+  CHAIN:{ name:"線形鏈", hint:"直線/圓弧/緩和串接 + 樁號 + 選用縱斷面" },
+  POINT:{ name:"節點",   hint:"單一節點;接續前段時同時產生一根直線元素" }
+};
+const GCOLORS = ["#1c5d99","#c1673d","#8a5fb5","#3f8f5f","#8a7a20","#0f7c8f","#b3406b","#6f4a9b","#a8710d","#1a7f4b"];
+// 編輯中的曲線組:各段分色(其他組維持自己的主題色)
+const PCOLORS = ["#1c5d99","#c1673d","#3f8f5f","#8a5fb5","#0f7c8f","#b3406b","#a8710d","#1a7f4b","#8a7a20","#6f4a9b"];
+const pieceColor = i => PCOLORS[((i % PCOLORS.length) + PCOLORS.length) % PCOLORS.length];
+const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CABLE 纜索"]];
+const DEPS = { OFFSET:["ref"], LINK2:["a","b"], LINKZ:["ref"], FAN:["ref"] };
+
+let SEQ = 1;
+const newId = () => "g" + (SEQ++);
+
+function defaultPiece(type){
+  const sp = { ...SPLIT_DEF, spacing:dL(SPLIT_DEF.spacing), maxSpacing:dL(SPLIT_DEF.maxSpacing),
+               tol:dL(SPLIT_DEF.tol) };
+  const b = { type, cont:true, endCont:false, xf:XF_DEF(),
+              split:{ ...sp }, ovr:false, etype:"BEAM", mat:1, sect:1,
+              x1:0, y1:0, z1:0 };
+  if (type === "LINE")  return { ...b, endMode:"point", x2:dL(100), y2:0, z2:0, len:dL(50), az:90, el:0 };
+  if (type === "ARC")   return { ...b, arcMode:"endpoints", plane:"H", dir:1, major:false,
+    x2:dL(100), y2:0, z2:0, R:dL(80), cx:dL(50), cy:dL(-50), delta:90 };
+  if (type === "SAG")   return { ...b, x2:dL(200), y2:0, z2:0, curve:"parabola", fMode:"ratio", f:0.1 };
+  if (type === "HELIX") return { ...b, R:dL(50), R2:"", az0:0, turns:2, pitch:dL(12), dir:1,
+    split:{ ...sp, count:72 } };
+  if (type === "CHAIN") return { ...b, az:90, sta:0, segments:[{ type:"LINE", L:dL(50) }],
+    profile:[], forced:"", absorbTol:dL(0.1), split:{ ...sp, mode:"spacing" } };
+  if (type === "POINT") return { ...b, x2:0, y2:0, z2:0 };
+  return b;
+}
+function defaultGroup(type, n){
+  const base = { id:newId(), type, name:TYPES[type].name + (n || ""), on:true, xf:XF_DEF(),
+    etype:"BEAM", mat:1, sect:1, autoNum:true, nodeBase:1001, elemBase:1001 };
+  if (type === "CURVE") return { ...base, name:"曲線組" + (n || ""),
+    pieces:[{ ...defaultPiece("LINE"), cont:false }] };
+  if (type === "OFFSET")return { ...base, ref:"", d:dL(5), h:0 };
+  if (type === "LINK2") return { ...base, a:"", b:"", every:1 };
+  if (type === "LINKZ") return { ...base, ref:"", targetZ:0, from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5), etype:"CABLE" };
+  if (type === "FAN")   return { ...base, srcMode:"coord", sx:0, sy:0, sz:dL(80), ref:"",
+    from:1, to:10, every:1, div:1, fMode:"abs", f:0, etype:"CABLE" };
+  return base;
+}
+
+// 由節點串補上方位角與平面曲率
+function annotate(nodes){
+  const n = nodes.length;
+  const kk = new Array(n).fill(0);
+  for (let i = 0; i < n; i++){
+    const a = nodes[Math.max(0, i-1)], b = nodes[Math.min(n-1, i+1)];
+    if (nodes[i].az === undefined) nodes[i].az = azOf(b.x - a.x, b.y - a.y);
+    if (i > 0 && i < n-1){
+      const p = nodes[i-1], q = nodes[i], r = nodes[i+1];
+      const cr = (q.x-p.x)*(r.y-p.y) - (q.y-p.y)*(r.x-p.x);
+      const A = distXY(p,q), B = distXY(q,r), C = distXY(p,r);
+      const den = A*B*C;
+      kk[i] = den > 1e-9 ? (2*cr)/den * -1 : 0;        // 正 = 圓心在右(右轉)
+    }
+  }
+  if (n > 2){ kk[0] = kk[1]; kk[n-1] = kk[n-2]; }
+  // 線形鏈段的節點已帶精確的 az / k,不覆蓋
+  for (let i = 0; i < n; i++) if (nodes[i].k === undefined) nodes[i].k = kk[i];
+  return nodes;
+}
+
+/* ---------- 平移與旋轉(剛體變換)----------
+   組 / 段 存成參數(可隨時改、可復原);節點 / 元素則是一次性套用成座標覆寫。   */
+const XF_DEF = () => ({ dx:0, dy:0, dz:0, rot:0, axis:"Z", cmode:"auto", cx:0, cy:0, cz:0 });
+const xfActive = xf => !!xf && [xf.dx, xf.dy, xf.dz, xf.rot].some(v => Math.abs(num(v) || 0) > 1e-12);
+
+function xfCenter(xf, pts){
+  const m = xf.cmode || "auto";
+  if (m === "custom") return { x:num(xf.cx) || 0, y:num(xf.cy) || 0, z:num(xf.cz) || 0 };
+  const P = (pts || []).filter(p => p && Number.isFinite(p.x));
+  if (!P.length) return { x:0, y:0, z:0 };
+  if (m === "start" || (m === "auto" && xf._start)) return { x:P[0].x, y:P[0].y, z:P[0].z };
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
+  P.forEach(p => { if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y;
+                   if(p.z<z0)z0=p.z; if(p.z>z1)z1=p.z; });
+  return { x:(x0+x1)/2, y:(y0+y1)/2, z:(z0+z1)/2 };
+}
+// 回傳 p → p' 的函式(沒動就回 null);f.dAz = 方位角修正量,非 Z 軸旋轉時為 null
+function xfMake(xf, pts, startPivot){
+  if (!xfActive(xf)) return null;
+  const c = xfCenter({ ...xf, _start:!!startPivot }, pts);
+  const rot = num(xf.rot) || 0, th = rot*D2R, ax = xf.axis || "Z";
+  const co = Math.cos(th), si = Math.sin(th);
+  const dx = num(xf.dx) || 0, dy = num(xf.dy) || 0, dz = num(xf.dz) || 0;
+  const f = p => {
+    const X = p.x - c.x, Y = p.y - c.y, Z = p.z - c.z;
+    let q;
+    if (ax === "X")      q = { x:X,           y:Y*co - Z*si, z:Y*si + Z*co };
+    else if (ax === "Y") q = { x:X*co + Z*si, y:Y,           z:-X*si + Z*co };
+    else                 q = { x:X*co - Y*si, y:X*si + Y*co, z:Z };
+    return { x:q.x + c.x + dx, y:q.y + c.y + dy, z:q.z + c.z + dz };
+  };
+  f.dAz = (ax === "Z") ? -rot : null;                 // 方位角自 +Y 順時針,逆時針轉 θ 即 az−θ
+  return f;
+}
+// 保留 az / k / s 等附加欄位的點變換
+const xfPt = (f, p) => {
+  if (!p) return p;
+  const q = f(p);
+  const o = { ...p, x:q.x, y:q.y, z:q.z };
+  if (p.az !== undefined) o.az = (f.dAz === null) ? undefined : norm360(p.az + f.dAz);
+  return o;
+};
+const xfCurve = (cv, f) => {
+  const out = { ...cv, pt:u => xfPt(f, cv.pt(u)) };
+  if (cv.meta && cv.meta.center)
+    out.meta = { ...cv.meta, center:f({ x:cv.meta.center.x, y:cv.meta.center.y, z:cv.meta.center.z || 0 }) };
+  return out;
+};
+// 就地套用到節點串(剛體 → 元素長度、弦線偏差都不變)
+function xfApplyNodes(f, nodes){
+  nodes.forEach(n => {
+    const q = f(n); n.x = q.x; n.y = q.y; n.z = q.z;
+    if (n.az !== undefined) n.az = (f.dAz === null) ? undefined : norm360(n.az + f.dAz);
+  });
+  if (f.dAz === null) annotate(nodes);                 // 非 Z 軸旋轉:方位角重算
+  return nodes;
+}
+// 段的起點(POINT 用它自己的座標);「終點接續下段起點」要拿它當終點
+const contOn = pc => !!pc && pc.cont !== false && pc.cont !== "0" && pc.cont !== 0;
+const END_CONT_T = { LINE:1, ARC:1, SAG:1 };
+function pieceStart(pc){
+  if (!pc) return null;
+  const p = pc.type === "POINT"
+    ? { x:num(pc.x2), y:num(pc.y2), z:num(pc.z2) }
+    : { x:num(pc.x1), y:num(pc.y1), z:num(pc.z1) };
+  if (![p.x, p.y, p.z].every(Number.isFinite)) return null;
+  const f = xfMake(pc.xf, [p], true);
+  return f ? f(p) : p;
+}
+// 這一段的終點要不要黏到下一段的起點
+function endContOn(pc, nx){
+  if (!pc || !nx) return false;
+  if (!(pc.endCont === true || pc.endCont === "1")) return false;
+  if (!END_CONT_T[pc.type]) return false;
+  if (pc.type === "ARC" && pc.arcMode === "center") return false;
+  if (contOn(nx)) return false;                        // 下一段本來就接前段 → 會循環定義
+  return !!pieceStart(nx);
+}
+
+function buildModel(st, errs, warns){
+  const inc = Math.max(1, Math.round(num(st.numbering.inc)) || 1000);
+  const prefix = st.groupPrefix || "G_";
+  const built = new Map();                             // id → {nodes, elems, ...}
+  const list = (st.groups || []).filter(g => g.on !== false);
+  const pending = list.slice();
+  const order = [];
+
+  // 依相依關係反覆解析(不限定使用者的排列順序)
+  for (let pass = 0; pass < list.length + 2 && pending.length; pass++){
+    for (let i = 0; i < pending.length; ){
+      const g = pending[i];
+      const deps = (DEPS[g.type] || []).map(k => g[k]).filter(Boolean);
+      if (deps.every(d => built.has(d))){
+        const idx = list.indexOf(g);        // 用清單順序配號,與相依解析順序無關
+        const r = buildOne(g, idx, built, st, inc, prefix, errs, warns);
+        built.set(g.id, r); order.push(r);
+        pending.splice(i, 1);
+      } else i++;
+    }
+  }
+  pending.forEach(g => errs.push(`「${g.name}」引用的組不存在或形成循環,已略過`));
+
+  const groups = order;
+  const tot = {
+    n:groups.reduce((a,r) => a + r.nodes.length, 0),
+    e:groups.reduce((a,r) => a + r.elems.length, 0),
+    len3d:groups.reduce((a,r) => a + r.elems.reduce((s,e) => s + e.len3d, 0), 0)
+  };
+  // 編號衝突
+  const seenN = new Map(), seenE = new Map();
+  groups.forEach(r => {
+    r.nodes.forEach(nd => { if (seenN.has(nd.num)) r.numClash = true; else seenN.set(nd.num, r); });
+    r.elems.forEach(e  => { if (seenE.has(e.num))  r.numClash = true; else seenE.set(e.num, r); });
+  });
+  const clash = groups.filter(r => r.numClash);
+  clash.forEach(r => errs.push(`「${r.g.name}」的節點或元素編號與其他組重複`));
+
+  const names = [...new Set(groups.map(r => r.gname))];
+  names.push(prefix + "ALL");
+  return { groups, byId:built, tot, names, prefix, inc, clash:clash.length };
+}
+
+// 依段的型別建立曲線;start 為繼承的起點(cont 時使用)
+function pieceCurve(pc, start, warns, tag, endAt){
+  const p = { ...pc, name:tag };
+  if (start){ p.x1 = start.x; p.y1 = start.y; p.z1 = start.z; }
+  if (endAt && END_CONT_T[pc.type] && !(pc.type === "ARC" && pc.arcMode === "center")){
+    p.x2 = endAt.x; p.y2 = endAt.y; p.z2 = endAt.z;   // 終點黏到下一段的起點
+    if (pc.type === "LINE") p.endMode = "point";
+  }
+  if (pc.type === "LINE"){
+    if (p.endMode === "polar"){
+      const L = num(pc.len), az = num(pc.az) || 0, el = num(pc.el) || 0;
+      if (!(L > 0)) return curveErr("長度必須 > 0");
+      const h = L * Math.cos(el*D2R);
+      p.x2 = p.x1 + h*Math.sin(az*D2R);
+      p.y2 = p.y1 + h*Math.cos(az*D2R);
+      p.z2 = p.z1 + L*Math.sin(el*D2R);
+    }
+    return curveLINE(p);
+  }
+  if (pc.type === "ARC")   return curveARC(p);
+  if (pc.type === "SAG")   return curveSAG(p, warns);
+  if (pc.type === "HELIX"){
+    // 接續前段時,由起點與起始方位角反推圓心
+    if (start){
+      const R = num(pc.R), az0 = num(pc.az0) || 0;
+      p.cx = start.x - R*Math.sin(az0*D2R);
+      p.cy = start.y - R*Math.cos(az0*D2R);
+      p.z1 = start.z;
+    } else { p.cx = num(pc.cx); p.cy = num(pc.cy); }
+    return curveHELIX(p);
+  }
+  return curveErr("此段型別不使用曲線介面");
+}
+
+// 建完之後再對「整組」套用平移/旋轉 —— 剛體,長度與弦線偏差都不受影響,
+// 依附本組的偏置/連接組會跟著移動(它們是在本組之後才建的)。
+function buildOne(g, idx, built, st, inc, prefix, errs, warns){
+  const R = buildOneRaw(g, idx, built, st, inc, prefix, errs, warns);
+  if ((g.type === "CURVE" || g.type === "OFFSET") && R.nodes.length && xfActive(g.xf)){
+    const own = R.nodes.filter(n => n.gid === g.id);
+    const f = xfMake(g.xf, own);
+    if (f){ xfApplyNodes(f, own); R.xfOn = true; }
+  }
+  return R;
+}
+
+function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
+  const tag = `「${g.name}」`;
+  const T = TYPES[g.type];
+  const nodeBase = g.autoNum ? num(st.numbering.nodeBase) + idx*inc : (Math.round(num(g.nodeBase)) || 1);
+  const elemBase = g.autoNum ? num(st.numbering.elemBase) + idx*inc : (Math.round(num(g.elemBase)) || 1);
+  const gname = prefix + (g.name || g.id);
+  const R = { g, idx, gname, nodeBase, elemBase, nodes:[], elems:[],
+              color:GCOLORS[idx % GCOLORS.length], stat:{}, pieces:[] };
+  let nc = 0, ec = 0;
+  const mkNode = p => { const nd = { ...p, num:nodeBase + nc++, gid:g.id }; R.nodes.push(nd); return nd; };
+  const attrOf = pc => pc && pc.ovr
+    ? { type:pc.etype || "BEAM", mat:Math.round(num(pc.mat)) || 1, sect:Math.round(num(pc.sect)) || 1 }
+    : { type:g.etype || "BEAM", mat:Math.round(num(g.mat)) || 1, sect:Math.round(num(g.sect)) || 1 };
+  const mkElem = (a, b, pc, extra) => {
+    const chord = distXY(a, b), len3d = dist3(a, b);
+    const e = { num:elemBase + ec++, i:a.num, j:b.num, a, b, chord, len3d, gid:g.id,
+      group:gname, ...attrOf(pc), dev:0, pi:pc ? pc._i : -1, ...(extra || {}) };
+    R.elems.push(e); return e;
+  };
+
+  /* ---------- 曲線組:一串段 ---------- */
+  if (g.type === "CURVE"){
+    const pcs = (g.pieces || []);
+    if (!pcs.length){ R.stat.err = "沒有任何段"; finishStat(R); return R; }
+
+    // 第一階段:依段的幾何算出「原始節點」(不受手動刪除影響,後續段的起點才不會跑掉)
+    const raw = [];
+    const infos = [];
+    let last = null, lastPi = -1;
+    pcs.forEach((pc, pi) => {
+      pc._i = pi;
+      const ptag = `${tag}段 ${pi+1}(${PIECES[pc.type].name}):`;
+      const inherit = pi > 0 && contOn(pc) && !!last;              // 起點沿用前段終點
+      const nx = pcs[pi+1];
+      const endAt = endContOn(pc, nx) ? pieceStart(nx) : null;     // 終點黏到下一段起點
+      // 前一段把終點接到本段起點 → 接縫節點一樣共用、元素照樣串起來
+      const linked = !inherit && pi > 0 && !!last && lastPi === pi-1 && endContOn(pcs[pi-1], pc);
+      const cont = inherit || linked;
+      const info = { pi, type:pc.type, r0:raw.length };
+      if (endAt && xfActive(nx.xf) && (nx.xf.cmode || "auto") === "center" && Math.abs(num(nx.xf.rot) || 0) > 1e-12)
+        warns.push(ptag + "下一段以「範圍中心」旋轉,接續終點可能有誤差,建議把旋轉中心改成「起點」或「自訂座標」");
+
+      if (pc.type === "POINT"){
+        const q0 = { x:num(pc.x2), y:num(pc.y2), z:num(pc.z2) };
+        if (![q0.x,q0.y,q0.z].every(Number.isFinite)){ errs.push(ptag + "座標無效"); return; }
+        const fp = xfMake(pc.xf, [q0], true);
+        const q = fp ? fp(q0) : q0;
+        if (linked){                                   // 前段終點已經落在這個座標,節點共用
+          info.r1 = raw.length; infos.push(info); return;
+        }
+        raw.push({ ...q, pi, brk:!cont });
+        last = raw[raw.length-1]; lastPi = pi;
+        info.r1 = raw.length; infos.push(info); return;
+      }
+
+      if (pc.type === "CHAIN"){
+        const cg = { ...pc, name:g.name + " 段" + (pi+1),
+          x:inherit ? last.x : num(pc.x1), y:inherit ? last.y : num(pc.y1), z:inherit ? last.z : num(pc.z1) };
+        const ch = buildChain(cg, { push:t => errs.push(t.startsWith("「") ? t : ptag + t) }, warns);
+        if (!ch || !ch.segs.length){ errs.push(ptag + "無有效段落"); return; }
+        info.chain = ch;
+        const tolAbs = Math.max(0, num(pc.absorbTol) || 0);
+        let stations = [];
+        ch.segs.forEach(b => {
+          const cvSeg = { len:b.length, uAtS:s => clamp(s/b.length, 0, 1),
+            pt:u => { const q = b.evalLocal(u*b.length); return { x:q.x, y:q.y, z:ch.zAtS(b.s0 + u*b.length) }; } };
+          splitCurve(cvSeg, pc.split, `${ptag}子段 ${b.i+1}:`, warns)
+            .forEach(u => stations.push(b.s0 + u*b.length));
+        });
+        stations.sort((a,b) => a-b);
+        let uniq = [];
+        stations.forEach(s => { if (!uniq.length || s - uniq[uniq.length-1] > 1e-7) uniq.push(s); });
+        const prot = []; ch.segs.forEach(b => { prot.push(b.s0); prot.push(b.s1); });
+        const forced = String(pc.forced || "").replace(/\s*-\s*/g, "-").split(/[\s,;]+/).filter(Boolean)
+          .map(parseSta).filter(Number.isFinite).sort((a,b) => a-b);
+        const s0 = ch.segs[0].s0, s1 = ch.segs[ch.segs.length-1].s1;
+        let absorbed = 0;
+        forced.forEach(f => {
+          if (f < s0 - 1e-9 || f > s1 + 1e-9){ warns.push(ptag + `強制節點 ${fmtSta(f)} 不在範圍內,已忽略`); return; }
+          const near = prot.find(q => Math.abs(q - f) <= tolAbs);
+          if (near !== undefined){
+            if (Math.abs(near - f) > 1e-6) warns.push(ptag + `強制節點 ${fmtSta(f)} 距段落交界僅 ${Math.abs(near-f).toFixed(3)} ${UL()},由交界取代`);
+            return;
+          }
+          const kept = [];
+          uniq.forEach(s => {
+            if (prot.some(q => Math.abs(q-s) < 1e-6) || Math.abs(s - f) > tolAbs) kept.push(s);
+            else if (Math.abs(s - f) > 1e-6) absorbed++;
+          });
+          uniq = kept; uniq.push(f); uniq.sort((a,b) => a-b);
+        });
+        const fset = s => forced.some(f => Math.abs(f - s) < 1e-6);
+        const evalAt = s => {
+          for (let i = ch.segs.length-1; i >= 0; i--){
+            const b = ch.segs[i];
+            if (s >= b.s0 - 1e-7 && s <= b.s1 + 1e-7){
+              const q = b.evalLocal(clamp(s - b.s0, 0, b.length));
+              return { x:q.x, y:q.y, z:ch.zAtS(s), az:q.az, k:q.k, s, seg:b.i, grade:ch.gradeAtS(s) };
+            }
+          }
+          return null;
+        };
+        const fx = xfMake(pc.xf, uniq.map(s => evalAt(s)).filter(Boolean), true);
+        const evalX = fx ? (s => xfPt(fx, evalAt(s))) : evalAt;
+        info.evalAt = evalX; info.absorbed = absorbed; info.total = ch.total;
+        uniq.forEach((s, j) => {
+          if (cont && j === 0) return;
+          const q = evalX(s); if (q) raw.push({ ...q, pi, forced:fset(s), brk:(!cont && j === 0) });
+        });
+        last = raw[raw.length-1]; lastPi = pi;
+        info.r1 = raw.length; infos.push(info); return;
+      }
+
+      const cv0 = pieceCurve(pc, inherit ? last : null, warns, ptag, endAt);
+      if (!cv0.ok){ errs.push(ptag + cv0.err); return; }
+      const us = splitCurve(cv0, pc.split, ptag, warns);
+      const fx = xfMake(pc.xf, us.map(u => cv0.pt(u)), true);
+      const cv = fx ? xfCurve(cv0, fx) : cv0;           // 參考曲線一起轉,畫面才不會兩條分家
+      info.curve = cv; info.meta = cv.meta; info.len = cv.len;
+      us.forEach((u, j) => {
+        if (cont && j === 0) return;
+        raw.push({ ...cv.pt(u), u, pi, brk:(!cont && j === 0) });
+      });
+      last = raw[raw.length-1]; lastPi = pi;
+      info.r1 = raw.length; infos.push(info);
+    });
+
+    // 第二階段:套用手動編輯與刪除
+    const edits = g.edits || {}, dels = new Set((g.dels || []).map(Number));
+    let nDel = 0, nEdit = 0, pendBrk = false;
+    const kept = [];
+    raw.forEach((p, ri) => {
+      if (dels.has(ri)){ if (p.brk) pendBrk = true; nDel++; return; }
+      const e = edits[ri];
+      const q = { ...p, ri };
+      if (e){                                          // 逐軸套用:某軸無效就沿用原始值
+        let any = false;
+        const ax = num(e.x), ay = num(e.y), az2 = num(e.z);
+        if (Number.isFinite(ax)){ q.x = ax; any = true; }
+        if (Number.isFinite(ay)){ q.y = ay; any = true; }
+        if (Number.isFinite(az2)){ q.z = az2; any = true; }
+        if (any){ q.edited = true; nEdit++; }
+      }
+      if (pendBrk){ q.brk = true; pendBrk = false; }
+      kept.push(q);
+    });
+    if (dels.size > nDel) warns.push(tag + `有 ${dels.size - nDel} 個刪除標記已失效(節點數改變),可在節點區按「清除全部覆寫」`);
+    const staleEdit = Object.keys(edits).filter(k => +k >= raw.length).length;
+    if (staleEdit) warns.push(tag + `有 ${staleEdit} 個座標覆寫已失效(節點數改變)`);
+
+    kept.forEach(p => mkNode(p));
+    annotate(R.nodes);
+
+    // 第三階段:連接元素;跨過被刪除的節點時自動連接前後兩點
+    for (let j = 0; j < R.nodes.length - 1; j++){
+      const a = R.nodes[j], b = R.nodes[j+1];
+      if (b.brk) continue;
+      const pc = pcs[b.pi];
+      const e = mkElem(a, b, pc,
+        (a.s !== undefined && b.s !== undefined) ? { arc:b.s - a.s, seg:a.seg } : null);
+      if (a.pi === b.pi && !a.edited && !b.edited && b.ri === a.ri + 1){
+        const info = infos.find(x => x.pi === a.pi);
+        if (info && info.curve) e.dev = maxDevOn(info.curve, a.u, b.u);
+        else if (info && info.evalAt) e.dev = maxDevOn({ pt:u => info.evalAt(a.s + (b.s - a.s)*u) }, 0, 1);
+      }
+    }
+    // 各段的實際節點/元素範圍(供面板顯示)
+    infos.forEach(info => {
+      info.n0 = R.nodes.findIndex(n => n.pi === info.pi);
+      const arr = R.nodes.filter(n => n.pi === info.pi);
+      info.n1 = info.n0 < 0 ? 0 : info.n0 + arr.length;
+      if (info.n0 < 0) info.n0 = 0;
+      const el = R.elems.filter(e => e.pi === info.pi);
+      info.e0 = R.elems.indexOf(el[0]); info.e1 = info.e0 + el.length;
+      if (info.e0 < 0){ info.e0 = 0; info.e1 = 0; }
+    });
+    R.pieces = infos;
+    R.raw = raw;
+    R.stat.nDel = nDel; R.stat.nEdit = nEdit;
+    finishStat(R); return R;
+  }
+
+  /* ---------- 偏置 ---------- */
+  if (g.type === "OFFSET"){
+    const ref = built.get(g.ref);
+    if (!ref || !ref.nodes.length){ errs.push(tag + "找不到基準組或基準組沒有節點"); R.stat.err = "無基準"; return R; }
+    const d = num(g.d) || 0, h = num(g.h) || 0;
+    let degenerate = false;
+    ref.nodes.forEach(n0 => {
+      const a = (n0.az + 90) * D2R;
+      if (Math.abs(n0.k) > 1e-9){
+        const r = 1/n0.k, rl = r - d;
+        if (rl * r <= 0 || Math.abs(rl) < 1e-6) degenerate = true;
+      }
+      mkNode({ x:n0.x + d*Math.sin(a), y:n0.y + d*Math.cos(a), z:n0.z + h,
+        az:n0.az, k:n0.k, s:n0.s, forced:n0.forced, brk:n0.brk });
+    });
+    if (degenerate) errs.push(tag + "偏置量已達到或超過內側曲率中心,幾何退化");
+    for (let j = 0; j < R.nodes.length-1; j++)
+      if (!R.nodes[j+1].brk) mkElem(R.nodes[j], R.nodes[j+1], null);
+    R.stat = { ...R.stat, ref:ref.g.name, d, h };
+    finishStat(R); return R;
+  }
+
+  /* ---------- 組對組 ---------- */
+  if (g.type === "LINK2"){
+    const A = built.get(g.a), B = built.get(g.b);
+    if (!A || !B){ errs.push(tag + "找不到要連接的組"); R.stat.err = "缺少來源"; return R; }
+    if (A.nodes.length !== B.nodes.length){
+      errs.push(tag + `兩組節點數不同(${A.nodes.length} vs ${B.nodes.length}),無法逐節點連接`);
+      R.stat.err = "節點數不符"; return R;
+    }
+    const every = Math.max(1, Math.round(num(g.every)) || 1);
+    for (let j = 0; j < A.nodes.length; j += every) mkElem(A.nodes[j], B.nodes[j], null);
+    R.stat = { ...R.stat, a:A.g.name, b:B.g.name };
+    finishStat(R); return R;
+  }
+
+  /* ---------- 組對高程 ---------- */
+  if (g.type === "LINKZ"){
+    const ref = built.get(g.ref);
+    if (!ref || !ref.nodes.length){ errs.push(tag + "找不到來源組"); R.stat.err = "無來源"; return R; }
+    const tz = num(g.targetZ);
+    if (!Number.isFinite(tz)){ errs.push(tag + "目標高程無效"); R.stat.err = "高程無效"; return R; }
+    const every = Math.max(1, Math.round(num(g.every)) || 1);
+    const snap = g.bottom === "snap";
+    const tolS = Math.max(0, num(g.snapTol) || 0);
+    const pool = snap ? [...built.values()].flatMap(r => r.nodes) : [];
+    const N0 = ref.nodes.length;
+    const lo0 = clamp(Math.round(num(g.from)) || 1, 1, N0);
+    const hi0 = clamp(Math.round(num(g.to)) || N0, 1, N0);
+    const lo = Math.min(lo0, hi0) - 1, hi = Math.max(lo0, hi0) - 1;
+    let skipped = 0;
+    for (let j = lo; j <= hi; j += every){
+      const top = ref.nodes[j];
+      if (top.z <= tz + 1e-9){ skipped++; continue; }
+      const target = { x:top.x, y:top.y, z:tz };
+      let bot = null;
+      if (snap){
+        let bd = Infinity;
+        pool.forEach(n0 => { const dd = dist3(n0, target); if (dd < bd){ bd = dd; bot = n0; } });
+        if (!bot || bd > tolS) bot = null;
+      }
+      if (!bot) bot = mkNode({ ...target, deck:true });
+      mkElem(top, bot, null);
+    }
+    if (skipped) warns.push(tag + `有 ${skipped} 個來源節點已低於目標高程,該連接略過`);
+    R.stat = { ...R.stat, ref:ref.g.name, targetZ:tz, skipped };
+    finishStat(R); return R;
+  }
+
+  /* ---------- 點對組(扇形) ---------- */
+  if (g.type === "FAN"){
+    const ref = built.get(g.ref);
+    if (!ref || !ref.nodes.length){ errs.push(tag + "找不到目標組"); R.stat.err = "無目標"; return R; }
+    let src;
+    if (g.srcMode === "node"){
+      const all = [...built.values()].flatMap(r => r.nodes);
+      src = all.find(n0 => n0.num === Math.round(num(g.srcNode)));
+      if (!src){ errs.push(tag + `起點節點 ${g.srcNode} 不存在`); R.stat.err = "起點無效"; return R; }
+    } else {
+      const p = { x:num(g.sx), y:num(g.sy), z:num(g.sz) };
+      if (![p.x,p.y,p.z].every(Number.isFinite)){ errs.push(tag + "起點座標無效"); R.stat.err = "起點無效"; return R; }
+      src = mkNode({ ...p, fanSrc:true });
+    }
+    R.src = src;
+    const N = Math.max(1, Math.round(num(g.div)) || 1);
+    const every = Math.max(1, Math.round(num(g.every)) || 1);
+    const from = clamp(Math.round(num(g.from)) || 1, 1, ref.nodes.length);
+    const to   = clamp(Math.round(num(g.to)) || ref.nodes.length, 1, ref.nodes.length);
+    const lo = Math.min(from, to), hi = Math.max(from, to);
+    let flat = false, cnt = 0;
+    for (let j = lo; j <= hi; j += every){
+      const T2 = ref.nodes[j-1];
+      const chord = dist3(src, T2);
+      if (chord < 1e-9) continue;
+      const f = g.fMode === "ratio" ? (num(g.f) || 0)*chord : (num(g.f) || 0);
+      if (N > 1 && Math.abs(f) < 1e-9 && !flat){
+        warns.push(tag + `分割數 ${N} > 1 但垂度 = 0:節點共線,幾何非線性分析橫向勁度為零,極可能不收斂`);
+        flat = true;
+      }
+      let prev = src;
+      for (let k = 1; k <= N; k++){
+        const u = k/N;
+        const p = { x:src.x + (T2.x-src.x)*u, y:src.y + (T2.y-src.y)*u,
+                    z:src.z + (T2.z-src.z)*u - 4*f*u*(1-u) };
+        const nd = (k === N) ? T2 : mkNode({ ...p, fanMid:true });
+        mkElem(prev, nd, null, { target:T2.num });
+        prev = nd;
+      }
+      cnt++;
+    }
+    R.stat = { ...R.stat, ref:ref.g.name, count:cnt, div:N };
+    finishStat(R); return R;
+  }
+
+  errs.push(tag + "未知型別 " + g.type);
+  return R;
+}
+
+function finishStat(R){
+  const L = R.elems.map(e => e.len3d), C = R.elems.map(e => e.chord);
+  R.stat.n = R.nodes.length; R.stat.e = R.elems.length;
+  R.stat.minL = L.length ? Math.min(...L) : 0;
+  R.stat.maxL = L.length ? Math.max(...L) : 0;
+  R.stat.len3d = L.reduce((a,b) => a+b, 0);
+  R.stat.planLen = C.reduce((a,b) => a+b, 0);
+  R.stat.maxDev = R.elems.length ? Math.max(...R.elems.map(e => e.dev)) : 0;
+}
+
+
+/* ==========================================================================
+   7. 輸出:MCT / CSV / JSON
+   ⚠️ MCT 格式尚未以 midas 實機 Export 驗證。要改只需動 MCT_FMT 與 elemLine()。
+   ========================================================================== */
+const MCT_COMMENT = ";";
+const MCT_FMT = {
+  hint:{ UNIT:"FORCE, LENGTH, HEAT, TEMPER", NODE:"iNO, X, Y, Z",
+         ELEMENT:"iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL",
+         GROUP:"NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE" },
+  indent:"   "
+};
+const UNIT_LENGTH = [["M","M(公尺)"],["CM","CM(公分)"],["MM","MM(公釐)"],["IN","IN(英吋)"],["FT","FT(英呎)"]];
+const UNIT_FORCE  = [["KN","KN"],["N","N"],["KGF","KGF"],["TONF","TONF"],["LBF","LBF"],["KIPS","KIPS"]];
+const LEN_FACTOR  = { M:1, CM:100, MM:1000, IN:1/0.0254, FT:1/0.3048 };
+const lenFactor = () => LEN_FACTOR[state.units.length] || 1;
+// 畫面上顯示用的單位符號 —— 輸入什麼單位,算什麼單位,匯出就是什麼單位,全程不換算
+const LEN_SYM = { M:"m", CM:"cm", MM:"mm", IN:"in", FT:"ft" };
+const UL = () => LEN_SYM[(state && state.units && state.units.length) || "M"] || "m";
+// 以公尺定義的物理門檻(例如 50 mm 弦線偏差)換算到目前單位,警示才不會失準
+const inU = mVal => mVal * lenFactor();
+// 弦線偏差之類的小量:依大小自動決定小數位,單位一律跟著標
+const devTxt = v => { const a = Math.abs(+v);
+  return (a < 1e-12 ? "0" : (+v).toFixed(a >= 100 ? 2 : a >= 1 ? 3 : a >= 0.01 ? 4 : 6)) + " " + UL(); };
+// 新增段/組時的預設尺寸也跟著單位走(在 MM 底下不會生出 100 mm 的橋)
+const dL = v => { const k = lenFactor(); return k === 1 ? v : +(v*k).toPrecision(12); };
+const mnum = v => String(+(+v).toFixed(6));
+const mlen = mnum;                                    // 座標直接輸出,不再乘換算係數
+
+function compressList(nums){
+  const a = [...new Set(nums)].sort((x,y) => x-y), out = [];
+  let i = 0;
+  while (i < a.length){
+    let j = i;
+    while (j+1 < a.length && a[j+1] === a[j]+1) j++;
+    if (j-i >= 2) out.push(`${a[i]}to${a[j]}`);
+    else for (let k = i; k <= j; k++) out.push(String(a[k]));
+    i = j+1;
+  }
+  return out.join(" ");
+}
+
+function elemLine(e){
+  const c = state.mct, isCable = e.type === "CABLE";
+  const type = isCable ? (c.cableType || "TENSTR") : e.type;
+  const base = `${e.num}, ${type}, ${e.mat}, ${e.sect}, ${e.i}, ${e.j}, 0`;
+  if (isCable)            return `${base}, ${Math.round(num(c.cableSub)) || 0}, ${mnum(num(c.cableExval) || 0)}`;
+  if (e.type === "TRUSS") return `${base}, 0, 0`;
+  return `${base}, 0`;
+}
+
+function groupMembers(){
+  const m = new Map();
+  const add = (g, ns, es) => {
+    if (!m.has(g)) m.set(g, { n:new Set(), e:new Set() });
+    const t = m.get(g); ns.forEach(x => t.n.add(x)); es.forEach(x => t.e.add(x));
+  };
+  MODEL.groups.forEach(r => {
+    const own = new Set(r.nodes.map(n => n.num));
+    add(r.gname, r.nodes.map(n => n.num), r.elems.map(e => e.num));
+    r.elems.forEach(e => add(r.gname, [e.i, e.j].filter(x => own.has(x)), []));
+  });
+  const allN = [], allE = [];
+  MODEL.groups.forEach(r => { r.nodes.forEach(n => allN.push(n.num)); r.elems.forEach(e => allE.push(e.num)); });
+  add(MODEL.prefix + "ALL", allN, allE);
+  return m;
+}
+
+function mctText(){
+  const C = MCT_COMMENT, I = MCT_FMT.indent, u = state.units, L = [];
+  const rule = C + "-".repeat(75);
+  L.push(rule);
+  L.push(`${C} 空間線型產生器  (spatial-curve-gen)`);
+  L.push(`${C} 產生時間 : ${new Date().toISOString().slice(0,16).replace("T"," ")}`);
+  L.push(`${C} 單位     : ${u.force}, ${u.length}   (座標即輸入值,未做任何換算)`);
+  L.push(`${C} 組       : ${MODEL.groups.length}`);
+  L.push(`${C} 節點     : ${MODEL.tot.n}    元素 : ${MODEL.tot.e}    群組 : ${MODEL.names.length}`);
+  L.push(`${C} 元素總長 : ${mnum(MODEL.tot.len3d)}`);
+  L.push(`${C}`);
+  MODEL.groups.forEach(r => L.push(`${C}   ${r.g.name}(${TYPES[r.g.type].name})` +
+    ` 節點 ${r.nodes.length ? r.nodeBase + "–" + (r.nodeBase + r.nodes.length - 1) : "—"}` +
+    ` 元素 ${r.elems.length ? r.elemBase + "–" + (r.elemBase + r.elems.length - 1) : "—"}`));
+  L.push(`${C}`);
+  L.push(`${C} ⚠ 匯入含 *UNIT 的 MCT 會改變模型當前的作用單位系統。`);
+  L.push(`${C} ⚠ 元素 beta angle 一律為 0。`);
+  L.push(`${C} 下方參數區塊可將本檔拖回產生器頁面,還原全部輸入重編。`);
+  L.push(rule);
+  embedParams(paramsJSON()).split("\n").forEach(l => L.push(l));
+  L.push("");
+
+  L.push("*UNIT");
+  L.push(`${C} ${MCT_FMT.hint.UNIT}`);
+  L.push(`${I}${u.force}, ${u.length}, ${u.heat}, ${u.temper}`);
+  L.push("");
+
+  L.push("*NODE");
+  L.push(`${C} ${MCT_FMT.hint.NODE}`);
+  MODEL.groups.forEach(r => {
+    if (!r.nodes.length) return;
+    L.push(`${C} --- ${r.g.name}(${TYPES[r.g.type].name}) ---`);
+    r.nodes.forEach(n => L.push(`${I}${n.num}, ${mlen(n.x)}, ${mlen(n.y)}, ${mlen(n.z)}`));
+  });
+  L.push("");
+
+  L.push("*ELEMENT");
+  L.push(`${C} ${MCT_FMT.hint.ELEMENT}`);
+  MODEL.groups.forEach(r => {
+    if (!r.elems.length) return;
+    L.push(`${C} --- ${r.g.name}(${TYPES[r.g.type].name}) ---`);
+    r.elems.forEach(e => L.push(I + elemLine(e)));
+  });
+  L.push("");
+
+  L.push("*GROUP");
+  L.push(`${C} ${MCT_FMT.hint.GROUP}`);
+  const gm = groupMembers();
+  MODEL.names.forEach(nm => {
+    const t = gm.get(nm) || { n:new Set(), e:new Set() };
+    L.push(`${I}${nm}, ${compressList([...t.n])}, ${compressList([...t.e])}, 0`);
+  });
+  L.push("");
+  return L.join("\r\n");
+}
+
+const csvEsc = v => { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+const toCSV = rows => "﻿" + rows.map(r => r.map(csvEsc).join(",")).join("\r\n");
+
+function nodeCSV(){
+  const U = UL();
+  const rows = [["節點編號","組","型別",`X (${U})`,`Y (${U})`,`Z (${U})`,`樁號 (${U})`,"方位角 (°)",
+    `當地半徑 (${U})`,`前一元素長度 3D (${U})`,`前一元素弦線偏差 (${U})`,"備註"]];
+  MODEL.groups.forEach(r => {
+    const prev = new Map(); r.elems.forEach(e => prev.set(e.j, e));
+    r.nodes.forEach(n => {
+      const pe = prev.get(n.num), kk = Math.abs(n.k || 0);
+      rows.push([n.num, r.g.name, TYPES[r.g.type].name,
+        n.x.toFixed(4), n.y.toFixed(4), n.z.toFixed(4),
+        Number.isFinite(n.s) ? fmtSta(n.s) : "",
+        Number.isFinite(n.az) ? n.az.toFixed(4) : "",
+        kk < 1e-9 ? "∞" : (1/kk).toFixed(3),
+        pe ? pe.len3d.toFixed(4) : "", pe ? pe.dev.toFixed(6) : "",
+        [n.forced && "強制節點", n.deck && "連接下端", n.fanSrc && "扇形起點", n.fanMid && "扇形中間"]
+          .filter(Boolean).join("/")]);
+    });
+  });
+  return toCSV(rows);
+}
+function elemCSV(){
+  const U = UL();
+  const rows = [["元素編號","組","類型","材料","斷面","i節點","j節點",`平面弦長 (${U})`,`3D長度 (${U})`,
+    `弧長 (${U})`,`弦線偏差 (${U})`,"群組"]];
+  MODEL.groups.forEach(r => r.elems.forEach(e => rows.push([
+    e.num, r.g.name, e.type, e.mat, e.sect, e.i, e.j,
+    e.chord.toFixed(4), e.len3d.toFixed(4),
+    Number.isFinite(e.arc) ? e.arc.toFixed(4) : "", e.dev.toFixed(6), e.group])));
+  return toCSV(rows);
+}
+
+const FORMAT_VERSION = 3;
+const paramsJSON = () => JSON.stringify({ formatVersion:FORMAT_VERSION, tool:"spatial-curve-gen",
+  generated:new Date().toISOString(), state }, null, 1);
+const PARAM_BEGIN = "==== CURVE-GEN-PARAMS-BEGIN ====", PARAM_END = "==== CURVE-GEN-PARAMS-END ====";
+const embedParams = j => [MCT_COMMENT + " " + PARAM_BEGIN]
+  .concat(j.split("\n").map(l => MCT_COMMENT + " " + l))
+  .concat([MCT_COMMENT + " " + PARAM_END]).join("\n");
+function extractParams(text){
+  const lines = String(text).split(/\r?\n/);
+  const i0 = lines.findIndex(l => l.indexOf(PARAM_BEGIN) >= 0);
+  const i1 = lines.findIndex(l => l.indexOf(PARAM_END) >= 0);
+  if (i0 < 0 || i1 <= i0) return null;
+  try { return JSON.parse(lines.slice(i0+1, i1).map(l => l.replace(/^\s*;\s?/, "")).join("\n")); }
+  catch (e){ return null; }
+}
+function download(name, text, mime){
+  const b = new Blob([text], { type:mime || "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+/* ==========================================================================
+   狀態
+   ========================================================================== */
+const DEF_STATE = () => ({
+  groups:[],
+  numbering:{ nodeBase:1001, elemBase:1001, inc:1000 },
+  groupPrefix:"G_",
+  units:{ length:"M", force:"KN", heat:"KJ", temper:"C" },
+  mct:{ cableType:"TENSTR", cableSub:2, cableExval:0 },
+  view:{ profMode:"auto", az:90, zScale:1, zAuto:true }
+});
+let state = DEF_STATE();
+let MODEL = { groups:[], byId:new Map(), tot:{ n:0, e:0, len3d:0 }, names:[], prefix:"G_", inc:1000 };
+let ERRS = [], WARNS = [], SEL = null, SELNODE = null, SELELEM = null;
+// 節點 / 元素的一次性平移旋轉輸入(不進 state,不進復原堆疊)
+let XFT = XF_DEF();
+
+function normState(s){
+  const d = DEF_STATE();
+  s.numbering = { ...d.numbering, ...(s.numbering || {}) };
+  s.units     = { ...d.units, ...(s.units || {}) };
+  s.mct       = { ...d.mct, ...(s.mct || {}) };
+  s.view      = { ...d.view, ...(s.view || {}) };
+  s.groupPrefix = s.groupPrefix || "G_";
+  if (!Array.isArray(s.groups)) s.groups = [];
+  s.groups.forEach(g => {
+    if (!g.id) g.id = newId();
+    const n = +String(g.id).replace(/\D/g, "");
+    if (Number.isFinite(n) && n >= SEQ) SEQ = n + 1;
+    const base = defaultGroup(g.type);
+    const keepId = g.id;
+    Object.keys(base).forEach(k => { if (g[k] === undefined) g[k] = base[k]; });
+    g.id = keepId;
+    g.xf = { ...XF_DEF(), ...(g.xf || {}) };
+    if (g.type === "CURVE"){
+      if (!g.edits || typeof g.edits !== "object") g.edits = {};
+      if (!Array.isArray(g.dels)) g.dels = [];
+      if (!Array.isArray(g.pieces) || !g.pieces.length) g.pieces = [{ ...defaultPiece("LINE"), cont:false }];
+      g.pieces = g.pieces.map((pc, i) => {
+        const d = defaultPiece(pc.type || "LINE");
+        const out = { ...d, ...pc };
+        const sp0 = pc.split || {};
+        out.split = { ...SPLIT_DEF, ...sp0 };
+        // v3.4 以前:容差固定以 mm 輸入、其餘一律公尺
+        if (sp0.tol === undefined && Number.isFinite(+sp0.tolMm)) out.split.tol = (+sp0.tolMm)/1000;
+        delete out.split.tolMm;
+        out.xf = { ...XF_DEF(), ...(pc.xf || {}) };
+        if (i === 0) out.cont = false;
+        if (!contOn(out)) out.cont = false;             // 舊檔的下拉值可能是字串 "0"
+        out.endCont = (out.endCont === true || out.endCont === "1");
+        return out;
+      });
+    }
+  });
+  return s;
+}
+
+/* ---------- 換單位:數值要不要跟著換算 ---------- */
+const rnd12 = v => +(+v).toPrecision(12);
+const SC_G  = { OFFSET:["d","h"], LINKZ:["targetZ","snapTol"], FAN:["sx","sy","sz"] };
+const SC_PC = ["x1","y1","z1","x2","y2","z2","cx","cy","len","R","R2","pitch","sta","absorbTol"];
+const SC_SEG = ["L","R","R0","R1","Ls","A"];
+const SC_XF = ["dx","dy","dz","cx","cy","cz"];
+// 幾何大小不變、只換單位:所有長度性質的欄位一起乘 k
+function scaleModel(st, k){
+  const S = (o, keys) => { if (o) keys.forEach(key => {
+    const raw = o[key];
+    if (raw === "" || raw === null || raw === undefined) return;   // 留白代表「沒有這個值」,不能變成 0
+    const v = num(raw); if (Number.isFinite(v)) o[key] = rnd12(v*k); }); };
+  (st.groups || []).forEach(g => {
+    S(g, SC_G[g.type] || []);
+    if (g.type === "FAN" && g.fMode === "abs") S(g, ["f"]);
+    S(g.xf, SC_XF);
+    (g.pieces || []).forEach(pc => {
+      S(pc, SC_PC);
+      if (pc.fMode === "abs") S(pc, ["f"]);
+      S(pc.xf, SC_XF);
+      S(pc.split, ["spacing","maxSpacing","tol"]);
+      (pc.segments || []).forEach(sg => S(sg, SC_SEG));
+      (pc.profile || []).forEach(v => S(v, ["sta","z","L"]));
+      if (pc.forced) pc.forced = String(pc.forced).split(/[\s,;]+/).filter(Boolean)
+        .map(t => { const v = parseSta(t); return Number.isFinite(v) ? fmtSta(rnd12(v*k)) : t; }).join(", ");
+    });
+    if (g.edits) Object.keys(g.edits).forEach(ri => S(g.edits[ri], ["x","y","z"]));
+  });
+  return st;
+}
+
+/* ---------- 範例 ---------- */
+function demoState(){
+  const s = DEF_STATE();
+  const G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
+    pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p, cont:i === 0 ? false : (p.cont !== false) })), ...o });
+  const D = (t, o) => ({ type:t, ...o });
+
+  // 主曲線:線形鏈(含縱斷面)
+  const chain = G("主曲線", [D("CHAIN", { x1:0, y1:0, z1:100, az:90, sta:0,
+    segments:[{ type:"LINE", L:50 }, { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }, { type:"LINE", L:50 }],
+    profile:[{ sta:0, z:100, L:0 }, { sta:128.54, z:105.1416, L:100 }, { sta:257.08, z:100, L:0 }],
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } })], { etype:"BEAM", mat:1, sect:1 });
+  const off = { ...defaultGroup("OFFSET"), name:"左緣", ref:chain.id, d:-5, h:0, etype:"BEAM", mat:1, sect:1 };
+  const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:chain.id, b:off.id, every:2, etype:"BEAM", mat:1, sect:9 };
+
+  // 主索:塔頂直線 → 懸鏈線 → 支承直線,三段一組、接縫共用節點
+  const cable = (nm, y) => G(nm, [
+    D("LINE",  { cont:false, x1:380, y1:y, z1:100, endMode:"point", x2:400, y2:y, z2:130,
+                 split:{ ...SPLIT_DEF, count:2 } }),
+    D("SAG",   { x2:650, y2:y, z2:130, curve:"catenary", fMode:"ratio", f:0.1,
+                 split:{ ...SPLIT_DEF, count:25 } }),
+    D("LINE",  { endMode:"point", x2:670, y2:y, z2:100, split:{ ...SPLIT_DEF, count:2 } })
+  ], { etype:"CABLE", mat:2, sect:11 });
+  const cw = cable("主索西", -8), ce = cable("主索東", 8);
+  const hw = { ...defaultGroup("LINKZ"), name:"吊索西", ref:cw.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
+  const he = { ...defaultGroup("LINKZ"), name:"吊索東", ref:ce.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
+
+  // 螺旋匝道:直線引道 → 螺旋 → 直線
+  const hx = G("螺旋匝道", [
+    D("LINE",  { cont:false, x1:-260, y1:0, z1:100, endMode:"point", x2:-210, y2:0, z2:100,
+                 split:{ ...SPLIT_DEF, count:5 } }),
+    D("HELIX", { R:50, R2:"", az0:90, turns:2, pitch:12, dir:1, split:{ ...SPLIT_DEF, count:72 } }),
+    D("LINE",  { endMode:"polar", len:60, az:90, el:0, split:{ ...SPLIT_DEF, count:6 } })
+  ], { etype:"BEAM", mat:3, sect:4 });
+
+  // 拱肋:鉛直平面圓弧 + 兩端錨碇節點
+  const arc = G("拱肋", [
+    D("POINT", { cont:false, x2:400, y2:30, z2:100 }),
+    D("ARC",   { arcMode:"endpoints", plane:"V", dir:1, major:false,
+                 x2:650, y2:30, z2:100, R:180, split:{ ...SPLIT_DEF, count:24 } })
+  ], { etype:"BEAM", mat:1, sect:7 });
+
+  s.groups = [chain, off, xb, cw, ce, hw, he, hx, arc];
+  return s;
+}
+
+/* ==========================================================================
+   8. UI — 樹
+   ========================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const enabled = () => state.groups.filter(g => g.on !== false);
+
+function groupSummary(g){
+  const r = MODEL.byId ? MODEL.byId.get(g.id) : null;
+  if (g.on === false) return "停用";
+  if (!r) return "—";
+  if (r.stat.err) return r.stat.err;
+  if (TYPES[g.type].fam === "con") return r.elems.length + " 元素";
+  if (g.type === "CURVE") return `${(g.pieces||[]).length} 段 · ${r.nodes.length} 節點`;
+  return r.nodes.length + " 節點";
+}
+
+function renderTree(){
+  const rows = state.groups.map((g, i) => {
+    const T = TYPES[g.type], r = MODEL.byId ? MODEL.byId.get(g.id) : null;
+    const bad = (r && r.stat.err) || (r && r.numClash);
+    return `<div class="it${SEL === g.id ? " on" : ""}${bad ? " err" : ""}" data-id="${g.id}" draggable="true">
+      <span class="sw${g.on === false ? " off" : ""}" style="background:${T.color}"></span>
+      <span class="nm">${esc(g.name)}</span>
+      <span class="ty">${T.name}</span>
+      <span class="meta">${esc(groupSummary(g))}</span></div>`;
+  }).join("");
+  const menu = ["geo","con"].map(fam => `<div class="mh">${fam === "geo" ? "幾何族(產生節點)" : "連接族(連接既有組)"}</div>` +
+    Object.entries(TYPES).filter(([,T]) => T.fam === fam).map(([k,T]) =>
+      `<button data-new="${k}"><span class="sw" style="background:${T.color}"></span>${T.name}</button>`).join("")).join("");
+  $("#tree").innerHTML =
+    `<div class="grp">組(${state.groups.length})</div>` +
+    (rows || `<div class="grp" style="font-weight:400;text-transform:none;letter-spacing:0;padding:2px 12px 8px">尚無任何組</div>`) +
+    `<div class="addwrap"><button class="addbtn" id="add-btn">+ 新增組…</button>
+       <div class="menu" id="add-menu" hidden>${menu}</div></div>
+     <div class="grp">全域</div>
+     <div class="it${SEL === "_num" ? " on" : ""}" data-id="_num"><span class="sw" style="background:#8b95a3"></span>
+       <span class="nm">編號總表</span><span class="meta">增量 ${state.numbering.inc}</span></div>
+     <div class="it${SEL === "_out" ? " on" : ""}" data-id="_out"><span class="sw" style="background:#8b95a3"></span>
+       <span class="nm">輸出</span><span class="meta">${state.units.force}, ${state.units.length}</span></div>`;
+}
+
+$("#tree").addEventListener("click", e => {
+  if (e.target.closest("#add-btn")){ $("#add-menu").hidden = !$("#add-menu").hidden; return; }
+  const nb = e.target.closest("[data-new]");
+  if (nb){
+    snapshot("new:" + Date.now());
+    const t = nb.dataset.new;
+    const n = state.groups.filter(g => g.type === t).length + 1;
+    const g = defaultGroup(t, n);
+    state.groups.push(g); SEL = g.id;
+    $("#add-menu").hidden = true; recompute(true); return;
+  }
+  const it = e.target.closest(".it");
+  if (it){ SEL = it.dataset.id; render(); }
+});
+document.addEventListener("click", e => {
+  if (!e.target.closest(".addwrap")) { const m = $("#add-menu"); if (m) m.hidden = true; }
+});
+
+/* ==========================================================================
+   8b. UI — 屬性面板
+   ========================================================================== */
+function fld(label, key, val, opt){
+  opt = opt || {};
+  const id = "f_" + key.replace(/\W/g, "_");
+  let inner;
+  if (opt.select){
+    inner = `<select data-k="${key}"${opt.disabled ? " disabled" : ""}>` +
+      opt.select.map(([v,t]) => `<option value="${esc(v)}"${String(v) === String(val) ? " selected" : ""}>${esc(t)}</option>`).join("") + `</select>`;
+  } else if (opt.text){
+    inner = `<input type="text" data-k="${key}" value="${esc(val == null ? "" : val)}"${opt.ph ? ` placeholder="${esc(opt.ph)}"` : ""}${opt.disabled ? " disabled" : ""}>`;
+  } else if (opt.area){
+    inner = `<textarea data-k="${key}" rows="${opt.rows || 2}"${opt.ph ? ` placeholder="${esc(opt.ph)}"` : ""}>${esc(val == null ? "" : val)}</textarea>`;
+  } else if (opt.check){
+    return `<label class="chk" style="margin-top:14px"><input type="checkbox" data-k="${key}"${val ? " checked" : ""}> ${esc(label)}</label>`;
+  } else {
+    inner = `<input type="number" step="any" data-k="${key}" value="${Number.isFinite(+val) ? val : ""}"${opt.disabled ? " disabled" : ""}>`;
+  }
+  return `<label class="f"><span>${esc(label)}</span>${inner}</label>`;
+}
+const SEC = (h, tail, body, cls) => `<div class="sec${cls ? " " + cls : ""}"><div class="h">${esc(h)}<span class="tail" data-ro>${tail || ""}</span></div><div class="b">${body}</div></div>`;
+const OUT = rows => `<div class="out" data-ro>${rows.map(([k,v]) => `<div><span class="k">${esc(k)}</span> <b>${v}</b></div>`).join("")}</div>`;
+const P3 = (px, py, pz, lx, ly, lz) => fld(lx, px, undefined) ; // placeholder(未使用)
+
+const refOptions = (self, famFilter) => state.groups
+  .filter(g => g.id !== self && (!famFilter || TYPES[g.type].fam === famFilter))
+  .map(g => [g.id, `${g.name}(${TYPES[g.type].name})`]);
+
+/* ---- 平移與旋轉的共用欄位 ---- */
+const XF_SCOPE_AUTO = { group:"自動(範圍中心)", piece:"自動(本段起點)",
+                        node:"自動(節點自身)", elem:"自動(元素中點)" };
+function xfFields(k, xf, scope){
+  xf = { ...XF_DEF(), ...(xf || {}) };
+  const cm = xf.cmode || "auto";
+  return `<div class="fields g4">${
+      fld(`平移 dX (${UL()})`, k + "dx", xf.dx) +
+      fld(`平移 dY (${UL()})`, k + "dy", xf.dy) +
+      fld(`平移 dZ (${UL()})`, k + "dz", xf.dz) +
+      fld("旋轉角 (°)", k + "rot", xf.rot)}</div>
+    <div class="fields g4" style="margin-top:8px">${
+      fld("旋轉軸", k + "axis", xf.axis, { select:[["Z","Z(俯視轉)"],["X","X"],["Y","Y"]] }) +
+      fld("旋轉中心", k + "cmode", cm, { select:[["auto", XF_SCOPE_AUTO[scope] || "自動"],
+        ["start","起點"],["center","範圍中心"],["custom","自訂座標"]] }) +
+      (cm === "custom"
+        ? fld("中心 X", k + "cx", xf.cx) + fld("中心 Y", k + "cy", xf.cy) + fld("中心 Z", k + "cz", xf.cz)
+        : "")}</div>`;
+}
+// 整組:存成參數,隨時可改可復原
+function xfSecGroup(g){
+  if (g.type !== "CURVE" && g.type !== "OFFSET") return "";
+  const xf = { ...XF_DEF(), ...(g.xf || {}) };
+  const on = xfActive(xf);
+  return SEC("平移與旋轉(整組)",
+    on ? `<span style="color:var(--warn)">已套用</span>` : "未套用",
+    xfFields("xf.", xf, "group") +
+    `<div class="btns" style="margin-top:9px"><button class="btn d" data-op="xfrst">整組歸零</button></div>
+     <div class="hint">整組節點做<b>剛體變換</b>:元素長度、弦線偏差、編號都不受影響。
+       旋轉角<b>逆時針為正</b>(俯視);依附本組的偏置 / 連接組會<b>跟著移動</b>。</div>`);
+}
+
+function splitSec(pc, k, unitNote){
+  const sp = pc.split || SPLIT_DEF;
+  const modes = [["count","指定元素數"],["spacing","指定間距"],["tol","弦線偏差容差"]];
+  let f = fld("分割方式", k + "split.mode", sp.mode, { select:modes });
+  if (sp.mode === "count")   f += fld("元素數 N", k + "split.count", sp.count);
+  if (sp.mode === "spacing") f += fld(`間距 d (${UL()})`, k + "split.spacing", sp.spacing);
+  if (sp.mode === "tol") f += fld(`容差 (${UL()})`, k + "split.tol", sp.tol) +
+    fld(`最大間距 (${UL()})`, k + "split.maxSpacing", sp.maxSpacing);
+  if (sp.mode !== "count")
+    f += fld("餘數處理", k + "split.rem", sp.rem,
+      { select:[["even","均分吸收"],["keep","獨立留一段"],["merge","併入前一元素"],["trim","截短"]] });
+  return `<div class="fields g4">${f}</div>` + (unitNote ? `<div class="hint">${unitNote}</div>` : "");
+}
+function elemSec(g){
+  return SEC("元素(整組預設)", "", `<div class="fields g3">${
+    fld("類型", "etype", g.etype, { select:ELEM_TYPES }) +
+    fld("材料 ID", "mat", g.mat) + fld("斷面 ID", "sect", g.sect)}</div>
+    <div class="hint">個別段可在自己的「進階」裡覆寫。</div>`);
+}
+function numSec(g, r){
+  const auto = g.autoNum !== false;
+  // 自動配號時,欄位直接顯示「實際算出來的」編號並反灰,不再顯示過期的儲存值
+  const nb = auto && r ? r.nodeBase : g.nodeBase;
+  const eb = auto && r ? r.elemBase : g.elemBase;
+  return SEC("編號", r ? `節點 ${r.nodes.length ? r.nodeBase + "–" + (r.nodeBase + r.nodes.length - 1) : "—"} · 元素 ${r.elems.length ? r.elemBase + "–" + (r.elemBase + r.elems.length - 1) : "—"}` : "",
+    `<div class="btns" style="margin-bottom:10px">
+      <button class="tgl${auto ? " on" : ""}" data-op="autonum"><span class="dot"></span>自動編號</button></div>
+    <div class="fields g3">${
+      fld(auto ? "節點起始(自動)" : "節點起始", "nodeBase", nb, { disabled:auto }) +
+      fld(auto ? "元素起始(自動)" : "元素起始", "elemBase", eb, { disabled:auto })}</div>
+    <div class="hint"><b>按下(主題色)= 自動編號</b>:全域起始 + 本組在清單中的順序 × 號段增量;
+      彈起就自己填起始號。</div>`);
+}
+
+/* ---- 線形鏈段的子表 ---- */
+function chainTables(pc, k, info){
+  const segRows = (pc.segments || []).map((s, i) => {
+    let p = "";
+    const kk = `${k}segments.${i}.`;
+    if (s.type === "LINE") p = fld("", kk + "L", s.L);
+    if (s.type === "ARC") p = fld("", kk + "R", s.R) +
+      fld("", kk + "dir", s.dir, { select:[["1","右偏"],["-1","左偏"]] }) +
+      (s.defBy === "length" ? fld("", kk + "L", s.L) : fld("", kk + "delta", s.delta));
+    if (s.type === "SPIRAL") p = fld("", kk + "R0", s.R0inf ? "" : s.R0, { disabled:!!s.R0inf }) +
+      fld("", kk + "R1", s.R1inf ? "" : s.R1, { disabled:!!s.R1inf }) +
+      fld("", kk + "dir", s.dir, { select:[["1","右偏"],["-1","左偏"]] }) +
+      fld("", kk + "Ls", s.Ls);
+    const bs = info && info.chain ? info.chain.segs.find(x => x.i === i) : null;
+    return `<tr><td class="n">${i+1}</td>
+      <td class="n" style="width:100px">${fld("", kk + "type", s.type,
+        { select:[["LINE","直線"],["ARC","圓弧"],["SPIRAL","緩和曲線"]] })}</td>
+      <td><div class="fields" style="grid-template-columns:repeat(${s.type==="LINE"?1:s.type==="ARC"?3:4},1fr)">${p}</div></td>
+      <td class="n" style="white-space:nowrap" data-ro>${bs ? fmtSta(bs.s0) + " → " + fmtSta(bs.s1) : "—"}</td>
+      <td style="width:22px"><button class="iconbtn danger" data-op="delseg" data-p="${pc._i}" data-i="${i}">✕</button></td></tr>`;
+  }).join("");
+  const P = pc.profile || [];
+  const vpiRows = P.map((v, i) => {
+    const isEnd = (i === 0 || i === P.length - 1);
+    return `<tr><td class="n">${i === 0 ? "起" : (isEnd ? "終" : i)}</td>
+      <td style="width:118px">${fld("", `${k}profile.${i}.sta`, fmtSta(num(v.sta) || 0), { text:true })}</td>
+      <td style="width:92px">${fld("", `${k}profile.${i}.z`, v.z)}</td>
+      <td style="width:92px">${fld("", `${k}profile.${i}.L`, isEnd ? 0 : v.L, { disabled:isEnd })}</td>
+      <td style="width:22px"><button class="iconbtn danger" data-op="delvpi" data-p="${pc._i}" data-i="${i}">✕</button></td></tr>`;
+  }).join("");
+  return `<div class="lbl" style="margin:4px 0 5px">子段(切線連續)</div>
+    <table class="t"><thead><tr><th>#</th><th>型別</th>
+      <th>參數<span style="font-weight:400;color:var(--ink-3)">(直線 L / 圓弧 R·偏向·Δ / 緩和 R0·R1·偏向·Ls)</span></th>
+      <th>起訖樁號</th><th></th></tr></thead><tbody>${segRows}</tbody></table>
+    <div class="btns" style="margin-top:7px">
+      <button class="btn p" data-op="addseg" data-p="${pc._i}" data-t="LINE">+ 直線</button>
+      <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="ARC">+ 圓弧</button>
+      <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="SPIRAL">+ 緩和曲線</button></div>
+    <div class="lbl" style="margin:12px 0 5px">縱斷面(選用)${P.length ? "" : " — 無,整段維持起點高程"}</div>
+    ${P.length ? `<table class="t"><thead><tr><th></th><th>樁號</th><th>高程 Z</th><th>豎曲線長 L</th><th></th></tr></thead><tbody>${vpiRows}</tbody></table>` : ""}
+    <div class="btns" style="margin-top:7px">
+      <button class="btn" data-op="addvpi" data-p="${pc._i}">+ VPI</button>
+      ${P.length ? `<button class="btn d" data-op="clearvpi" data-p="${pc._i}">清除縱斷面</button>` : ""}</div>
+    <div class="fields g4" style="margin-top:10px">${
+      fld("起始樁號", k + "sta", fmtSta(num(pc.sta) || 0), { text:true }) +
+      fld("起始方位角 (°)", k + "az", pc.az) +
+      fld("強制節點樁號", k + "forced", pc.forced, { text:true, ph:"0k+120.000, 180.5" }) +
+      fld(`吸收容差 (${UL()})`, k + "absorbTol", pc.absorbTol)}</div>`;
+}
+
+/* ---- 單一段的卡片 ---- */
+function pieceCard(g, pc, pi, info){
+  const k = `pieces.${pi}.`;
+  const first = pi === 0;
+  const cont = !first && contOn(pc);
+  // 終點接續「下一段的起點」:下一段必須是自訂座標起點,否則會循環定義
+  const nx = (g.pieces || [])[pi+1];
+  const ecOK = !!nx && !contOn(nx) && !!pieceStart(nx) && !(pc.type === "ARC" && pc.arcMode === "center");
+  const ec = ecOK && (pc.endCont === true || pc.endCont === "1");
+  const endSel = END_CONT_T[pc.type]
+    ? fld("終點", k + "endCont", ec ? "1" : "0",
+        { disabled:!ecOK,
+          select:ecOK ? [["0","自訂"],["1","接續下段起點"]]
+                      : [["0", nx ? "自訂(下段沒有自訂起點)" : "自訂(後面沒有段)"]] })
+    : "";
+  const endHint = ec
+    ? `<div class="hint">終點 = <b>下一段的起點</b>,接縫節點<b>共用不重複</b>;下一段起點一改,這一段就跟著拉過去。</div>`
+    : "";
+  const P1 = () => fld("起點 X", k + "x1", pc.x1) + fld("起點 Y", k + "y1", pc.y1) + fld("起點 Z", k + "z1", pc.z1);
+  const P2 = (l) => fld((l||"終點") + " X", k + "x2", pc.x2) + fld((l||"終點") + " Y", k + "y2", pc.y2) + fld((l||"終點") + " Z", k + "z2", pc.z2);
+  let body = "";
+
+  const startRow = `<div class="fields g4">${
+      fld("起點", k + "cont", cont ? "1" : "0",
+        { select:first ? [["0","自訂座標"]] : [["1","接續前段終點"],["0","自訂座標"]], disabled:first }) +
+      (cont ? `<div class="hint" style="grid-column:span 3;margin:14px 0 0">起點 = 前段終點,<b>接縫節點共用不重複</b>。</div>` : P1())}</div>`;
+
+  if (pc.type === "LINE"){
+    body = startRow + `<div class="fields g4" style="margin-top:8px">${
+      endSel + (ec ? "" :
+        fld("終點定義", k + "endMode", pc.endMode, { select:[["point","終點座標"],["polar","長度 + 方位角 + 仰角"]] }) +
+        (pc.endMode === "polar"
+          ? fld(`長度 L (${UL()})`, k + "len", pc.len) + fld("方位角 (°)", k + "az", pc.az) + fld("仰角 (°)", k + "el", pc.el)
+          : P2()))}</div>` + endHint;
+  }
+  else if (pc.type === "ARC"){
+    const modeF = fld("定義方式", k + "arcMode", pc.arcMode,
+      { select:[["endpoints","端點 + 半徑"],["center","圓心 + 轉角"]] });
+    if (pc.arcMode === "center"){
+      body = startRow + `<div class="fields g4" style="margin-top:8px">${modeF +
+        fld("圓心 X", k + "cx", pc.cx) + fld("圓心 Y", k + "cy", pc.cy) + fld("轉角 Δ (°)", k + "delta", pc.delta)}</div>
+        <div class="fields g4" style="margin-top:8px">${
+        fld("偏向", k + "dir", pc.dir, { select:[["1","右轉"],["-1","左轉"]] }) +
+        fld("終點高程 Z", k + "z2", pc.z2)}</div>
+        <div class="hint">半徑由起點到圓心的距離決定;<b>僅水平面</b>,高程沿弧線線性內插。</div>`;
+    } else {
+      body = startRow + `<div class="fields g4" style="margin-top:8px">${modeF + endSel + (ec ? "" : P2())}</div>
+        ${endHint}
+        <div class="fields g4" style="margin-top:8px">${
+        fld("半徑 R", k + "R", pc.R) +
+        fld("平面", k + "plane", pc.plane, { select:[["H","水平"],["V","鉛直(拱肋)"]] }) +
+        fld(pc.plane === "V" ? "凸向" : "偏向", k + "dir", pc.dir,
+          { select:pc.plane === "V" ? [["1","上凸(拱)"],["-1","下凹"]] : [["1","右轉"],["-1","左轉"]] }) +
+        fld("弧段", k + "major", pc.major ? "1" : "0", { select:[["0","劣弧(短)"],["1","優弧(長)"]] })}</div>
+        <div class="hint">兩點加半徑有<b>兩組解</b>:偏向決定圓心在哪一側,弧段決定走短的還是長的。半徑須 ≥ 弦長一半。</div>`;
+    }
+  }
+  else if (pc.type === "SAG"){
+    body = startRow + `<div class="fields g4" style="margin-top:8px">${endSel + (ec ? "" : P2())}</div>
+      ${endHint}
+      <div class="fields g3" style="margin-top:8px">${
+        fld("曲線", k + "curve", pc.curve, { select:[["parabola","拋物線"],["catenary","懸鏈線"]] }) +
+        fld("垂度定義", k + "fMode", pc.fMode, { select:[["ratio","垂跨比 f/L"],["abs",`絕對值 (${UL()})`]] }) +
+        fld(pc.fMode === "ratio" ? "垂跨比" : `垂度 f (${UL()})`, k + "f", pc.f)}</div>
+      <div class="hint">垂度自<b>弦線</b>量測、沿 −Z 下垂;跨距取兩端點的<b>平面</b>距離。</div>`;
+  }
+  else if (pc.type === "HELIX"){
+    body = startRow + (cont ? "" : `<div class="fields g4" style="margin-top:8px">${
+        fld("圓心 X", k + "cx", pc.cx) + fld("圓心 Y", k + "cy", pc.cy)}</div>`) +
+      `<div class="fields g4" style="margin-top:8px">${
+        fld("半徑 R", k + "R", pc.R) + fld("終止半徑(留白 = 等半徑)", k + "R2", pc.R2, { text:true }) +
+        fld("起始方位角 (°)", k + "az0", pc.az0) + fld("圈數", k + "turns", pc.turns)}</div>
+      <div class="fields g4" style="margin-top:8px">${
+        fld(`螺距(每圈升高 ${UL()})`, k + "pitch", pc.pitch) +
+        fld("旋向(俯視)", k + "dir", pc.dir, { select:[["1","順時針"],["-1","逆時針"]] })}</div>
+      <div class="hint">${cont ? "接續前段時,<b>圓心由起點與起始方位角反推</b>。" : ""}
+        midas 的 Rotate Copy 只能做<b>平面</b>圓弧;給終止半徑可做錐形螺旋。</div>`;
+  }
+  else if (pc.type === "CHAIN"){
+    body = startRow + `<div style="margin-top:10px">${chainTables(pc, k, info)}</div>`;
+  }
+  else if (pc.type === "POINT"){
+    body = `<div class="fields g4">${
+      fld("連接", k + "cont", cont ? "1" : "0",
+        { select:first ? [["0","獨立節點"]] : [["1","從前段拉一根直線元素"],["0","獨立節點(不連接)"]], disabled:first }) +
+      P2("座標")}</div>
+      <div class="hint">${cont ? "會從前段終點拉一根直線元素到這個座標。" : "只加一個節點,不產生元素——適合錨碇點、支承點。"}</div>`;
+  }
+
+  const stat = info ? `${(info.n1 - info.n0)} 節點 · ${(info.e1 - info.e0)} 元素` +
+    (info.len ? ` · ${info.len.toFixed(3)} ${UL()}` : (info.total ? ` · ${info.total.toFixed(3)} ${UL()}` : "")) : "—";
+  const adv = `<details class="adv"><summary>分割與元素覆寫</summary><div>
+      ${splitSec(pc, k, pc.type === "SAG" ? "「指定元素數」= 沿弦線等分;「指定間距」= 沿 3D 曲線等弧長。"
+        : pc.type === "HELIX" ? "「指定元素數」= 等圓心角。" : "")}
+      <div class="fields g4" style="margin-top:9px">${
+        fld("覆寫元素屬性", k + "ovr", !!pc.ovr, { check:true }) +
+        fld("類型", k + "etype", pc.etype, { select:ELEM_TYPES, disabled:!pc.ovr }) +
+        fld("材料 ID", k + "mat", pc.mat, { disabled:!pc.ovr }) +
+        fld("斷面 ID", k + "sect", pc.sect, { disabled:!pc.ovr })}</div></div></details>`;
+  const xfp = `<details class="adv"${xfActive(pc.xf) ? " open" : ""}><summary>平移與旋轉${
+      xfActive(pc.xf) ? "(已套用)" : ""}</summary><div>
+      ${xfFields(k + "xf.", pc.xf, "piece")}
+      <div class="btns" style="margin-top:9px"><button class="btn d" data-op="pxfrst" data-p="${pi}">本段歸零</button></div>
+      <div class="hint">只動<b>這一段</b>的節點;<b>接續本段的後面幾段會跟著走</b>,起點設成自訂座標的段不受影響。
+        旋轉中心預設是<b>本段起點</b>,所以單純轉方向不會把接縫扯開。</div></div></details>`;
+
+  return `<details class="pc"${pc._open ? " open" : ""} data-pi="${pi}">
+    <summary><span class="idx" style="background:${pieceColor(pi)}">${pi+1}</span>
+      <select data-k="${k}type" onclick="event.stopPropagation()">${
+        Object.entries(PIECES).map(([v,t]) => `<option value="${v}"${v===pc.type?" selected":""}>${t.name}</option>`).join("")}</select>
+      <span class="st" data-ro>${stat}</span>
+      <span class="grip" title="拖曳排序">⠿</span>
+      <button class="iconbtn danger" data-op="pdel" data-p="${pi}" title="刪除">✕</button>
+    </summary><div class="pcb">${body}${pc.type === "POINT" ? "" : adv}${xfp}</div></details>`;
+}
+
+function nodeSec(g, r){
+  if (!r || TYPES[g.type].fam === "con" || g.type !== "CURVE") return "";
+  const nEdit = (r.stat && r.stat.nEdit) || 0, nDel = (r.stat && r.stat.nDel) || 0;
+  const sel = (SELNODE && SELNODE.gid === g.id) ? r.nodes.find(n => n.ri === SELNODE.ri) : null;
+  const tail = sel ? `<span style="color:var(--accent)">已選取 #${sel.num}</span>`
+    : (nEdit || nDel) ? `<span style="color:var(--warn)">覆寫 ${nEdit} · 刪除 ${nDel}</span>`
+    : "點畫面上的節點即可編輯";
+  let body = "";
+  if (sel){
+    body = `<div class="fields g4">${
+      fld("節點編號", "@num", sel.num, { text:true, disabled:true }) +
+      fld("X", "@x", sel.x) + fld("Y", "@y", sel.y) + fld("Z", "@z", sel.z)}</div>
+      <div class="btns" style="margin-top:9px">
+        <button class="btn d" data-op="ndel">刪除此節點</button>
+        ${sel.edited ? `<button class="btn" data-op="nrst">還原座標</button>` : ""}
+        <button class="btn" data-op="nclr">取消選取</button></div>
+      <details class="adv" open><summary>平移與旋轉(此節點)</summary><div>
+        ${xfFields("$", XFT, "node")}
+        <div class="btns" style="margin-top:9px"><button class="btn p" data-op="xfnode">套用到此節點</button></div>
+        <div class="hint">套用後寫成<b>座標覆寫</b>,按「還原座標」即可取消;單一節點只有平移有效,
+          要旋轉請把旋轉中心設成<b>自訂座標</b>。</div></div></details>
+      <div class="hint" data-ro>第 ${sel.ri + 1} 個原始節點${sel.edited ? " · <b style=\"color:var(--warn)\">座標已覆寫</b>" : ""}。
+        <b>刪除後前後兩個節點會直接相連</b>;覆寫的節點不再計算弦線偏差。</div>`;
+  } else {
+    body = `<div class="hint" style="margin:0">在<b>俯視圖或立面圖</b>上點任一節點即可編輯座標、刪除或平移旋轉;
+      點<b>兩節點之間的線</b>則是選取整根元素。</div>`;
+  }
+  if (nEdit || nDel)
+    body += `<div class="btns" style="margin-top:9px"><button class="btn d" data-op="nclrall">清除本組全部覆寫</button></div>`;
+  return SEC("節點", tail, body, sel ? "hot" : "");
+}
+
+/* ---- 被選取的元素 ---- */
+function elemPickSec(g, r){
+  if (!r || g.type !== "CURVE" || !SELELEM || SELELEM.gid !== g.id) return "";
+  const e = r.elems.find(x => x.num === SELELEM.num);
+  if (!e) return "";
+  const ok = Number.isFinite(e.a.ri) && Number.isFinite(e.b.ri);
+  return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
+    `<div class="out" data-ro>
+      <div><span class="k">元素編號</span> <b>${e.num}</b></div>
+      <div><span class="k">節點 i–j</span> <b>${e.i} – ${e.j}</b></div>
+      <div><span class="k">長度</span> <b>${e.len3d.toFixed(4)} ${UL()}</b></div>
+      <div><span class="k">類型 / 材料 / 斷面</span> <b>${esc(e.type)} / ${e.mat} / ${e.sect}</b></div></div>
+     ${xfFields("$", XFT, "elem")}
+     <div class="btns" style="margin-top:9px">
+       <button class="btn p" data-op="xfelem"${ok ? "" : " disabled"}>套用到此元素(兩端節點)</button>
+       <button class="btn" data-op="eclr">取消選取</button></div>
+     <div class="hint">移動元素 = 同時移動<b>兩端節點</b>,寫成座標覆寫;與它們相連的其他元素會跟著變形。
+       ${ok ? "" : "<b>此元素的端點不屬於本組,無法移動。</b>"}</div>`, "hot");
+}
+
+function paneFor(g){
+  const T = TYPES[g.type], r = MODEL.byId.get(g.id);
+  const st = r ? r.stat : {};
+  const head = `<div class="ptitle">
+      <span class="nm">${esc(g.name)}</span><span class="fam ${T.fam}">${T.name}</span><span class="sp"></span>
+      <label class="chk"><input type="checkbox" data-k="on"${g.on !== false ? " checked" : ""}> 啟用</label>
+      <button class="btn" data-op="dup">複製</button><button class="btn d" data-op="del">刪除</button></div>`;
+  const nameSec = SEC("基本", `群組名 ${r ? esc(r.gname) : ""}`,
+    `<div class="fields g3">${fld("名稱", "name", g.name, { text:true })}</div>`);
+
+  let body = "";
+  if (g.type === "CURVE"){
+    const pcs = g.pieces || [];
+    pcs.forEach((pc, i) => pc._i = i);
+    const cards = pcs.map((pc, i) => pieceCard(g, pc, i, r ? r.pieces.find(p => p.pi === i) : null)).join("");
+    body = SEC("段", `${pcs.length} 段`, (cards || `<div class="hint" style="margin:0">尚無任何段。</div>`) +
+      `<div class="btns" style="margin-top:9px">` +
+      Object.entries(PIECES).map(([v,t]) => `<button class="btn${v==="LINE"?" p":""}" data-op="addpc" data-t="${v}">+ ${t.name}</button>`).join("") +
+      `</div><div class="hint">段與段預設<b>接續前段終點</b>並共用接縫節點;把「起點」改成自訂座標即可斷開。</div>`);
+  }
+  else if (g.type === "OFFSET"){
+    body = SEC("放置", "依附另一組", `<div class="fields g3">${
+        fld("基準組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id, "geo")] }) +
+        fld(`橫向 d(右正,${UL()})`, "d", g.d) + fld(`垂直 h(上正,${UL()})`, "h", g.h)}</div>
+      <div class="hint">節點沿基準組的<b>法線投影</b>,一一對應。曲線上當地半徑 = <b>R − 偏向·d</b>;
+        右轉曲線的圓心在右,所以<b>右側偏置是內側</b>。</div>`);
+  }
+  else if (g.type === "LINK2"){
+    body = SEC("連接", "逐節點", `<div class="fields g3">${
+        fld("組 A", "a", g.a, { select:[["","(未選)"], ...refOptions(g.id, "geo")] }) +
+        fld("組 B", "b", g.b, { select:[["","(未選)"], ...refOptions(g.id, "geo")] }) +
+        fld("每 n 個節點", "every", g.every)}</div>
+      <div class="hint">兩組<b>節點數必須相同</b>。不產生新節點,只產生元素。</div>`);
+  }
+  else if (g.type === "LINKZ"){
+    body = SEC("連接", "垂直投影", `<div class="fields g4">${
+        fld("來源組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id)] }) +
+        fld("目標高程 Z", "targetZ", g.targetZ) +
+        fld("第幾個節點(起)", "from", g.from) +
+        fld("第幾個節點(訖,0 = 到底)", "to", g.to)}</div>
+      <div class="fields g4" style="margin-top:8px">${
+        fld("每 n 個節點", "every", g.every) +
+        fld("下端節點", "bottom", g.bottom, { select:[["new","新增節點"],["snap","貼附既有節點"]] }) +
+        (g.bottom === "snap" ? fld(`貼附容差 (${UL()})`, "snapTol", g.snapTol) : "")}</div>
+      <div class="hint">每個來源節點垂直往下連到指定高程。已低於目標高程者<b>自動略過</b>。
+        來源組有多段時(例如主索的直線引段),用<b>節點範圍</b>只掛在需要的那一段上。</div>`);
+  }
+  else if (g.type === "FAN"){
+    body = SEC("起點", "", `<div class="fields g4">${
+        fld("來源", "srcMode", g.srcMode, { select:[["coord","自訂座標"],["node","既有節點編號"]] }) +
+        (g.srcMode === "node" ? fld("節點編號", "srcNode", g.srcNode)
+          : fld("X", "sx", g.sx) + fld("Y", "sy", g.sy) + fld("Z", "sz", g.sz))}</div>`) +
+      SEC("目標", st.count ? `${st.count} 根` : "", `<div class="fields g4">${
+        fld("目標組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id, "geo")] }) +
+        fld("第幾個節點(起)", "from", g.from) + fld("第幾個節點(訖)", "to", g.to) +
+        fld("每 n 個", "every", g.every)}</div>
+      <div class="fields g4" style="margin-top:8px">${
+        fld("每根分割 N", "div", g.div) +
+        fld("垂度定義", "fMode", g.fMode, { select:[["abs",`絕對值 (${UL()})`],["ratio","垂跨比"]], disabled:(num(g.div)||1) <= 1 }) +
+        fld("垂度 f", "f", g.f, { disabled:(num(g.div)||1) <= 1 })}</div>
+      <div class="hint">目標用<b>「第幾個節點」</b>而不是節點編號。<b>N = 1</b> 適合斜張索;
+        <b>N &gt; 1</b> 必須給垂度,否則共線節點在幾何非線性分析中橫向勁度為零。</div>`);
+  }
+
+  const rows = [];
+  if (r && !r.stat.err){
+    rows.push(["節點", st.n], ["元素", st.e]);
+    if (st.e){
+      rows.push(["元素長", `${st.minL.toFixed(3)} – ${st.maxL.toFixed(3)} ${UL()}`]);
+      rows.push(["3D 總長", st.len3d.toFixed(4) + " " + UL()]);
+      if (TYPES[g.type].fam === "geo") rows.push(["最大弦線偏差", devTxt(st.maxDev)]);
+    }
+    if (g.type === "OFFSET") rows.push(["基準組", esc(st.ref || "")]);
+  } else if (r && r.stat.err) rows.push(["狀態", `<span style="color:var(--err)">${esc(r.stat.err)}</span>`]);
+
+  return head + nameSec + body + xfSecGroup(g) + nodeSec(g, r) + elemPickSec(g, r) +
+    elemSec(g) + numSec(g, r) + SEC("結果", "", OUT(rows));
+}
+
+function paneNumbering(){
+  const rows = MODEL.groups.map(r => `<tr>
+    <td class="n">${esc(r.g.name)}</td><td class="n">${TYPES[r.g.type].name}</td>
+    <td>${r.nodes.length ? r.nodeBase + "–" + (r.nodeBase + r.nodes.length - 1) : "—"}</td>
+    <td>${r.elems.length ? r.elemBase + "–" + (r.elemBase + r.elems.length - 1) : "—"}</td>
+    <td>${r.nodes.length} / ${r.elems.length}</td>
+    <td class="n">${esc(r.gname)}</td></tr>`).join("");
+  return `<div class="ptitle"><span class="nm">編號總表</span><span class="fam geo">全域</span></div>` +
+    SEC("配置", MODEL.clash ? `<span style="color:var(--err)">${MODEL.clash} 組編號衝突</span>` : "無衝突 ✓",
+      `<div class="fields g4">${
+        fld("節點起始", "numbering.nodeBase", state.numbering.nodeBase) +
+        fld("元素起始", "numbering.elemBase", state.numbering.elemBase) +
+        fld("號段增量", "numbering.inc", state.numbering.inc) +
+        fld("群組名前綴", "groupPrefix", state.groupPrefix, { text:true })}</div>`) +
+    SEC("各組", `${MODEL.groups.length} 組 · 節點 ${MODEL.tot.n} · 元素 ${MODEL.tot.e}`,
+      `<div data-ro><table class="t"><thead><tr><th>組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>群組名</th></tr></thead>
+       <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何組</td></tr>`}</tbody></table></div>`);
+}
+
+function paneOutput(){
+  return `<div class="ptitle"><span class="nm">輸出</span><span class="fam geo">全域</span></div>` +
+    SEC("單位", `目前 <b>${esc(state.units.force)}, ${esc(state.units.length)}</b>`,
+      `<div class="hint" style="margin:0">單位在<b>最上方標題列</b>設定。
+        <b>輸入什麼單位,就算什麼單位</b> —— 畫面、CSV、檢核、匯出的 .mct 座標全部是同一組數字,
+        中間<b>不做任何換算</b>;.mct 開頭的 <code>*UNIT</code> 就寫這裡選的單位。
+        在標題列改單位時,會問要不要把既有數值一起換算(幾何大小不變)。</div>`) +
+    SEC("MCT 格式", "", `<div class="fields g4">${
+      fld("纜索元素類型", "mct.cableType", state.mct.cableType, { text:true }) +
+      fld("纜索 iSUB", "mct.cableSub", state.mct.cableSub) +
+      fld("纜索 EXVAL", "mct.cableExval", state.mct.cableExval)}</div>
+      <div class="msg warn" style="margin-top:9px">⚠ <span><b>MCT 格式尚未以 midas 實機 Export 驗證。</b>纜索元素的類型代碼與 EXVAL 是最可能需要調整的地方,上面三欄可直接改。</span></div>`) +
+    SEC("立面方向", "", `<div class="fields g3">${
+      fld("立面圖橫軸", "view.profMode", state.view.profMode,
+        { select:[["auto","自動(較長的水平方向)"],["x","沿 +X"],["y","沿 +Y"],["az","自訂方位角"]] }) +
+      fld("方位角 (°)", "view.az", state.view.az, { disabled:state.view.profMode !== "az" })}</div>
+      <div class="hint">組與組互不相干,沒有共同樁號,所以立面圖用<b>投影到某個水平方向</b>的距離當橫軸。
+        立面圖右上角也可以直接改,或在圖上 <b>Shift+拖曳</b> 轉視角。</div>`) +
+    SEC("下載", "", `<div class="btns">
+      <button class="btn p" data-op="mct">下載 .mct</button>
+      <button class="btn" data-op="mctcopy">複製 MCT 文字</button>
+      <button class="btn" data-op="csvn">節點 CSV</button>
+      <button class="btn" data-op="csve">元素 CSV</button>
+      <button class="btn" data-op="json">參數 JSON</button>
+      <button class="btn" data-op="load">載入 JSON / MCT…</button>
+      <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt"></div>
+      <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟,長度欄位標題會標上目前單位。
+        <b>.mct 檔頭嵌了完整參數(含單位),拖回本頁面即可還原重編。</b></div>`) +
+    `<details class="adv" open><summary>MCT 預覽</summary><div><pre id="mctprev" style="font-family:var(--mono);font-size:11px;line-height:1.45;margin:0;background:#fbfaf7;border:1px solid var(--line);border-radius:6px;padding:9px 11px;max-height:300px;overflow:auto;white-space:pre;color:var(--ink-2)"></pre></div></details>`;
+}
+
+function renderPane(){
+  const el = $("#pane");
+  if (SEL === "_num"){ el.innerHTML = paneNumbering(); return; }
+  if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); return; }
+  const g = state.groups.find(x => x.id === SEL);
+  if (!g){
+    el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
+      SEC("開始", "", `<div class="hint" style="margin:0;font-size:12.5px;line-height:1.8">
+        左側「<b>+ 新增組…</b>」加入一組。<br><br>
+        <b>一組 = 一串節點 + 連接它們的元素。</b>組與組預設互不相干,不共用節點、不繼承方向、不共用編號。
+        每一組自己決定起終點(全域座標直接給)、形狀、切幾個節點、元素種類與編號。<br><br>
+        要讓兩組產生關係,加一個<b>連接族</b>的組——那是唯一的耦合方式。</div>
+        <div class="btns" style="margin-top:12px"><button class="btn p" data-op="demo">載入範例看看</button></div>`);
+    return;
+  }
+  el.innerHTML = paneFor(g);
+}
+function renderMctPrev(){
+  const el = $("#mctprev"); if (!el) return;
+  const t = mctText().split("\r\n");
+  el.textContent = t.slice(0, 140).join("\n") + (t.length > 140 ? `\n… 其餘 ${t.length - 140} 行` : "");
+}
+
+
+/* ==========================================================================
+   8c. UI — 事件
+   ========================================================================== */
+function setPath(root, key, v){
+  const ps = key.split(".");
+  let o = root;
+  for (let i = 0; i < ps.length - 1; i++){
+    const k = /^\d+$/.test(ps[i]) ? +ps[i] : ps[i];
+    if (o[k] == null) o[k] = /^\d+$/.test(ps[i+1]) ? [] : {};
+    o = o[k];
+  }
+  const last = /^\d+$/.test(ps[ps.length-1]) ? +ps[ps.length-1] : ps[ps.length-1];
+  o[last] = v;
+}
+function assignFromEl(root, key, el){
+  let v;
+  if (el.type === "checkbox") v = el.checked;
+  else if (el.tagName === "SELECT"){
+    v = el.value;
+    if (key === "major") v = v === "1";
+    else if (/(^|\.)(cont|endCont)$/.test(key)) v = (v === "1");
+    else if (/(^|\.)dir$/.test(key)) v = Number(v);
+  }
+  else if (el.type === "number") v = el.value === "" ? NaN : Number(el.value);
+  else if (/(^|\.)sta$/.test(key)) v = parseSta(el.value);
+  else v = el.value;
+  setPath(root, key, v);
+}
+
+/* ---------- 復原 / 重做 ---------- */
+const HIST = { past:[], future:[], key:"", t:0 };
+function snapshot(key){
+  const now = Date.now();
+  // 同一個欄位連續輸入視為一次操作(700 ms 內)
+  if (key && key === HIST.key && now - HIST.t < 700){ HIST.t = now; return; }
+  HIST.past.push(JSON.stringify(state));
+  if (HIST.past.length > 80) HIST.past.shift();
+  HIST.future.length = 0;
+  HIST.key = key || ""; HIST.t = now;
+  syncHistBtns();
+}
+function applySnap(json){
+  state = normState(JSON.parse(json));
+  if (SEL && SEL[0] !== "_" && !state.groups.some(g => g.id === SEL))
+    SEL = state.groups.length ? state.groups[0].id : null;
+  if (SELNODE && !state.groups.some(g => g.id === SELNODE.gid)) SELNODE = null;
+  if (SELELEM && !state.groups.some(g => g.id === SELELEM.gid)) SELELEM = null;
+  HIST.key = ""; HIST.t = 0;
+  recompute(true); syncHistBtns();
+}
+function undo(){ if (!HIST.past.length) return;
+  HIST.future.push(JSON.stringify(state)); applySnap(HIST.past.pop()); }
+function redo(){ if (!HIST.future.length) return;
+  HIST.past.push(JSON.stringify(state)); applySnap(HIST.future.pop()); }
+function syncHistBtns(){
+  const u = $("#btn-undo"), r = $("#btn-redo");
+  if (u){ u.disabled = !HIST.past.length; u.title = `復原(Ctrl+Z)  ${HIST.past.length} 步`; }
+  if (r){ r.disabled = !HIST.future.length; r.title = `重做(Ctrl+Y)  ${HIST.future.length} 步`; }
+}
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if (k === "y" || (k === "z" && e.shiftKey)){ e.preventDefault(); redo(); }
+});
+
+/* ---------- 欄位寫入 ---------- */
+function applyField(root, k, el){
+  if (k[0] === "@"){                                   // 選取節點的座標覆寫
+    if (!SELNODE || SELNODE.gid !== root.id) return;
+    const r0 = MODEL.byId.get(root.id);
+    const nd = r0 && r0.nodes.find(n => n.ri === SELNODE.ri);
+    if (!nd) return;
+    root.edits = root.edits || {};
+    const cur = root.edits[SELNODE.ri] || { x:nd.x, y:nd.y, z:nd.z };
+    cur[k.slice(1)] = el.value === "" ? NaN : Number(el.value);
+    root.edits[SELNODE.ri] = cur;
+    return;
+  }
+  assignFromEl(root, k, el);
+  if (k.indexOf("view.") === 0) pview.locked = false;   // 換立面方向 → 重新框選
+  // 切換段型別 → 補上新型別缺少的預設參數(保留起點、分割、元素覆寫)
+  const mt = k.match(/^pieces\.(\d+)\.type$/);
+  if (mt && root.pieces){
+    const i = +mt[1], old = root.pieces[i];
+    const keep = { cont:old.cont, split:old.split, ovr:old.ovr, etype:old.etype, mat:old.mat, sect:old.sect,
+                   x1:old.x1, y1:old.y1, z1:old.z1, _open:old._open, _i:old._i };
+    root.pieces[i] = { ...defaultPiece(old.type), ...keep, type:old.type };
+  }
+}
+const rootOf = () => (SEL === "_num" || SEL === "_out") ? state : state.groups.find(g => g.id === SEL);
+
+/* 節點 / 元素的平移旋轉:一次算完寫成座標覆寫(edits),這樣拓樸與編號完全不受影響 */
+function applyXfToNodes(g, ris){
+  const r = MODEL.byId.get(g.id);
+  if (!r || !ris.length) return;
+  const nds = ris.map(ri => r.nodes.find(n => n.ri === ri)).filter(Boolean);
+  if (!nds.length) return;
+  const f = xfMake(XFT, nds);
+  if (!f){ alert("平移量與旋轉角都是 0,沒有東西可以套用。"); return; }
+  g.edits = g.edits || {};
+  nds.forEach(n => {
+    const q = f(n);
+    g.edits[n.ri] = { x:+q.x.toFixed(9), y:+q.y.toFixed(9), z:+q.z.toFixed(9) };
+  });
+  recompute(true);
+}
+
+/* 打字時「只更新唯讀顯示」,絕不重建輸入框 —— 重建會讓 <input type=number> 的游標跳到最前面 */
+function syncRO(){
+  const g = state.groups.find(x => x.id === SEL);
+  const html = (SEL === "_num") ? paneNumbering() : (SEL === "_out") ? paneOutput() : (g ? paneFor(g) : null);
+  if (html == null) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  const a = [...$("#pane").querySelectorAll("[data-ro]")];
+  const b = [...tmp.querySelectorAll("[data-ro]")];
+  if (a.length !== b.length){ renderPane(); return; }   // 結構變了才整塊重畫
+  a.forEach((x, i) => { if (x.innerHTML !== b[i].innerHTML) x.innerHTML = b[i].innerHTML; });
+  const mp = $("#mctprev"); if (mp) renderMctPrev();
+}
+
+$("#pane").addEventListener("input", e => {
+  const el = e.target, k = el.dataset.k; if (!k) return;
+  if (el.tagName === "SELECT" || el.type === "checkbox") return;   // 交給 change 處理
+  if (k[0] === "$"){ assignFromEl(XFT, k.slice(1), el); return; }  // 一次性變換輸入,不動 state
+  const root = rootOf(); if (!root) return;
+  snapshot("f:" + SEL + ":" + k);
+  applyField(root, k, el);
+  ERRS = []; WARNS = [];
+  MODEL = buildModel(state, ERRS, WARNS);
+  renderTree(); renderChecks();
+  if (!view.locked) fitView();
+  fitProf(); draw(); drawProf();
+  syncRO();
+});
+$("#pane").addEventListener("change", e => {
+  const el = e.target, k = el.dataset.k; if (!k) return;
+  if (k[0] === "$"){ assignFromEl(XFT, k.slice(1), el);
+    if (el.tagName === "SELECT") renderPane(); return; }
+  const root = rootOf(); if (!root) return;
+  const isSel = el.tagName === "SELECT" || el.type === "checkbox";
+  if (isSel) snapshot("c:" + SEL + ":" + k + ":" + Date.now());
+  applyField(root, k, el);
+  recompute(true);                                      // 離開欄位或改下拉時才整塊重畫
+});
+
+$("#pane").addEventListener("click", e => {
+  const b = e.target.closest("[data-op]"); if (!b) return;
+  const op = b.dataset.op;
+  if (!["mct","mctcopy","csvn","csve","json","load","nclr","eclr"].includes(op)) snapshot("op:" + op + ":" + Date.now());
+  const gi = state.groups.findIndex(g => g.id === SEL);
+  const g = state.groups[gi];
+  if (op === "demo"){ loadState(demoState()); return; }
+  if (op === "mct")     { download(`model_${stamp()}.mct`, mctText(), "text/plain;charset=utf-8"); return; }
+  if (op === "mctcopy") { copyText(mctText(), b); return; }
+  if (op === "csvn")    { download(`nodes_${stamp()}.csv`, nodeCSV(), "text/csv;charset=utf-8"); return; }
+  if (op === "csve")    { download(`elements_${stamp()}.csv`, elemCSV(), "text/csv;charset=utf-8"); return; }
+  if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); return; }
+  if (op === "load")    { $("#file-in").click(); return; }
+  if (!g) return;
+  if (op === "del"){ state.groups.splice(gi, 1); SEL = state.groups.length ? state.groups[Math.max(0, gi-1)].id : null; }
+  if (op === "dup"){ const c = clone(g); c.id = newId(); c.name = g.name + " 複本";
+    state.groups.splice(gi+1, 0, c); SEL = c.id; }
+  if (op === "ndel" && g && SELNODE && SELNODE.gid === g.id){
+    g.dels = g.dels || []; if (!g.dels.includes(SELNODE.ri)) g.dels.push(SELNODE.ri);
+    if (g.edits) delete g.edits[SELNODE.ri];
+    SELNODE = null; recompute(true); return; }
+  if (op === "nrst" && g && SELNODE && g.edits){ delete g.edits[SELNODE.ri]; recompute(true); return; }
+  if (op === "nclr"){ SELNODE = null; recompute(true); return; }
+  if (op === "nclrall" && g){ g.edits = {}; g.dels = []; SELNODE = null; recompute(true); return; }
+  if (op === "autonum"){ g.autoNum = (g.autoNum === false); recompute(true); return; }
+  if (op === "xfrst"){ g.xf = XF_DEF(); recompute(true); return; }
+  if (op === "pxfrst"){ const p0 = (g.pieces || [])[+b.dataset.p]; if (p0) p0.xf = XF_DEF(); recompute(true); return; }
+  if (op === "eclr"){ SELELEM = null; recompute(true); return; }
+  if (op === "xfnode"){
+    if (SELNODE && SELNODE.gid === g.id) applyXfToNodes(g, [SELNODE.ri]);
+    return;
+  }
+  if (op === "xfelem"){
+    const r0 = MODEL.byId.get(g.id);
+    const e0 = (r0 && SELELEM && SELELEM.gid === g.id) ? r0.elems.find(x => x.num === SELELEM.num) : null;
+    if (e0 && Number.isFinite(e0.a.ri) && Number.isFinite(e0.b.ri)) applyXfToNodes(g, [e0.a.ri, e0.b.ri]);
+    return;
+  }
+  const openSet = new Set([...document.querySelectorAll("details.pc[open]")].map(d => +d.dataset.pi));
+  const pcOf = () => (g.pieces || [])[+b.dataset.p];
+  if (op === "addpc"){
+    g.pieces = g.pieces || [];
+    const pc = defaultPiece(b.dataset.t);
+    if (!g.pieces.length) pc.cont = false;
+    g.pieces.push(pc); openSet.clear(); openSet.add(g.pieces.length - 1);
+  }
+  if (op === "pdel"){ g.pieces.splice(+b.dataset.p, 1); openSet.clear(); }
+  const pc = pcOf();
+  if (op === "addseg" && pc){ pc.segments = pc.segments || [];
+    const t = b.dataset.t;
+    pc.segments.push(t === "LINE" ? { type:"LINE", L:50 }
+      : t === "ARC" ? { type:"ARC", R:100, dir:1, defBy:"delta", delta:45 }
+      : { type:"SPIRAL", R0inf:true, R1inf:false, R1:100, dir:1, defBy:"Ls", Ls:50 }); }
+  if (op === "delseg" && pc) pc.segments.splice(+b.dataset.i, 1);
+  if (op === "addvpi" && pc){
+    pc.profile = pc.profile || [];
+    if (pc.profile.length < 2){
+      const r = MODEL.byId.get(g.id);
+      const info = r && r.pieces.find(x => x.pi === pc._i);
+      const s0 = num(pc.sta) || 0, s1 = s0 + (info && info.chain ? info.chain.total : 100);
+      const z0 = (info && info.chain) ? info.chain.z0 : (num(pc.z1) || 0);
+      pc.profile = [{ sta:s0, z:z0, L:0 }, { sta:s1, z:z0, L:0 }];
+    } else {
+      const P = pc.profile, a = P[P.length-2], b2 = P[P.length-1];
+      P.splice(P.length-1, 0, { sta:(a.sta + b2.sta)/2, z:(a.z + b2.z)/2, L:0 });
+    }
+  }
+  if (op === "delvpi" && pc){ pc.profile.splice(+b.dataset.i, 1); if (pc.profile.length < 2) pc.profile = []; }
+  if (op === "clearvpi" && pc) pc.profile = [];
+  if (g.pieces) g.pieces.forEach((x, i) => x._open = openSet.has(i));
+  recompute(true);
+});
+
+/* ---------- 拖曳排序 ---------- */
+let DRAG = null;
+$("#pane").addEventListener("mousedown", e => {
+  const gp = e.target.closest(".grip"); if (!gp) return;
+  const d = gp.closest("details.pc"); if (d) d.draggable = true;
+});
+$("#pane").addEventListener("dragstart", e => {
+  const d = e.target.closest("details.pc"); if (!d) return;
+  DRAG = { kind:"piece", from:+d.dataset.pi };
+  d.classList.add("drag");
+  e.dataTransfer.effectAllowed = "move";
+  try { e.dataTransfer.setData("text/plain", String(DRAG.from)); } catch (err){}
+});
+$("#pane").addEventListener("dragover", e => {
+  if (!DRAG || DRAG.kind !== "piece") return;
+  const d = e.target.closest("details.pc"); if (!d) return;
+  e.preventDefault();
+  $("#pane").querySelectorAll("details.pc.over").forEach(x => x.classList.remove("over"));
+  d.classList.add("over");
+});
+$("#pane").addEventListener("drop", e => {
+  if (!DRAG || DRAG.kind !== "piece") return;
+  const d = e.target.closest("details.pc"); if (!d) return;
+  e.preventDefault();
+  const to = +d.dataset.pi, from = DRAG.from;
+  const g = state.groups.find(x => x.id === SEL);
+  if (g && g.pieces && from !== to){
+    snapshot("dragp:" + Date.now());
+    g.pieces.splice(to, 0, g.pieces.splice(from, 1)[0]);
+    if (g.pieces[0]) g.pieces[0].cont = false;
+    g.pieces.forEach((pc, i) => pc._open = (i === to));
+    recompute(true);
+  }
+  DRAG = null;
+});
+$("#pane").addEventListener("dragend", () => {
+  $("#pane").querySelectorAll("details.pc").forEach(x => {
+    x.draggable = false; x.classList.remove("drag","over"); });
+  DRAG = null;
+});
+
+$("#tree").addEventListener("dragstart", e => {
+  const it = e.target.closest(".it"); if (!it || it.dataset.id.startsWith("_")) return;
+  DRAG = { kind:"group", from:state.groups.findIndex(g => g.id === it.dataset.id) };
+  it.classList.add("drag");
+  e.dataTransfer.effectAllowed = "move";
+  try { e.dataTransfer.setData("text/plain", it.dataset.id); } catch (err){}
+});
+$("#tree").addEventListener("dragover", e => {
+  if (!DRAG || DRAG.kind !== "group") return;
+  const it = e.target.closest(".it"); if (!it || it.dataset.id.startsWith("_")) return;
+  e.preventDefault();
+  $("#tree").querySelectorAll(".it.over").forEach(x => x.classList.remove("over"));
+  it.classList.add("over");
+});
+$("#tree").addEventListener("drop", e => {
+  if (!DRAG || DRAG.kind !== "group") return;
+  const it = e.target.closest(".it"); if (!it || it.dataset.id.startsWith("_")) return;
+  e.preventDefault();
+  const to = state.groups.findIndex(g => g.id === it.dataset.id), from = DRAG.from;
+  if (from >= 0 && to >= 0 && from !== to){
+    snapshot("dragg:" + Date.now());
+    state.groups.splice(to, 0, state.groups.splice(from, 1)[0]);
+    recompute(true);
+  }
+  DRAG = null;
+});
+$("#tree").addEventListener("dragend", () => {
+  $("#tree").querySelectorAll(".it").forEach(x => x.classList.remove("drag","over"));
+  DRAG = null;
+});
+
+/* ---------- 版面:預覽區寬度可拖曳、左右可對調 ---------- */
+const LAY_W = "scg.rightW", LAY_S = "scg.swap";
+const app = $("#app");
+function setRightW(px){
+  const w = clamp(Math.round(px), 240, Math.max(300, window.innerWidth - 480));
+  app.style.setProperty("--rw", w + "px");
+  try { localStorage.setItem(LAY_W, String(w)); } catch (err){}
+  if (!view.locked) fitView();
+  if (!pview.locked) fitProf();
+  draw(); drawProf();
+}
+function setSwap(on){
+  app.classList.toggle("swap", !!on);
+  try { localStorage.setItem(LAY_S, on ? "1" : "0"); } catch (err){}
+  const b = $("#btn-swap"); if (b) b.title = on ? "還原:輸入區在中間" : "輸入區與預覽區左右對調";
+  if (!view.locked) fitView();
+  if (!pview.locked) fitProf();
+  draw(); drawProf();
+}
+(function initLayout(){
+  let w = 330, sw = false;
+  try { w = +localStorage.getItem(LAY_W) || 330; sw = localStorage.getItem(LAY_S) === "1"; } catch (err){}
+  app.style.setProperty("--rw", clamp(w, 240, 900) + "px");
+  app.classList.toggle("swap", sw);
+})();
+let RSZ = null;
+$("#resizer").addEventListener("mousedown", e => {
+  e.preventDefault();
+  RSZ = { x:e.clientX, w:$("#resizer").getBoundingClientRect().right };
+  $("#resizer").classList.add("on");
+  document.body.style.cursor = "col-resize";
+});
+window.addEventListener("mousemove", e => {
+  if (!RSZ) return;
+  setRightW(window.innerWidth - e.clientX - 3);        // 第 4 欄永遠貼著右緣
+});
+window.addEventListener("mouseup", () => {
+  if (!RSZ) return;
+  RSZ = null; $("#resizer").classList.remove("on"); document.body.style.cursor = "";
+});
+$("#resizer").addEventListener("dblclick", () => setRightW(330));
+$("#btn-swap").onclick = () => setSwap(!app.classList.contains("swap"));
+
+/* ---------- 標題列的單位 ---------- */
+function syncUnitUI(){
+  const a = $("#u-len"), b = $("#u-force");
+  if (a && a.value !== state.units.length) a.value = state.units.length;
+  if (b && b.value !== state.units.force) b.value = state.units.force;
+}
+function changeLenUnit(nu){
+  const old = state.units.length;
+  if (!LEN_FACTOR[nu] || nu === old){ syncUnitUI(); return; }
+  const k = LEN_FACTOR[nu]/LEN_FACTOR[old];
+  let scale = false;
+  if ((state.groups || []).length)
+    scale = confirm(`長度單位 ${old} → ${nu}\n\n` +
+      `要把現有的長度數值一起換算(×${+k.toPrecision(10)})嗎?\n\n` +
+      `【確定】幾何大小不變,只是改用新單位表示\n` +
+      `【取消】數值原封不動,直接當成新單位讀(等於重新定義尺寸)`);
+  snapshot("unit:" + Date.now());
+  state.units.length = nu;
+  if (scale) scaleModel(state, k);
+  view.locked = false; pview.locked = false;
+  recompute(true);
+}
+(function initUnitUI(){
+  const fill = (el, opts) => { el.innerHTML =
+    opts.map(([v,t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join(""); };
+  fill($("#u-len"), UNIT_LENGTH); fill($("#u-force"), UNIT_FORCE);
+  $("#u-len").addEventListener("change", e => changeLenUnit(e.target.value));
+  $("#u-force").addEventListener("change", e => {
+    snapshot("unitF:" + Date.now()); state.units.force = e.target.value; recompute(true); });
+  syncUnitUI();
+})();
+
+const stamp = () => new Date().toISOString().slice(0,16).replace(/[-:T]/g, "");
+async function copyText(txt, btn){
+  try { await navigator.clipboard.writeText(txt); }
+  catch (e){
+    const ta = document.createElement("textarea");
+    ta.value = txt; ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e2){}
+    ta.remove();
+  }
+  if (btn){ const o = btn.textContent; btn.textContent = "已複製 ✓"; setTimeout(() => { btn.textContent = o; }, 1400); }
+}
+function loadText(txt, name){
+  let obj = extractParams(txt);
+  if (!obj){ try { obj = JSON.parse(txt); } catch (e){ obj = null; } }
+  if (!obj){ alert(`「${name}」中找不到參數`); return; }
+  const s = obj.state || obj;
+  if (!Array.isArray(s.groups)){ alert(`「${name}」不是本工具 v3 的參數檔(找不到 groups)`); return; }
+  if (obj.formatVersion && obj.formatVersion > FORMAT_VERSION)
+    alert(`檔案格式版本 ${obj.formatVersion} 比本工具(${FORMAT_VERSION})新,可能無法完整載入`);
+  loadState(s);
+}
+document.addEventListener("change", e => {
+  if (e.target.id !== "file-in") return;
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { loadText(String(rd.result), f.name); e.target.value = ""; };
+  rd.readAsText(f);
+});
+["dragover","drop"].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+document.addEventListener("drop", e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => loadText(String(rd.result), f.name);
+  rd.readAsText(f);
+});
+$("#btn-undo").onclick  = undo;
+$("#btn-redo").onclick  = redo;
+$("#btn-demo").onclick  = () => loadState(demoState());
+$("#btn-clear").onclick = () => { if (confirm("清空所有組?")) loadState(DEF_STATE()); };
+
+function loadState(s){
+  if (state && state.groups && state.groups.length) snapshot("load:" + Date.now());
+  state = normState(clone(s));
+  SEL = state.groups.length ? state.groups[0].id : null;
+  SELNODE = null; SELELEM = null;
+  view.locked = false; pview.locked = false;
+  recompute(true);
+}
+
+/* ==========================================================================
+   8d. UI — 檢核與預覽
+   ========================================================================== */
+function renderChecks(){
+  $("#msgs").innerHTML =
+    ERRS.map(t => `<div class="msg err">✕ <span>${esc(t)}</span></div>`).join("") +
+    WARNS.map(t => `<div class="msg warn">⚠ <span>${esc(t)}</span></div>`).join("");
+  const devs = MODEL.groups.flatMap(r => r.elems.map(e => e.dev));
+  const lens = MODEL.groups.flatMap(r => r.elems.map(e => e.len3d));
+  const maxDev = devs.length ? Math.max(...devs) : 0;
+  const hot = v => v ? ' class="hot"' : "";
+  $("#kpi").innerHTML = `
+    <div><span class="k">組</span><b>${MODEL.groups.length}</b></div>
+    <div><span class="k">節點</span><b>${MODEL.tot.n}</b></div>
+    <div><span class="k">元素</span><b>${MODEL.tot.e}</b></div>
+    <div><span class="k">最大弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
+    <div><span class="k">最短元素</span><b${hot(lens.length && Math.min(...lens) < inU(0.3))}>${lens.length ? Math.min(...lens).toFixed(3) : "0.000"} ${UL()}</b></div>
+    <div><span class="k">元素總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
+    <div><span class="k">編號衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 組" : "無"}</b></div>
+    <div><span class="k">群組</span><b>${MODEL.names.length}</b></div>`;
+  const selR = MODEL.byId.get(SEL);
+  const segLeg = (selR && pcOn(selR))
+    ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」各段:</span>` +
+      (selR.g.pieces || []).map((pc, i) =>
+        `<span><i style="background:${pieceColor(i)}"></i>${i+1} ${esc(PIECES[pc.type].name)}</span>`).join("")
+    : "";
+  $("#legend").innerHTML = MODEL.groups.map(r =>
+    `<span><i style="background:${r.color}"></i>${esc(r.g.name)}</span>`).join("") + segLeg +
+    `<span style="color:var(--ink-3)">粗線 = 實際元素 · 淡線 = 原始參數曲線</span>`;
+}
+
+/* ---- 平面 ---- */
+const cv = $("#cv"), ctx = cv.getContext("2d");
+const view = { cx:0, cy:0, scale:1, locked:false };
+let showNodes = true, hover = null;
+
+const allPts = () => MODEL.groups.flatMap(r => r.nodes);
+// 由「實際元素」串出折線 —— 這才是會匯出到 midas 的東西
+function elemPolys(r){
+  const out = [];
+  let cur = null, prevJ = null;
+  r.elems.forEach(e => {
+    if (cur && e.i === prevJ) cur.push(e.b);
+    else { cur = [e.a, e.b]; out.push(cur); }
+    prevJ = e.j;
+  });
+  return out;
+}
+
+// 依段切開的元素折線(要分色畫的時候用):{ pi, pts }
+function elemPolysBy(r){
+  const out = [];
+  let cur = null, prevJ = null, prevPi = null;
+  r.elems.forEach(e => {
+    if (cur && e.i === prevJ && e.pi === prevPi) cur.pts.push(e.b);
+    else { cur = { pi:e.pi, pts:[e.a, e.b] }; out.push(cur); }
+    prevJ = e.j; prevPi = e.pi;
+  });
+  return out;
+}
+// 參數曲線的取樣(只作為淡色參考底線;節點被手動移動後兩者會不一致)
+function curvePolys(r){
+  if (!r.pieces || !r.pieces.length) return r.nodes.length ? [{ pi:-1, pts:r.nodes }] : [];
+  const out = [];
+  r.pieces.forEach(info => {
+    let pts = [];
+    if (info.curve){ for (let i = 0; i <= 160; i++) pts.push(info.curve.pt(i/160)); }
+    else if (info.chain && info.evalAt){
+      const s0 = info.chain.segs[0].s0, s1 = info.chain.segs[info.chain.segs.length-1].s1;
+      for (let i = 0; i <= 240; i++){ const q = info.evalAt(s0 + (s1-s0)*i/240); if (q) pts.push(q); }
+    } else pts = r.nodes.slice(info.n0, info.n1);
+    if (pts.length > 1) out.push({ pi:info.pi, pts });
+  });
+  return out;
+}
+// 只有「正在編輯、而且不只一段」的曲線組才分色
+const pcOn = r => SEL === r.g.id && r.g.type === "CURVE" && (r.g.pieces || []).length > 1;
+const colOf = (r, pi) => (pcOn(r) && pi != null && pi >= 0) ? pieceColor(pi) : r.color;
+function fitView(){
+  const P = allPts();
+  if (!P.length){ view.cx = 0; view.cy = 0; view.scale = 1; return; }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  P.forEach(p => { if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; });
+  const W = cv.clientWidth || 600, H = cv.clientHeight || 300;
+  view.scale = Math.min(W/Math.max(x1-x0,1e-6), H/Math.max(y1-y0,1e-6)) * 0.84;
+  view.cx = (x0+x1)/2; view.cy = (y0+y1)/2;
+}
+const toS = p => ({ x:(p.x - view.cx)*view.scale + cv.clientWidth/2,
+                    y:cv.clientHeight/2 - (p.y - view.cy)*view.scale });
+const toW = (sx, sy) => ({ x:(sx - cv.clientWidth/2)/view.scale + view.cx,
+                           y:(cv.clientHeight/2 - sy)/view.scale + view.cy });
+function niceStep(px, scale){
+  const raw = px/scale, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+const fmtN = v => Math.abs(v) < 1e-9 ? "0" : (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toFixed(Math.abs(v)%1 ? 1 : 0));
+
+function draw(){
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  if (!allPts().length) return;
+
+  // 格線
+  const step = niceStep(80, view.scale);
+  const tl = toW(0,0), br = toW(W,H);
+  ctx.lineWidth = 1; ctx.font = "9.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.fillStyle = "#b8c0cb";
+  for (let x = Math.ceil(tl.x/step)*step; x <= br.x; x += step){
+    const s = toS({x,y:0}).x;
+    ctx.strokeStyle = Math.abs(x) < 1e-9 ? "#dfe4ea" : "#f0f2f4";
+    ctx.beginPath(); ctx.moveTo(s,0); ctx.lineTo(s,H); ctx.stroke();
+    ctx.fillText(fmtN(x), s+3, H-4);
+  }
+  for (let y = Math.ceil(br.y/step)*step; y <= tl.y; y += step){
+    const s = toS({x:0,y}).y;
+    ctx.strokeStyle = Math.abs(y) < 1e-9 ? "#dfe4ea" : "#f0f2f4";
+    ctx.beginPath(); ctx.moveTo(0,s); ctx.lineTo(W,s); ctx.stroke();
+    ctx.fillText(fmtN(y), 3, s-3);
+  }
+
+  MODEL.groups.forEach(r => {
+    const on = SEL === r.g.id;
+    ctx.strokeStyle = r.color; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    if (TYPES[r.g.type].fam === "con"){
+      ctx.lineWidth = on ? 1.8 : 1; ctx.globalAlpha = on ? 1 : .6;
+      ctx.beginPath();
+      r.elems.forEach(e => { const a = toS(e.a), b = toS(e.b); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    } else {
+      // 參考:原始參數曲線(淡)
+      ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
+      curvePolys(r).forEach(pl => {
+        ctx.strokeStyle = colOf(r, pl.pi);
+        ctx.beginPath();
+        pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+      // 實際元素(節點被移動或刪除後,線會跟著走);編輯中的組各段分色
+      ctx.lineWidth = on ? 3 : 1.9;
+      elemPolysBy(r).forEach(pl => {
+        ctx.strokeStyle = colOf(r, pl.pi);
+        ctx.beginPath();
+        pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
+        ctx.stroke();
+      });
+      ctx.strokeStyle = r.color;
+    }
+    if (showNodes && r.nodes.length){
+      const rad = r.nodes.length > 400 ? 1.2 : (r.nodes.length > 150 ? 1.7 : 2.4);
+      ctx.fillStyle = r.color;
+      r.nodes.forEach(n => { ctx.fillStyle = colOf(r, n.pi);
+        const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
+      // 端點
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = r.color; ctx.lineWidth = 1.6;
+      [r.nodes[0], r.nodes[r.nodes.length-1]].forEach(n => {
+        const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,3.4,0,7); ctx.fill(); ctx.stroke(); });
+      // 座標被覆寫的節點
+      ctx.fillStyle = "#a8710d";
+      r.nodes.filter(n => n.edited).forEach(n => {
+        const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,3.6,0,7); ctx.fill(); });
+    }
+  });
+
+  // 比例尺 + 北
+  ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(8, H-30, step*view.scale+58, 22);
+  ctx.strokeStyle = "#5a6472"; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(14,H-18); ctx.lineTo(14+step*view.scale,H-18); ctx.stroke();
+  ctx.fillStyle = "#5a6472"; ctx.font = "10px sans-serif";
+  ctx.fillText(fmtN(step) + " " + UL(), 18+step*view.scale, H-15);
+  ctx.beginPath(); ctx.moveTo(W-22,34); ctx.lineTo(W-22,14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-22,10); ctx.lineTo(W-26,17); ctx.lineTo(W-18,17); ctx.closePath(); ctx.fill();
+  ctx.fillText("N", W-26, 46);
+
+  if (SELELEM){
+    const rr = MODEL.byId.get(SELELEM.gid);
+    const ee = rr && rr.elems.find(e => e.num === SELELEM.num);
+    if (ee){ const a = toS(ee.a), b = toS(ee.b);
+      ctx.strokeStyle = "#b3261e"; ctx.lineWidth = 5; ctx.globalAlpha = .45;
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.globalAlpha = 1; }
+  }
+  if (hover){ const s = toS(hover);
+    ctx.strokeStyle = "#1c5d99"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(s.x,s.y,5.5,0,7); ctx.stroke(); }
+  if (SELNODE){
+    const rr = MODEL.byId.get(SELNODE.gid);
+    const nd = rr && rr.nodes.find(n => n.ri === SELNODE.ri);
+    if (nd){ const s = toS(nd);
+      ctx.strokeStyle = "#b3261e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.x,s.y,7,0,7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s.x-11,s.y); ctx.lineTo(s.x-7,s.y);
+      ctx.moveTo(s.x+7,s.y); ctx.lineTo(s.x+11,s.y);
+      ctx.moveTo(s.x,s.y-11); ctx.lineTo(s.x,s.y-7);
+      ctx.moveTo(s.x,s.y+7); ctx.lineTo(s.x,s.y+11); ctx.stroke(); }
+  }
+}
+
+// 點到線段的距離(像素);拿來點選元素
+function segDistPx(px, py, ax, ay, bx, by){
+  const dx = bx-ax, dy = by-ay, L2 = dx*dx + dy*dy;
+  let t = L2 > 1e-12 ? ((px-ax)*dx + (py-ay)*dy)/L2 : 0;
+  t = clamp(t, 0, 1);
+  return Math.hypot(px - (ax + dx*t), py - (ay + dy*t));
+}
+// 在畫面座標下找最近的元素(只有曲線組的元素能編輯)
+function pickElemBy(toPx, tolPx){
+  let best = null, bd = tolPx;
+  MODEL.groups.forEach(r => {
+    if (r.g.type !== "CURVE") return;
+    r.elems.forEach(e => {
+      const a = toPx(e.a), b2 = toPx(e.b);
+      const d = segDistPx(toPx.px, toPx.py, a.x, a.y, b2.x, b2.y);
+      if (d < bd){ bd = d; best = { r, e }; }
+    });
+  });
+  return best;
+}
+// 選取後把高亮的區塊捲進視窗,免得使用者不知道要去哪裡編輯
+function focusHot(){
+  const el = document.querySelector("#pane .sec.hot");
+  if (el) el.scrollIntoView({ block:"nearest", behavior:"smooth" });
+}
+let drag = null, dragMoved = false;
+cv.addEventListener("mousedown", e => { drag = { x:e.offsetX, y:e.offsetY, cx:view.cx, cy:view.cy }; dragMoved = false; });
+window.addEventListener("mouseup", () => { drag = null; });
+cv.addEventListener("click", e => {
+  if (dragMoved) return;
+  const w = toW(e.offsetX, e.offsetY);
+  let best = null, bd = Infinity, bg = null;
+  MODEL.groups.forEach(r => { if (r.g.type !== "CURVE") return;
+    r.nodes.forEach(n => { const d = (n.x-w.x)**2 + (n.y-w.y)**2;
+      if (d < bd){ bd = d; best = n; bg = r; } }); });
+  if (best && Math.sqrt(bd)*view.scale < 14){
+    SEL = bg.g.id; SELNODE = { gid:bg.g.id, ri:best.ri }; SELELEM = null;
+  } else {
+    const toPx = p => toS(p); toPx.px = e.offsetX; toPx.py = e.offsetY;
+    const pe = pickElemBy(toPx, 9);
+    if (pe){ SEL = pe.r.g.id; SELELEM = { gid:pe.r.g.id, num:pe.e.num }; SELNODE = null; }
+    else { SELNODE = null; SELELEM = null; }
+  }
+  recompute(true); focusHot();
+});
+cv.addEventListener("mousemove", e => {
+  if (drag){ if (Math.hypot(e.offsetX-drag.x, e.offsetY-drag.y) > 3) dragMoved = true;
+             view.cx = drag.cx - (e.offsetX-drag.x)/view.scale;
+             view.cy = drag.cy + (e.offsetY-drag.y)/view.scale;
+             view.locked = true; draw(); return; }
+  const w = toW(e.offsetX, e.offsetY);
+  let best = null, bd = Infinity, bg = null;
+  MODEL.groups.forEach(r => r.nodes.forEach(n => {
+    const d = (n.x-w.x)**2 + (n.y-w.y)**2; if (d < bd){ bd = d; best = n; bg = r; } }));
+  hover = (best && Math.sqrt(bd)*view.scale < 24) ? best : null;
+  $("#ro").textContent = hover
+    ? `${bg.g.name} #${hover.num}  X ${hover.x.toFixed(3)}  Y ${hover.y.toFixed(3)}  Z ${hover.z.toFixed(3)}` +
+      (Number.isFinite(hover.s) ? `  ${fmtSta(hover.s)}` : "")
+    : `X ${w.x.toFixed(3)}   Y ${w.y.toFixed(3)}   (${UL()})`;
+  draw(); drawProf();
+});
+cv.addEventListener("mouseleave", () => { hover = null; $("#ro").textContent = ""; draw(); drawProf(); });
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const w = toW(e.offsetX, e.offsetY), f = Math.exp(-e.deltaY*0.0015);
+  view.scale *= f;
+  view.cx = w.x - (e.offsetX - cv.clientWidth/2)/view.scale;
+  view.cy = w.y + (e.offsetY - cv.clientHeight/2)/view.scale;
+  view.locked = true; draw();
+}, { passive:false });
+$("#btn-fit").onclick = () => { view.locked = false; fitView(); draw(); };
+$("#zsc").addEventListener("input", e => {
+  state.view.zAuto = false;
+  state.view.zScale = num(e.target.value) || 1;
+  pview.locked = false; fitProf(); drawProf();
+});
+$("#zauto").onclick = () => { state.view.zAuto = true; pview.locked = false; fitProf(); drawProf(); };
+$("#btn-nodes").onclick = e => { showNodes = !showNodes;
+  e.target.textContent = "節點:" + (showNodes ? "開" : "關"); draw(); drawProf(); };
+window.addEventListener("resize", () => { if (!view.locked) fitView(); draw(); drawProf(); });
+
+/* ---- 立面 ---- */
+const pv = $("#pv"), pctx = pv.getContext("2d");
+const PM = { l:46, r:10, t:10, b:20 };
+const pview = { s0:0, s1:1, z0:0, z1:1, dir:{ x:1, y:0 }, o:{ x:0, y:0 }, exag:1, az:90, locked:false };
+let PHOVER = "";
+const projS = p => (p.x - pview.o.x)*pview.dir.x + (p.y - pview.o.y)*pview.dir.y;
+const pW = () => Math.max(1, pv.clientWidth - PM.l - PM.r);
+const pH = () => Math.max(1, pv.clientHeight - PM.t - PM.b);
+const pX = s => PM.l + (s - pview.s0)/Math.max(1e-9, pview.s1-pview.s0)*pW();
+const pY = z => PM.t + pH() - (z - pview.z0)/Math.max(1e-9, pview.z1-pview.z0)*pH();
+
+// 立面工具列與目前視角同步
+function syncProfTools(){
+  const md = $("#pmode"); if (md && document.activeElement !== md) md.value = state.view.profMode || "auto";
+  const ai = $("#paz");
+  if (ai && document.activeElement !== ai) ai.value = +norm360(pview.az).toFixed(1);
+}
+function setProfAz(az){
+  state.view.profMode = "az";
+  state.view.az = +norm360(az).toFixed(2);
+  pview.locked = false;                                // 換方向 → 重新框選
+  fitProf();
+}
+function fitProf(){
+  const P = allPts();
+  if (!P.length) return;
+  if (pview.locked){ syncProfTools(); return; }        // 使用者自己平移縮放過,沿用目前視窗
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  P.forEach(p => { if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; });
+  let az;
+  const m = state.view.profMode;
+  if (m === "x") az = 90; else if (m === "y") az = 0;
+  else if (m === "az") az = num(state.view.az) || 0;
+  else az = (x1-x0) >= (y1-y0) ? 90 : 0;
+  pview.az = norm360(az);
+  pview.dir = { x:Math.sin(az*D2R), y:Math.cos(az*D2R) };
+  pview.o = { x:x0, y:y0 };
+  syncProfTools();
+  let s0=Infinity,s1=-Infinity,z0=Infinity,z1=-Infinity;
+  P.forEach(p => { const s = projS(p);
+    if(s<s0)s0=s; if(s>s1)s1=s; if(p.z<z0)z0=p.z; if(p.z>z1)z1=p.z; });
+  if (!(s1 > s0)) s1 = s0 + 1;
+  pview.s0 = s0; pview.s1 = s1;
+  const ppmX = pW()/(s1 - s0);
+  const zc = (z0 + z1)/2;
+  if (state.view.zAuto !== false){
+    const pad = Math.max((z1-z0)*0.18, 0.5);
+    const span = (z1 - z0) + 2*pad;
+    pview.z0 = zc - span/2; pview.z1 = zc + span/2;
+    state.view.zScale = +((pH()/span)/ppmX).toFixed(3);
+  } else {
+    const zs = Math.max(1e-4, num(state.view.zScale) || 1);
+    const span = pH()/(ppmX*zs);
+    pview.z0 = zc - span/2; pview.z1 = zc + span/2;
+  }
+  const zi = $("#zsc"); if (zi && document.activeElement !== zi) zi.value = state.view.zScale;
+}
+const pToPx = p => ({ x:pX(projS(p)), y:pY(p.z) });
+
+function drawProf(){
+  const dpr = window.devicePixelRatio || 1, W = pv.clientWidth, H = pv.clientHeight;
+  if (!W || !H) return;
+  pv.width = Math.round(W*dpr); pv.height = Math.round(H*dpr);
+  pctx.setTransform(dpr,0,0,dpr,0,0); pctx.clearRect(0,0,W,H);
+  if (!allPts().length) return;
+  const mono = getComputedStyle(document.body).getPropertyValue("--mono");
+  const spanS = pview.s1-pview.s0, spanZ = pview.z1-pview.z0;
+  pview.exag = (pH()/spanZ)/(pW()/spanS);
+
+  pctx.font = "9px " + mono; pctx.lineWidth = 1;
+  const nice = (span, px, tgt) => { const raw = span/Math.max(1, px/tgt);
+    const p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p;
+    return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p; };
+  const dz = nice(spanZ, pH(), 34), ds = nice(spanS, pW(), 110);
+  pctx.strokeStyle = "#f0f2f4"; pctx.fillStyle = "#b8c0cb";
+  for (let z = Math.ceil(pview.z0/dz)*dz; z <= pview.z1; z += dz){
+    const y = pY(z); pctx.beginPath(); pctx.moveTo(PM.l,y); pctx.lineTo(W-PM.r,y); pctx.stroke();
+    pctx.fillText(z.toFixed(dz<1?2:(dz<10?1:0)), 3, y+3);
+  }
+  for (let s = Math.ceil(pview.s0/ds)*ds; s <= pview.s1; s += ds){
+    const x = pX(s); pctx.beginPath(); pctx.moveTo(x,PM.t); pctx.lineTo(x,PM.t+pH()); pctx.stroke();
+    pctx.fillText(fmtN(s), x-10, H-6);
+  }
+  pctx.strokeStyle = "#dfe4ea";
+  pctx.beginPath(); pctx.moveTo(PM.l,PM.t); pctx.lineTo(PM.l,PM.t+pH()); pctx.lineTo(W-PM.r,PM.t+pH()); pctx.stroke();
+
+  MODEL.groups.forEach(r => {
+    const on = SEL === r.g.id;
+    pctx.strokeStyle = r.color;
+    if (TYPES[r.g.type].fam === "con"){
+      pctx.lineWidth = on ? 1.5 : .9; pctx.globalAlpha = on ? 1 : .55;
+      pctx.beginPath();
+      r.elems.forEach(e => { pctx.moveTo(pX(projS(e.a)), pY(e.a.z)); pctx.lineTo(pX(projS(e.b)), pY(e.b.z)); });
+      pctx.stroke(); pctx.globalAlpha = 1;
+    } else {
+      pctx.globalAlpha = .28; pctx.lineWidth = 1;
+      curvePolys(r).forEach(pl => {
+        pctx.strokeStyle = colOf(r, pl.pi);
+        pctx.beginPath();
+        pl.pts.forEach((p,i) => { const x = pX(projS(p)), y = pY(p.z); i ? pctx.lineTo(x,y) : pctx.moveTo(x,y); });
+        pctx.stroke();
+      });
+      pctx.globalAlpha = 1;
+      pctx.lineWidth = on ? 2.4 : 1.6;
+      elemPolysBy(r).forEach(pl => {
+        pctx.strokeStyle = colOf(r, pl.pi);
+        pctx.beginPath();
+        pl.pts.forEach((p,i) => { const x = pX(projS(p)), y = pY(p.z); i ? pctx.lineTo(x,y) : pctx.moveTo(x,y); });
+        pctx.stroke();
+      });
+      pctx.strokeStyle = r.color;
+      if (showNodes){
+        const rad = r.nodes.length > 400 ? 1 : 1.7;
+        r.nodes.forEach(n => { pctx.fillStyle = colOf(r, n.pi);
+          pctx.beginPath(); pctx.arc(pX(projS(n)), pY(n.z), rad, 0, 7); pctx.fill(); });
+      }
+    }
+  });
+  if (SELELEM){
+    const rr = MODEL.byId.get(SELELEM.gid);
+    const ee = rr && rr.elems.find(e => e.num === SELELEM.num);
+    if (ee){ const a = pToPx(ee.a), b = pToPx(ee.b);
+      pctx.strokeStyle = "#b3261e"; pctx.lineWidth = 4; pctx.globalAlpha = .45;
+      pctx.beginPath(); pctx.moveTo(a.x,a.y); pctx.lineTo(b.x,b.y); pctx.stroke(); pctx.globalAlpha = 1; }
+  }
+  if (SELNODE){
+    const rr = MODEL.byId.get(SELNODE.gid);
+    const nd = rr && rr.nodes.find(n => n.ri === SELNODE.ri);
+    if (nd){ const q = pToPx(nd);
+      pctx.strokeStyle = "#b3261e"; pctx.lineWidth = 1.8;
+      pctx.beginPath(); pctx.arc(q.x, q.y, 5.5, 0, 7); pctx.stroke(); }
+  }
+  if (pview.locked){
+    state.view.zScale = +pview.exag.toFixed(4);
+    const zi = $("#zsc"); if (zi && document.activeElement !== zi) zi.value = state.view.zScale;
+  }
+  $("#pro").textContent = (PHOVER ? PHOVER + "\n" : "") +
+    `方位角 ${norm360(pview.az).toFixed(0)}°   Z 縮放 ×${pview.exag.toFixed(2)}` +
+    (pview.locked ? "  (視角已鎖定)" : (state.view.zAuto !== false ? "(自動)" : ""));
+  if (hover){ pctx.strokeStyle = "#1c5d99"; pctx.lineWidth = 1.5;
+    pctx.beginPath(); pctx.arc(pX(projS(hover)), pY(hover.z), 4.5, 0, 7); pctx.stroke(); }
+}
+
+/* ---- 立面的視角操作:拖曳平移、滾輪縮放、Shift+拖曳轉視角、點選節點/元素 ---- */
+let pdrag = null, pdragMoved = false;
+pv.addEventListener("mousedown", e => {
+  pdrag = { x:e.offsetX, y:e.offsetY, s0:pview.s0, s1:pview.s1, z0:pview.z0, z1:pview.z1,
+            az:pview.az, rot:e.shiftKey };
+  pdragMoved = false;
+});
+window.addEventListener("mouseup", () => { pdrag = null; });
+pv.addEventListener("mousemove", e => {
+  if (pdrag){
+    if (Math.hypot(e.offsetX-pdrag.x, e.offsetY-pdrag.y) > 3) pdragMoved = true;
+    if (pdrag.rot){                                   // Shift+拖曳 = 轉視角
+      setProfAz(pdrag.az + (e.offsetX - pdrag.x)*0.4);
+      draw(); drawProf(); return;
+    }
+    const ks = (pview.s1-pview.s0)/pW(), kz = (pview.z1-pview.z0)/pH();
+    const ds = -(e.offsetX-pdrag.x)*ks, dz = (e.offsetY-pdrag.y)*kz;
+    pview.s0 = pdrag.s0+ds; pview.s1 = pdrag.s1+ds;
+    pview.z0 = pdrag.z0+dz; pview.z1 = pdrag.z1+dz;
+    pview.locked = true; drawProf(); return;
+  }
+  let best = null, bd = Infinity, bg = null;
+  MODEL.groups.forEach(r => r.nodes.forEach(n => {
+    const q = pToPx(n), d = Math.hypot(q.x-e.offsetX, q.y-e.offsetY);
+    if (d < bd){ bd = d; best = n; bg = r; } }));
+  hover = (best && bd < 14) ? best : null;
+  PHOVER = hover
+    ? `${bg.g.name} #${hover.num}  X ${hover.x.toFixed(3)}  Y ${hover.y.toFixed(3)}  Z ${hover.z.toFixed(3)}`
+    : "";
+  draw(); drawProf();
+});
+pv.addEventListener("mouseleave", () => { hover = null; PHOVER = ""; draw(); drawProf(); });
+pv.addEventListener("click", e => {
+  if (pdragMoved) return;
+  let best = null, bd = Infinity, bg = null;
+  MODEL.groups.forEach(r => { if (r.g.type !== "CURVE") return;
+    r.nodes.forEach(n => { const q = pToPx(n), d = Math.hypot(q.x-e.offsetX, q.y-e.offsetY);
+      if (d < bd){ bd = d; best = n; bg = r; } }); });
+  if (best && bd < 14){
+    SEL = bg.g.id; SELNODE = { gid:bg.g.id, ri:best.ri }; SELELEM = null;
+  } else {
+    const toPx = p => pToPx(p); toPx.px = e.offsetX; toPx.py = e.offsetY;
+    const pe = pickElemBy(toPx, 9);
+    if (pe){ SEL = pe.r.g.id; SELELEM = { gid:pe.r.g.id, num:pe.e.num }; SELNODE = null; }
+    else { SELNODE = null; SELELEM = null; }
+  }
+  recompute(true); focusHot();
+});
+pv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const f = Math.exp(-e.deltaY*0.0015);
+  const sAt = pview.s0 + (e.offsetX - PM.l)/pW()*(pview.s1 - pview.s0);
+  const zAt = pview.z0 + (PM.t + pH() - e.offsetY)/pH()*(pview.z1 - pview.z0);
+  if (!e.shiftKey){                                    // 兩軸同步縮放 → Z 誇大倍率不變
+    pview.s0 = sAt - (sAt - pview.s0)/f; pview.s1 = sAt + (pview.s1 - sAt)/f;
+  } else state.view.zAuto = false;                     // Shift = 只縮 Z
+  pview.z0 = zAt - (zAt - pview.z0)/f; pview.z1 = zAt + (pview.z1 - zAt)/f;
+  pview.locked = true; drawProf();
+}, { passive:false });
+$("#pv-fit").onclick = () => { pview.locked = false; fitProf(); drawProf(); };
+$("#pmode").addEventListener("change", e => {
+  state.view.profMode = e.target.value;
+  pview.locked = false; fitProf(); drawProf();
+});
+$("#paz").addEventListener("input", e => {
+  const a = num(e.target.value); if (!Number.isFinite(a)) return;
+  state.view.profMode = "az"; state.view.az = a;
+  pview.locked = false; fitProf(); drawProf();
+  const md = $("#pmode"); if (md) md.value = "az";
+});
+$("#paz-l").onclick = () => { setProfAz(pview.az - 15); drawProf(); };
+$("#paz-r").onclick = () => { setProfAz(pview.az + 15); drawProf(); };
+
+/* ==========================================================================
+   主流程
+   ========================================================================== */
+function recompute(reTree){
+  ERRS = []; WARNS = [];
+  MODEL = buildModel(state, ERRS, WARNS);
+  if (SELELEM){                                        // 選取的元素可能已經不在了
+    const rr = MODEL.byId.get(SELELEM.gid);
+    if (!rr || !rr.elems.some(e => e.num === SELELEM.num)) SELELEM = null;
+  }
+  if (reTree !== false) renderTree();
+  syncUnitUI();
+  renderPane();
+  renderChecks();
+  if (!view.locked) fitView();
+  fitProf(); draw(); drawProf();
+  syncHistBtns();
+}
+function render(){ renderTree(); renderPane(); if (!view.locked) fitView(); draw(); drawProf(); }
+
+
+/* ==========================================================================
+   9. 驗收測試(不依賴畫面狀態,全部自建 fixture)
+   ========================================================================== */
+function runTests(){
+  const rows = [];
+  const chk = (id, desc, actual, expect, tol, unit) =>
+    rows.push({ id, desc, actual, expect, tol, unit:unit||"", ok:Math.abs(actual-expect) <= tol });
+  const yes = (id, desc, cond, actual, expect) =>
+    rows.push({ id, desc, actual:String(actual), expect:String(expect), ok:!!cond, str:true });
+
+  const PIECE_T = { LINE:1, ARC:1, SAG:1, HELIX:1, CHAIN:1, POINT:1 };
+  // g.type 是段型別時,自動包成「一段的曲線組」;是組型別時照舊
+  const build = groups => {
+    const gs = groups.map(g => {
+      if (PIECE_T[g.type]){
+        const { id, name, etype, mat, sect, autoNum, nodeBase, elemBase, on, ...rest } = g;
+        const pc = { ...defaultPiece(g.type), ...rest, cont:false };
+        return { ...defaultGroup("CURVE"), ...(id ? { id } : {}), name:name || "組",
+          pieces:[pc], etype:etype || "BEAM", mat:mat || 1, sect:sect || 1,
+          ...(autoNum !== undefined ? { autoNum } : {}), ...(nodeBase ? { nodeBase } : {}),
+          ...(elemBase ? { elemBase } : {}), ...(on !== undefined ? { on } : {}) };
+      }
+      return { ...defaultGroup(g.type), ...g };
+    });
+    const s = normState({ ...DEF_STATE(), groups:gs });
+    const E = [], W = [];
+    return { md:buildModel(s, E, W), errs:E, warns:W, st:s };
+  };
+  // 多段的曲線組
+  const buildPieces = (pieces, extra) => {
+    const s = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"組",
+      pieces:pieces.map((pc, i) => ({ ...defaultPiece(pc.type), ...pc, cont:i === 0 ? false : (pc.cont !== false) })),
+      ...(extra || {}) }] });
+    const E = [], W = [];
+    const md = buildModel(s, E, W);
+    return { md, g:md.groups[0], errs:E, warns:W };
+  };
+
+  /* ---- 樁號格式 ---- */
+  chk("F1","parseSta('0k+125.500')", parseSta("0k+125.500"), 125.5, 1e-12, "m");
+  chk("F1","parseSta('1K+025')", parseSta("1K+025"), 1025, 1e-12, "m");
+  chk("F1","parseSta('125.5')", parseSta("125.5"), 125.5, 1e-12, "m");
+  yes("F1","fmtSta(125.5)", fmtSta(125.5) === "0k+125.500", fmtSta(125.5), "0k+125.500");
+  yes("F1","fmtSta(1025)", fmtSta(1025) === "1k+025.000", fmtSta(1025), "1k+025.000");
+
+  /* ---- 直線 ---- */
+  const L1 = build([{ type:"LINE", name:"L", x1:0,y1:0,z1:0, x2:30,y2:40,z2:0,
+    split:{ ...SPLIT_DEF, mode:"count", count:5 } }]).md.groups[0];
+  chk("A1","直線長度", L1.pieces[0].len, 50, 1e-9, "m");
+  chk("A1","節點數 = N+1", L1.nodes.length, 6, 0, "");
+  chk("A1","中點座標 X", L1.nodes[3].x, 18, 1e-9, "m");
+  chk("A1","弦線偏差 = 0", L1.stat.maxDev, 0, 1e-12, "m");
+
+  /* ---- 圓弧:端點 + 半徑 ---- */
+  // (0,0) → (100,0),R = 100,右轉劣弧 → 圓心在右(南)
+  const arcCase = (dir, major) => build([{ type:"ARC", name:"A", arcMode:"endpoints", plane:"H",
+    x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, R:100, dir, major,
+    split:{ ...SPLIT_DEF, mode:"count", count:60 } }]).md.groups[0];
+  const Ar = arcCase(1,false), Al = arcCase(-1,false), Am = arcCase(1,true);
+  chk("B1","右轉劣弧:圓心 Y(在南側)", Ar.pieces[0].meta.center.y, -Math.sqrt(100*100-2500), 1e-9, "m");
+  chk("B1","左轉劣弧:圓心 Y(在北側)", Al.pieces[0].meta.center.y, +Math.sqrt(100*100-2500), 1e-9, "m");
+  chk("B1","右轉優弧:圓心 Y(換到北側)", Am.pieces[0].meta.center.y, +Math.sqrt(100*100-2500), 1e-9, "m");
+  // 弧長:劣弧 2R·asin(d/2R)= 2*100*asin(0.5)=104.7198;優弧 = 2πR − 劣弧
+  chk("B2","劣弧長", Ar.pieces[0].meta.arcLen, 2*100*Math.asin(0.5), 1e-9, "m");
+  chk("B2","優弧長 = 2πR − 劣弧", Am.pieces[0].meta.arcLen, 2*Math.PI*100 - 2*100*Math.asin(0.5), 1e-9, "m");
+  chk("B2","端點精確落位 X", Ar.nodes[Ar.nodes.length-1].x, 100, 1e-9, "m");
+  chk("B2","端點精確落位 Y", Ar.nodes[Ar.nodes.length-1].y, 0, 1e-9, "m");
+  yes("B3","右轉劣弧向北凸(中點 Y > 0)", Ar.nodes[30].y > 0, Ar.nodes[30].y.toFixed(4), "> 0");
+  yes("B3","左轉劣弧向南凸(中點 Y < 0)", Al.nodes[30].y < 0, Al.nodes[30].y.toFixed(4), "< 0");
+  // 半徑不足
+  const bad = build([{ type:"ARC", name:"A", arcMode:"endpoints", plane:"H",
+    x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, R:30, dir:1, major:false }]);
+  yes("B4","半徑 < 弦長一半 → 錯誤", bad.errs.length > 0, bad.errs.length, "> 0");
+  // 鉛直平面(拱肋)
+  const Av = build([{ type:"ARC", name:"拱", arcMode:"endpoints", plane:"V",
+    x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, R:100, dir:1, major:false,
+    split:{ ...SPLIT_DEF, mode:"count", count:60 } }]).md.groups[0];
+  yes("B5","鉛直平面上凸(中點 Z > 0)", Av.nodes[30].z > 0, Av.nodes[30].z.toFixed(4), "> 0");
+  chk("B5","鉛直平面 Y 不變", Av.nodes[30].y, 0, 1e-9, "m");
+  chk("B5","矢高 = R − √(R²−(d/2)²)", Av.nodes[30].z, 100 - Math.sqrt(100*100-2500), 1e-6, "m");
+  // 圓心模式
+  const Ac = build([{ type:"ARC", name:"C", arcMode:"center",
+    x1:100,y1:0,z1:0, cx:0, cy:0, delta:90, dir:1, z2:10,
+    split:{ ...SPLIT_DEF, mode:"count", count:36 } }]).md.groups[0];
+  chk("B6","圓心模式:半徑", Ac.pieces[0].meta.R, 100, 1e-9, "m");
+  chk("B6","圓心模式:轉 90° 後 X", Ac.nodes[36].x, 0, 1e-9, "m");
+  chk("B6","圓心模式:轉 90° 後 Y(右轉 = 順時針)", Ac.nodes[36].y, -100, 1e-9, "m");
+  chk("B6","圓心模式:終點高程", Ac.nodes[36].z, 10, 1e-9, "m");
+
+  /* ---- 懸垂曲線 ---- */
+  const sag = (curve) => build([{ type:"SAG", name:"S", curve, x1:0,y1:0,z1:0, x2:400,y2:0,z2:0,
+    fMode:"abs", f:40, split:{ ...SPLIT_DEF, mode:"count", count:40 } }]).md.groups[0];
+  const SP = sag("parabola"), SC = sag("catenary");
+  chk("C1","拋物線:跨中垂度 = f", SP.nodes[20].z, -40, 1e-9, "m");
+  chk("C1","拋物線:兩端 z = 0", SP.nodes[0].z, 0, 1e-12, "m");
+  chk("C1","拋物線:1/4 點 = −0.75f", SP.nodes[10].z, -30, 1e-9, "m");
+  chk("C2","懸鏈線:跨中垂度 = f", SC.nodes[20].z, -40, 1e-6, "m");
+  const aC = solveCatenaryA(400, 40), bC = 400/(2*aC);
+  chk("C2","懸鏈線:1/4 點 = 解析解",
+    SC.nodes[10].z, -40*(Math.cosh(bC)-Math.cosh(bC/2))/(Math.cosh(bC)-1), 1e-9, "m");
+  yes("C2","懸鏈線 1/4 點低於拋物線(自重按弧長分布)",
+    SC.nodes[10].z < SP.nodes[10].z, SC.nodes[10].z.toFixed(4), "< " + SP.nodes[10].z.toFixed(4));
+  yes("C2","懸鏈線曲線長 > 拋物線",
+    SC.pieces[0].len > SP.pieces[0].len, SC.pieces[0].len.toFixed(4), "> " + SP.pieces[0].len.toFixed(4));
+  // 不等高端點:垂度相對弦線
+  const SU = build([{ type:"SAG", name:"U", curve:"parabola", x1:0,y1:0,z1:0, x2:400,y2:0,z2:20,
+    fMode:"abs", f:40, split:{ ...SPLIT_DEF, mode:"count", count:40 } }]).md.groups[0];
+  chk("C3","不等高:終點 z = z2", SU.nodes[40].z, 20, 1e-9, "m");
+  chk("C3","不等高:跨中 = 弦線中點 − f", SU.nodes[20].z, 10-40, 1e-9, "m");
+  // 垂跨比
+  const SR = build([{ type:"SAG", name:"R", curve:"parabola", x1:0,y1:0,z1:0, x2:250,y2:0,z2:0,
+    fMode:"ratio", f:0.1, split:{ ...SPLIT_DEF, mode:"count", count:10 } }]).md.groups[0];
+  chk("C4","垂跨比 0.1 → 垂度 25", -SR.nodes[5].z, 25, 1e-9, "m");
+  chk("C4","拋物線長度 ≈ L(1+8/3·(f/L)²)", SR.pieces[0].len, 256.5, 0.02, "m");
+
+  /* ---- 螺旋線 ---- */
+  const HX = build([{ type:"HELIX", name:"H", cx:0, cy:0, z1:0, R:50, R2:"", az0:0,
+    turns:2, pitch:12, dir:1, split:{ ...SPLIT_DEF, mode:"count", count:72 } }]).md.groups[0];
+  chk("D1","起點在圓心正北 R 處", HX.nodes[0].y, 50, 1e-9, "m");
+  chk("D1","起點 X = 0", HX.nodes[0].x, 0, 1e-9, "m");
+  chk("D1","總升高 = 圈數 × 螺距", HX.nodes[72].z, 24, 1e-9, "m");
+  chk("D1","繞完 2 圈回到起始方位", HX.nodes[72].x, 0, 1e-9, "m");
+  chk("D2","1/4 圈(順時針)→ 正東", HX.nodes[9].x, 50, 1e-9, "m");
+  chk("D2","展開長度 = 圈數·√((2πR)²+螺距²)",
+    HX.pieces[0].len, 2*Math.hypot(2*Math.PI*50, 12), 0.05, "m");
+  const HC = build([{ type:"HELIX", name:"H2", cx:0, cy:0, z1:0, R:50, R2:20, az0:0,
+    turns:1, pitch:10, dir:1, split:{ ...SPLIT_DEF, mode:"count", count:36 } }]).md.groups[0];
+  chk("D3","錐形螺旋:終止半徑", Math.hypot(HC.nodes[36].x, HC.nodes[36].y), 20, 1e-9, "m");
+
+  /* ---- 線形鏈(案例 A + B) ---- */
+  const CH = build([{ type:"CHAIN", name:"主曲線", x1:0, y1:0, z1:100, az:90, sta:0,
+    segments:[{ type:"LINE", L:50 }, { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }, { type:"LINE", L:50 }],
+    profile:[{ sta:0, z:100, L:0 }, { sta:128.54, z:105.1416, L:100 }, { sta:257.08, z:100, L:0 }],
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } }]).md.groups[0];
+  const cs = CH.pieces[0].chain.segs;
+  chk("E1","段1 終點 X", cs[0].end.x, 50, 1e-9, "m");
+  chk("E1","段2 圓心 X", cs[1].extra.center.x, 50, 1e-9, "m");
+  chk("E1","段2 圓心 Y", cs[1].extra.center.y, -100, 1e-9, "m");
+  chk("E1","段2 終點 X", cs[1].end.x, 150, 1e-9, "m");
+  chk("E1","段2 終點 Y", cs[1].end.y, -100, 1e-9, "m");
+  chk("E1","總長", CH.pieces[0].chain.total, 257.0796, 1e-4, "m");
+  chk("E2","終點方位角", cs[2].end.az, 180, 1e-9, "°");
+  // 縱斷面(案例 B)
+  const pr = CH.pieces[0].chain.prof;
+  chk("E3","g_in", pr.g[0]*100, 4, 1e-9, "%");
+  chk("E3","g_out", pr.g[1]*100, -4, 1e-9, "%");
+  chk("E3","BVC", pr.curves[0].BVC, 78.54, 1e-9, "m");
+  chk("E3","中央縱距 E", pr.curves[0].E, -1, 1e-12, "m");
+  chk("E3","K 值", pr.curves[0].K, 12.5, 1e-12, "");
+  chk("E3","VPI 樁號處高程(比 VPI 低 1.000)", zAt(pr, 128.54), 104.1416, 1e-9, "m");
+  chk("E4","VPI 處坡度 = 0", gradeAt(pr, 128.54)*100, 0, 1e-9, "%");
+  chk("E4","BVC 處坡度 = g_in", gradeAt(pr, 78.54)*100, 4, 1e-9, "%");
+  // 弦線偏差(案例 C):R=100、間距 5。偏差量的是「元素到真實曲線的 3D 垂距」,
+  // 所以要對上平面解析解 R(1−cos(θ/2)) 必須用沒有縱斷面的線形。
+  const seg2 = CH.elems.filter(e => e.seg === 1);
+  chk("E5","段2 元素數(31 + 餘數)", seg2.length, 32, 0, "");
+  const CHflat = build([{ type:"CHAIN", name:"平", x1:0,y1:0,z1:0, az:90, sta:0,
+    segments:[{ type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }], profile:[],
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } }]).md.groups[0];
+  chk("E5","無縱斷面時最大弦線偏差 = R(1−cos(θ/2))",
+    CHflat.stat.maxDev*1000, 100*(1-Math.cos(0.025))*1000, 2e-3, "mm");
+  yes("E5","有縱斷面時偏差較大(含鉛直分量,量的是 3D 垂距)",
+    Math.max(...seg2.map(e => e.dev)) > CHflat.stat.maxDev,
+    (Math.max(...seg2.map(e => e.dev))*1000).toFixed(3) + " mm",
+    "> " + (CHflat.stat.maxDev*1000).toFixed(3) + " mm");
+  // 沒有縱斷面 → 維持起點高程
+  const CH2 = build([{ type:"CHAIN", name:"平", x1:0,y1:0,z1:77, az:90, sta:0,
+    segments:[{ type:"LINE", L:50 }], profile:[], split:{ ...SPLIT_DEF, mode:"count", count:5 } }]).md.groups[0];
+  chk("E6","無縱斷面 → 全線維持起點高程", CH2.nodes[3].z, 77, 1e-12, "m");
+
+  /* ---- 偏置 ---- */
+  const O = build([
+    { id:"c1", type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
+      segments:[{ type:"LINE", L:50 }, { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }],
+      profile:[], split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } },
+    { id:"o1", type:"OFFSET", name:"右", ref:"c1", d:6, h:-1 }
+  ]);
+  const OM = O.md.groups.find(r => r.g.id === "o1"), CM = O.md.groups.find(r => r.g.id === "c1");
+  chk("G1","偏置節點數 = 基準組", OM.nodes.length, CM.nodes.length, 0, "");
+  chk("G1","起點方位角 90° → 右 = −Y", OM.nodes[0].y - CM.nodes[0].y, -6, 1e-9, "m");
+  chk("G1","垂直偏置 h 直接加到 Z", OM.nodes[0].z - CM.nodes[0].z, -1, 1e-9, "m");
+  const j = CM.nodes.length - 1;
+  chk("G2","右轉曲線終點:右側偏置在內側 → 距圓心 R − d",
+    Math.hypot(OM.nodes[j].x - 50, OM.nodes[j].y + 100), 94, 1e-6, "m");
+  const OD = build([{ id:"c2", type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
+      segments:[{ type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }], profile:[],
+      split:{ ...SPLIT_DEF, mode:"count", count:20 } },
+    { id:"o2", type:"OFFSET", name:"爆", ref:"c2", d:106, h:0 }]);
+  yes("G3","右偏 +106 越過圓心 → 錯誤", OD.errs.some(t => t.includes("退化")), OD.errs.length, "有錯誤");
+  const OK2 = build([{ id:"c3", type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
+      segments:[{ type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }], profile:[],
+      split:{ ...SPLIT_DEF, mode:"count", count:20 } },
+    { id:"o3", type:"OFFSET", name:"外", ref:"c3", d:-106, h:0 }]);
+  yes("G3","左偏 −106 在外側 → 合法", OK2.errs.length === 0, OK2.errs.length, 0);
+
+  /* ---- 連接族 ---- */
+  const LK = build([
+    { id:"a1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"b1", type:"LINE", name:"B", x1:0,y1:8,z1:0, x2:100,y2:8,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"x1", type:"LINK2", name:"橫", a:"a1", b:"b1", every:2 }
+  ]);
+  const XM = LK.md.groups.find(r => r.g.id === "x1");
+  chk("H1","組對組:元素數 = ⌈11/2⌉", XM.elems.length, 6, 0, "");
+  chk("H1","組對組:不新增節點", XM.nodes.length, 0, 0, "");
+  chk("H1","組對組:跨距", XM.elems[0].len3d, 8, 1e-9, "m");
+  const MM = build([
+    { id:"a2", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"b2", type:"LINE", name:"B", x1:0,y1:8,z1:0, x2:100,y2:8,z2:0, split:{ ...SPLIT_DEF, count:8 } },
+    { id:"x2", type:"LINK2", name:"橫", a:"a2", b:"b2", every:1 }
+  ]);
+  yes("H2","節點數不同 → 錯誤", MM.errs.some(t => t.includes("節點數不同")), MM.errs.length, "有錯誤");
+
+  const LZ = build([
+    { id:"s1", type:"SAG", name:"纜", x1:0,y1:0,z1:40, x2:200,y2:0,z2:40, curve:"parabola",
+      fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:20 } },
+    { id:"h1", type:"LINKZ", name:"吊", ref:"s1", targetZ:0, every:1 }
+  ]);
+  const HM = LZ.md.groups.find(r => r.g.id === "h1");
+  chk("H3","組對高程:元素數 = 來源節點數", HM.elems.length, 21, 0, "");
+  chk("H3","組對高程:新增節點數 = 元素數", HM.nodes.length, 21, 0, "");
+  chk("H3","跨中吊索長 = 40 − 20", HM.elems[10].len3d, 20, 1e-9, "m");
+  chk("H3","端部吊索長 = 40", HM.elems[0].len3d, 40, 1e-9, "m");
+  const LZ2 = build([
+    { id:"s2", type:"SAG", name:"纜", x1:0,y1:0,z1:10, x2:200,y2:0,z2:10, curve:"parabola",
+      fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:20 } },
+    { id:"h2", type:"LINKZ", name:"吊", ref:"s2", targetZ:0, every:1 }
+  ]);
+  yes("H4","來源低於目標高程 → 警告並略過",
+    LZ2.warns.some(t => t.includes("低於目標高程")), LZ2.warns.length, "有警告");
+
+  const FN = build([
+    { id:"t1", type:"LINE", name:"梁", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"f1", type:"FAN", name:"斜索", srcMode:"coord", sx:50, sy:0, sz:40, ref:"t1",
+      from:1, to:11, every:1, div:1, fMode:"abs", f:0 }
+  ]);
+  const FM = FN.md.groups.find(r => r.g.id === "f1");
+  chk("H5","扇形:索數 = 11", FM.elems.length, 11, 0, "");
+  chk("H5","扇形:只新增 1 個起點節點", FM.nodes.length, 1, 0, "");
+  chk("H5","塔正下方索長 = 40", FM.elems[5].len3d, 40, 1e-9, "m");
+  chk("H5","端點索長 = √(50²+40²)", FM.elems[0].len3d, Math.hypot(50,40), 1e-9, "m");
+  const FN2 = build([
+    { id:"t2", type:"LINE", name:"梁", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"f2", type:"FAN", name:"主纜", srcMode:"coord", sx:0, sy:0, sz:40, ref:"t2",
+      from:11, to:11, every:1, div:4, fMode:"abs", f:5 }
+  ]);
+  const FM2 = FN2.md.groups.find(r => r.g.id === "f2");
+  chk("H6","分割 4 → 4 根元素", FM2.elems.length, 4, 0, "");
+  chk("H6","新增節點 = 起點 + 3 中間", FM2.nodes.length, 4, 0, "");
+  chk("H6","跨中 Z = 線性中點 − f", FM2.nodes[2].z, (40+0)/2 - 5, 1e-12, "m");
+  const FN3 = build([
+    { id:"t3", type:"LINE", name:"梁", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"f3", type:"FAN", name:"直", srcMode:"coord", sx:0, sy:0, sz:40, ref:"t3",
+      from:11, to:11, every:1, div:5, fMode:"abs", f:0 }
+  ]);
+  yes("H6","N>1 且垂度 0 → 警告", FN3.warns.some(t => t.includes("橫向勁度")), FN3.warns.length, "有警告");
+
+  /* ---- 組獨立性、相依解析、編號 ---- */
+  const IND = build([
+    { type:"LINE", name:"甲", x1:0,y1:0,z1:0, x2:10,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
+    { type:"LINE", name:"乙", x1:500,y1:500,z1:50, x2:510,y2:500,z2:50, split:{ ...SPLIT_DEF, count:2 } }
+  ]).md;
+  chk("K1","兩組互不相連:節點總數", IND.tot.n, 6, 0, "");
+  chk("K1","甲起點不受乙影響", IND.groups[0].nodes[0].x, 0, 1e-12, "m");
+  chk("K1","乙起點由自己決定", IND.groups[1].nodes[0].x, 500, 1e-12, "m");
+  chk("K2","第 1 組節點起始", IND.groups[0].nodes[0].num, 1001, 0, "");
+  chk("K2","第 2 組節點起始(+號段增量)", IND.groups[1].nodes[0].num, 2001, 0, "");
+  const allN = IND.groups.flatMap(r => r.nodes.map(n => n.num));
+  yes("K2","編號不重複", new Set(allN).size === allN.length, new Set(allN).size, allN.length);
+  // 被引用的組排在後面也要能解析
+  const REV = build([
+    { id:"z1", type:"OFFSET", name:"偏", ref:"z2", d:3, h:0 },
+    { id:"z2", type:"LINE", name:"基", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } }
+  ]);
+  yes("K3","被引用的組排在後面仍可解析", REV.errs.length === 0 &&
+    REV.md.groups.find(r => r.g.id === "z1").nodes.length === 5, REV.errs.length, 0);
+  const CYC = build([
+    { id:"y1", type:"OFFSET", name:"A", ref:"y2", d:3, h:0 },
+    { id:"y2", type:"OFFSET", name:"B", ref:"y1", d:3, h:0 }
+  ]);
+  yes("K3","循環引用 → 錯誤且不當機", CYC.errs.length > 0, CYC.errs.length, "> 0");
+  const EMP = build([]);
+  yes("K4","空模型不產生錯誤", EMP.errs.length === 0 && EMP.md.tot.n === 0, EMP.md.tot.n, 0);
+
+  /* ---- 分割規則 ---- */
+  const SPd = build([{ type:"LINE", name:"L", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:30, rem:"keep" } }]).md.groups[0];
+  chk("M1","間距 30 於長 100:留一段 → 4 元素", SPd.elems.length, 4, 0, "");
+  chk("M1","末元素長 = 10", SPd.elems[3].len3d, 10, 1e-9, "m");
+  const SPe = build([{ type:"LINE", name:"L", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:30, rem:"even" } }]).md.groups[0];
+  chk("M1","均分吸收 → 3 元素", SPe.elems.length, 3, 0, "");
+  chk("M1","均分吸收:每段 100/3", SPe.elems[0].len3d, 100/3, 1e-9, "m");
+  const SPm = build([{ type:"LINE", name:"L", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:30, rem:"merge" } }]).md.groups[0];
+  chk("M1","併入前一元素 → 3 元素", SPm.elems.length, 3, 0, "");
+  chk("M1","併入:末元素 = 30 + 10", SPm.elems[2].len3d, 40, 1e-9, "m");
+  // 容差模式
+  const SPt = build([{ type:"ARC", name:"A", arcMode:"center", x1:100,y1:0,z1:0, cx:0,cy:0,
+    delta:90, dir:1, z2:0, split:{ ...SPLIT_DEF, mode:"tol", tol:0.02, maxSpacing:20, rem:"keep" } }]).md.groups[0];
+  yes("M2","容差模式:所有元素偏差 ≤ 0.02(與座標同單位)",
+    SPt.stat.maxDev <= 0.02 + 1e-9, SPt.stat.maxDev.toFixed(6), "≤ 0.02");
+  // 舊檔的 tolMm(公釐)要搬到 tol(當前單位)
+  const OLDTOL = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), pieces:[
+    { ...defaultPiece("LINE"), split:{ mode:"tol", count:20, spacing:5, tolMm:20, maxSpacing:20, rem:"even" } }] }] });
+  chk("M2","舊檔 tolMm 20 mm → tol 0.02 m", OLDTOL.groups[0].pieces[0].split.tol, 0.02, 1e-12, "m");
+  yes("M2","tolMm 已移除", OLDTOL.groups[0].pieces[0].split.tolMm === undefined, "已移除", "已移除");
+  chk("M2","容許弦長 √(8Rm) = 4.000", Math.sqrt(8*100*0.02), 4, 1e-12, "m");
+
+  /* ---- 強制節點 ---- */
+  const FC = build([{ type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
+    segments:[{ type:"LINE", L:100 }], profile:[], forced:"52.03", absorbTol:0.1,
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } }]).md.groups[0];
+  yes("N1","強制節點 52.03 已加入", FC.nodes.some(n => Math.abs(n.s-52.03) < 1e-6), "有", "有");
+  yes("N1","容差內的均分節點 50 未被吸收(距離 2.03 > 0.1)",
+    FC.nodes.some(n => Math.abs(n.s-50) < 1e-6), "保留", "保留");
+  const FC2 = build([{ type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
+    segments:[{ type:"LINE", L:100 }], profile:[], forced:"50.02", absorbTol:0.1,
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } }]).md.groups[0];
+  yes("N1","強制節點 50.02 吸收掉 50.000",
+    FC2.nodes.some(n => Math.abs(n.s-50.02) < 1e-6) && !FC2.nodes.some(n => Math.abs(n.s-50) < 1e-6),
+    "已吸收", "已吸收");
+
+  const LZ3 = build([
+    { id:"s3", type:"SAG", name:"纜", x1:0,y1:0,z1:40, x2:200,y2:0,z2:40, curve:"parabola",
+      fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:20 } },
+    { id:"h3", type:"LINKZ", name:"吊", ref:"s3", targetZ:0, from:5, to:9, every:1 }
+  ]);
+  chk("H4","組對高程:節點範圍 5–9 → 5 根",
+    LZ3.md.groups.find(r => r.g.id === "h3").elems.length, 5, 0, "");
+
+  /* ---- 多段組:段與段共用接縫節點 ---- */
+  const MP = buildPieces([
+    { type:"LINE", x1:0, y1:0, z1:0,  x2:20, y2:0, z2:30, split:{ ...SPLIT_DEF, count:2 } },
+    { type:"SAG",  x2:220, y2:0, z2:30, curve:"parabola", fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:20 } },
+    { type:"LINE", endMode:"point", x2:240, y2:0, z2:0, split:{ ...SPLIT_DEF, count:2 } }
+  ]);
+  const MG = MP.g;
+  chk("Q1","三段節點數 = 3+21+3 − 2 接縫", MG.nodes.length, 3 + 21 + 3 - 2, 0, "");
+  chk("Q1","元素數 = 節點數 − 1(全段連續)", MG.elems.length, MG.nodes.length - 1, 0, "");
+  chk("Q1","第 1 段起點", MG.nodes[0].z, 0, 1e-12, "m");
+  chk("Q1","接縫處(第 2 段起點)= 第 1 段終點", MG.nodes[2].x, 20, 1e-9, "m");
+  chk("Q1","接縫 Z", MG.nodes[2].z, 30, 1e-9, "m");
+  chk("Q1","最末節點", MG.nodes[MG.nodes.length-1].z, 0, 1e-12, "m");
+  yes("Q1","接縫沒有重複節點(同座標只有一個)",
+    MG.nodes.filter(n => Math.abs(n.x-20) < 1e-9 && Math.abs(n.z-30) < 1e-9).length === 1,
+    MG.nodes.filter(n => Math.abs(n.x-20) < 1e-9 && Math.abs(n.z-30) < 1e-9).length, 1);
+  chk("Q1","懸垂段跨中 = 弦線 − f", MG.nodes[2+10].z, 30-20, 1e-9, "m");
+  const nums = MG.nodes.map(n => n.num);
+  yes("Q1","整組編號連續", nums.every((v,i) => i === 0 || v === nums[i-1]+1), nums[0]+"…"+nums[nums.length-1], "連續");
+
+  // 起點改自訂 → 斷開,不產生跨接元素
+  const MB = buildPieces([
+    { type:"LINE", x1:0, y1:0, z1:0, x2:10, y2:0, z2:0, split:{ ...SPLIT_DEF, count:1 } },
+    { type:"LINE", cont:false, x1:100, y1:0, z1:0, x2:110, y2:0, z2:0, split:{ ...SPLIT_DEF, count:1 } }
+  ]).g;
+  chk("Q2","斷開的兩段:節點 4", MB.nodes.length, 4, 0, "");
+  chk("Q2","斷開的兩段:元素 2(不跨接)", MB.elems.length, 2, 0, "");
+
+  // 節點段
+  const MPt = buildPieces([
+    { type:"LINE",  x1:0, y1:0, z1:0, x2:100, y2:0, z2:0, split:{ ...SPLIT_DEF, count:4 } },
+    { type:"POINT", x2:100, y2:0, z2:40 },
+    { type:"POINT", cont:false, x2:500, y2:500, z2:0 }
+  ]).g;
+  chk("Q3","節點段:節點 5+1+1", MPt.nodes.length, 7, 0, "");
+  chk("Q3","接續的節點段產生 1 根元素", MPt.elems.length, 4 + 1, 0, "");
+  chk("Q3","塔頂節點高程", MPt.nodes[5].z, 40, 1e-12, "m");
+  yes("Q3","獨立節點不產生元素",
+    !MPt.elems.some(e => e.j === MPt.nodes[6].num), "無", "無");
+
+  // 段的元素屬性覆寫
+  const MO = buildPieces([
+    { type:"LINE", x1:0,y1:0,z1:0, x2:50,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } },
+    { type:"LINE", endMode:"point", x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 },
+      ovr:true, etype:"CABLE", mat:9, sect:8 }
+  ], { etype:"BEAM", mat:1, sect:1 }).g;
+  yes("Q4","第 1 段沿用組設定", MO.elems[0].type === "BEAM" && MO.elems[0].mat === 1,
+    MO.elems[0].type + "/" + MO.elems[0].mat, "BEAM/1");
+  yes("Q4","第 2 段覆寫", MO.elems[1].type === "CABLE" && MO.elems[1].mat === 9,
+    MO.elems[1].type + "/" + MO.elems[1].mat, "CABLE/9");
+
+  // 直線的極座標終點
+  const MPo = buildPieces([{ type:"LINE", x1:0,y1:0,z1:0, endMode:"polar",
+    len:100, az:90, el:30, split:{ ...SPLIT_DEF, count:1 } }]).g;
+  chk("Q5","極座標:X = L·cos(el)·sin(az)", MPo.nodes[1].x, 100*Math.cos(30*D2R), 1e-9, "m");
+  chk("Q5","極座標:Z = L·sin(el)", MPo.nodes[1].z, 50, 1e-9, "m");
+  chk("Q5","極座標:元素長 = L", MPo.elems[0].len3d, 100, 1e-9, "m");
+
+  // 螺旋接續前段:圓心由起點與方位角反推
+  const MH = buildPieces([
+    { type:"LINE",  x1:0, y1:0, z1:0, x2:50, y2:0, z2:0, split:{ ...SPLIT_DEF, count:1 } },
+    { type:"HELIX", R:50, az0:90, turns:1, pitch:10, dir:1, split:{ ...SPLIT_DEF, count:36 } }
+  ]).g;
+  chk("Q6","螺旋接續:起點沿用前段終點 X", MH.nodes[2].x, 50 + 50*Math.sin((90+10)*D2R) - 50*Math.sin(90*D2R) + 0, 1, "m");
+  chk("Q6","螺旋接續:繞完 1 圈回到起點平面位置", MH.nodes[2+35].x, 50, 1e-6, "m");
+  chk("Q6","螺旋接續:總升高", MH.nodes[2+35].z, 10, 1e-9, "m");
+
+  /* ---- 節點編輯與刪除 ---- */
+  const NE = (edits, dels) => {
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"ne", name:"組",
+      pieces:[{ ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+                split:{ ...SPLIT_DEF, count:10 } }],
+      edits:edits || {}, dels:dels || [] }] });
+    const E = [], W = [];
+    const md = buildModel(st0, E, W);
+    return { g:md.groups[0], errs:E, warns:W };
+  };
+  const NE0 = NE();
+  chk("R1","未編輯:11 節點 10 元素", NE0.g.nodes.length, 11, 0, "");
+  chk("R1","元素數", NE0.g.elems.length, 10, 0, "");
+  const NEd = NE(null, [5]);
+  chk("R2","刪除第 6 個節點 → 10 節點", NEd.g.nodes.length, 10, 0, "");
+  chk("R2","元素 9 根(前後直接相連)", NEd.g.elems.length, 9, 0, "");
+  const spanEl = NEd.g.elems.find(e => Math.abs(e.len3d - 20) < 1e-9);
+  yes("R2","跨過被刪節點的元素長度 = 20(兩倍間距)", !!spanEl,
+    spanEl ? spanEl.len3d.toFixed(3) : "無", "20.000");
+  yes("R2","被刪的節點編號不再出現",
+    !NEd.g.nodes.some(n => n.ri === 5), "已移除", "已移除");
+  yes("R2","編號仍連續", NEd.g.nodes.map(n => n.num).every((v,i,a) => i===0 || v===a[i-1]+1),
+    "連續", "連續");
+  const NEe = NE({ 3:{ x:30, y:15, z:7 } });
+  chk("R3","覆寫座標:Y", NEe.g.nodes[3].y, 15, 1e-12, "m");
+  chk("R3","覆寫座標:Z", NEe.g.nodes[3].z, 7, 1e-12, "m");
+  chk("R3","節點數不變", NEe.g.nodes.length, 11, 0, "");
+  yes("R3","被覆寫的節點有標記", NEe.g.nodes[3].edited === true, "有", "有");
+  chk("R3","相鄰元素長度跟著改變",
+      NEe.g.elems[3].len3d, Math.hypot(10, 15, 7), 1e-9, "m");
+  chk("R3","覆寫統計", NEe.g.stat.nEdit, 1, 0, "");
+  // 刪除端點
+  const NEf = NE(null, [0]);
+  chk("R4","刪除第一個節點 → 10 節點", NEf.g.nodes.length, 10, 0, "");
+  chk("R4","元素 9 根", NEf.g.elems.length, 9, 0, "");
+  chk("R4","新的起點 X = 10", NEf.g.nodes[0].x, 10, 1e-9, "m");
+  // 失效的刪除標記
+  const NEg = NE(null, [50]);
+  yes("R4","超出範圍的刪除標記 → 警告且不當機",
+    NEg.warns.some(t => t.includes("失效")) && NEg.g.nodes.length === 11,
+    NEg.g.nodes.length, 11);
+  // 多段組刪掉接縫節點
+  const NEh = (() => {
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"組",
+      pieces:[
+        { ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:20,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
+        { ...defaultPiece("LINE"), cont:true, endMode:"point", x2:60,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } }],
+      dels:[2] }] });
+    return buildModel(st0, [], []).groups[0];
+  })();
+  chk("R5","多段組刪接縫:節點 5−1", NEh.nodes.length, 4, 0, "");
+  chk("R5","跨段元素長度 = 10 + 20", NEh.elems.find(e => Math.abs(e.len3d-30) < 1e-9) ? 30 : 0, 30, 1e-9, "m");
+
+  /* ---- 單位:輸入即輸出 ---- */
+  const UFIX = () => normState({ ...DEF_STATE(), groups:[
+    { ...defaultGroup("CURVE"), name:"組", pieces:[
+      { ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0,
+        split:{ ...SPLIT_DEF, mode:"spacing", spacing:25, rem:"keep" } },
+      { ...defaultPiece("CHAIN"), cont:true, az:90, sta:0,
+        segments:[{ type:"SPIRAL", R0inf:true, R1:200, dir:1, defBy:"Ls", Ls:60 }],
+        split:{ ...SPLIT_DEF, count:6 } }],
+      xf:{ ...XF_DEF(), dx:5, dz:2 },
+      edits:{ 2:{ x:52, y:1, z:0 } } },
+    { ...defaultGroup("OFFSET"), id:"uo", name:"偏", ref:"", d:4, h:1 }] });
+  const U1 = buildModel(UFIX(), [], []).groups[0];
+  // 同一份數字換算成 MM 之後,幾何應該完全等比例(1000×),節點數與拓樸不變
+  const stMM = scaleModel(UFIX(), 1000);
+  stMM.units.length = "MM";
+  const U2 = buildModel(stMM, [], []).groups[0];
+  chk("V1","換算成 MM:節點數不變", U2.nodes.length, U1.nodes.length, 0, "");
+  chk("V1","換算成 MM:座標 ×1000", U2.nodes[3].x, U1.nodes[3].x*1000, 1e-6, "mm");
+  chk("V1","換算成 MM:總長 ×1000", U2.stat.len3d, U1.stat.len3d*1000, 1e-6, "mm");
+  chk("V1","換算成 MM:弦線偏差 ×1000", U2.stat.maxDev, U1.stat.maxDev*1000, 1e-6, "mm");
+  chk("V1","換算成 MM:座標覆寫一起換", U2.nodes[2].x, 52*1000 + 5*1000, 1e-6, "mm");
+  yes("V1","換算成 MM:元素 i–j 完全相同",
+    U2.elems.map(e => e.i+"-"+e.j).join(",") === U1.elems.map(e => e.i+"-"+e.j).join(","), "相同", "相同");
+  // 來回換算要回到原值
+  const HXU = () => normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"螺", pieces:[
+    { ...defaultPiece("HELIX"), cont:false, x1:0,y1:0,z1:0, cx:0, cy:-50, R:50, R2:"", az0:90,
+      turns:1, pitch:10, dir:1, split:{ ...SPLIT_DEF, count:36 } }] }] });
+  const HX1 = buildModel(HXU(), [], []).groups[0];
+  const hxE = [];
+  const HX2 = buildModel(scaleModel(HXU(), 1000), hxE, []).groups[0];
+  yes("V1","留白的終止半徑換算後仍留白(不能變成 0)", hxE.length === 0 && !HX2.stat.err,
+    hxE[0] || "無錯誤", "無錯誤");
+  chk("V1","螺旋換算後總長 ×1000", HX2.stat.len3d, HX1.stat.len3d*1000, 1e-6, "mm");
+  const back2 = scaleModel(scaleModel(UFIX(), 1000), 1/1000);
+  const U3 = buildModel(back2, [], []).groups[0];
+  chk("V1","M→MM→M 回到原座標", U3.nodes[3].x, U1.nodes[3].x, 1e-9, "m");
+  // 分割的容差模式也必須跟著尺度走
+  const tolM = build([{ type:"ARC", name:"A", arcMode:"center", x1:100,y1:0,z1:0, cx:0,cy:0,
+    delta:90, dir:1, z2:0, split:{ ...SPLIT_DEF, mode:"tol", tol:0.02, maxSpacing:20, rem:"keep" } }]).md.groups[0];
+  const tolMM = build([{ type:"ARC", name:"A", arcMode:"center", x1:100000,y1:0,z1:0, cx:0,cy:0,
+    delta:90, dir:1, z2:0, split:{ ...SPLIT_DEF, mode:"tol", tol:20, maxSpacing:20000, rem:"keep" } }]).md.groups[0];
+  chk("V2","容差模式:等比例放大 1000 倍後元素數相同", tolMM.elems.length, tolM.elems.length, 0, "");
+  chk("V2","容差模式:偏差也等比例", tolMM.stat.maxDev, tolM.stat.maxDev*1000, 1e-6, "");
+  // 樁號格式:非公尺就不用 k+
+  const uL0 = state.units.length;
+  state.units.length = "MM";
+  const staMM = fmtSta(125500);
+  state.units.length = uL0;
+  yes("V3","單位非公尺時樁號不用 k+ 格式", staMM === "125500.000", staMM, "125500.000");
+  yes("V3","公尺時仍是 k+ 格式", fmtSta(125.5) === "0k+125.500", fmtSta(125.5), "0k+125.500");
+
+  /* ---- 終點接續下一段的起點 ---- */
+  const EC1 = buildPieces([
+    { type:"LINE", cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:10,y2:0,z2:0, endCont:true,
+      split:{ ...SPLIT_DEF, count:2 } },
+    { type:"LINE", cont:false, x1:100,y1:0,z1:0, endMode:"point", x2:200,y2:0,z2:0,
+      split:{ ...SPLIT_DEF, count:2 } }
+  ]);
+  chk("U1","前段終點黏到下段起點 X", EC1.g.nodes[2].x, 100, 1e-9, "m");
+  chk("U1","接縫節點共用 → 5 節點", EC1.g.nodes.length, 5, 0, "");
+  chk("U1","元素全部串起來", EC1.g.elems.length, 4, 0, "");
+  chk("U1","總長 = 200", EC1.g.stat.len3d, 200, 1e-9, "m");
+  yes("U1","沒有斷點", !EC1.g.nodes.slice(1).some(n => n.brk), "無", "無");
+  // 下一段是「節點」時,節點由前段的終點兼任
+  const EC2 = buildPieces([
+    { type:"LINE", cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:10,y2:0,z2:0, endCont:true,
+      split:{ ...SPLIT_DEF, count:1 } },
+    { type:"POINT", cont:false, x2:80,y2:60,z2:0 }
+  ]).g;
+  chk("U1","接到節點段:終點 X", EC2.nodes[1].x, 80, 1e-9, "m");
+  chk("U1","接到節點段:終點 Y", EC2.nodes[1].y, 60, 1e-9, "m");
+  chk("U1","不重複產生節點", EC2.nodes.length, 2, 0, "");
+  chk("U1","元素長 = 100", EC2.stat.len3d, 100, 1e-9, "m");
+  // 下一段本來就接續前段 → 不成立,維持原本的終點
+  const EC3 = buildPieces([
+    { type:"LINE", cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:10,y2:0,z2:0, endCont:true,
+      split:{ ...SPLIT_DEF, count:1 } },
+    { type:"LINE", cont:true, endMode:"polar", len:5, az:90, el:0, split:{ ...SPLIT_DEF, count:1 } }
+  ]).g;
+  chk("U1","下段沒有自訂起點 → 終點不動", EC3.nodes[1].x, 10, 1e-9, "m");
+
+  /* ---- 平移與旋轉 ---- */
+  const XFG = xf => {
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"組",
+      pieces:[{ ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0,
+                split:{ ...SPLIT_DEF, count:4 } }], xf:xf || XF_DEF() }] });
+    return buildModel(st0, [], []).groups[0];
+  };
+  const G0 = XFG(null), G1 = XFG({ ...XF_DEF(), dx:10, dy:20, dz:5 });
+  chk("U2","整組平移:起點 X", G1.nodes[0].x, 10, 1e-9, "m");
+  chk("U2","整組平移:起點 Y", G1.nodes[0].y, 20, 1e-9, "m");
+  chk("U2","整組平移:終點 Z", G1.nodes[4].z, 5, 1e-9, "m");
+  chk("U2","剛體:元素總長不變", G1.stat.len3d, G0.stat.len3d, 1e-9, "m");
+  chk("U2","剛體:弦線偏差不變", G1.stat.maxDev, G0.stat.maxDev, 1e-12, "m");
+  chk("U2","節點編號不變", G1.nodes[4].num, G0.nodes[4].num, 0, "");
+  const G2 = XFG({ ...XF_DEF(), rot:90, cmode:"start" });
+  chk("U2","繞起點逆時針 90°:終點 X", G2.nodes[4].x, 0, 1e-9, "m");
+  chk("U2","繞起點逆時針 90°:終點 Y", G2.nodes[4].y, 100, 1e-9, "m");
+  chk("U2","旋轉後方位角 90°→0°(北)", G2.nodes[0].az, 0, 1e-9, "°");
+  const G3 = XFG({ ...XF_DEF(), rot:180, cmode:"center" });
+  chk("U2","繞範圍中心轉 180°:起點 X", G3.nodes[0].x, 100, 1e-9, "m");
+  const G4 = XFG({ ...XF_DEF(), rot:90, axis:"Y", cmode:"start" });
+  chk("U2","繞 Y 軸轉 90°:終點 Z", G4.nodes[4].z, -100, 1e-9, "m");
+  chk("U2","繞 Y 軸轉 90°:終點 X", G4.nodes[4].x, 0, 1e-9, "m");
+
+  // 段的變換:後面接續的段跟著走
+  const PXF = buildPieces([
+    { type:"LINE", cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } },
+    { type:"LINE", endMode:"polar", len:50, az:90, el:0, split:{ ...SPLIT_DEF, count:1 },
+      xf:{ ...XF_DEF(), dz:10 } },
+    { type:"LINE", endMode:"polar", len:50, az:90, el:0, split:{ ...SPLIT_DEF, count:1 } }
+  ]).g;
+  chk("U3","段平移:本段終點 X", PXF.nodes[2].x, 150, 1e-9, "m");
+  chk("U3","段平移:本段終點 Z", PXF.nodes[2].z, 10, 1e-9, "m");
+  chk("U3","後續段跟著走:Z", PXF.nodes[3].z, 10, 1e-9, "m");
+  chk("U3","後續段跟著走:X", PXF.nodes[3].x, 200, 1e-9, "m");
+  chk("U3","元素數不變", PXF.elems.length, 3, 0, "");
+  // 段旋轉:預設繞本段起點,接縫不會被扯開
+  const PXR = buildPieces([
+    { type:"LINE", cont:false, x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } },
+    { type:"LINE", endMode:"polar", len:50, az:90, el:0, split:{ ...SPLIT_DEF, count:1 },
+      xf:{ ...XF_DEF(), rot:90 } }
+  ]).g;
+  chk("U3","段繞起點旋轉:接縫不動 X", PXR.nodes[1].x, 100, 1e-9, "m");
+  chk("U3","段繞起點旋轉:終點 X", PXR.nodes[2].x, 100, 1e-9, "m");
+  chk("U3","段繞起點旋轉:終點 Y", PXR.nodes[2].y, 50, 1e-9, "m");
+
+  // 下拉存進來的字串要能正規化
+  const NS0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), pieces:[
+    { ...defaultPiece("LINE") }, { ...defaultPiece("LINE"), cont:"0" }] }] });
+  yes("U4","起點下拉存成字串 \"0\" 會被正規化成斷開",
+    NS0.groups[0].pieces[1].cont === false, String(NS0.groups[0].pieces[1].cont), "false");
+
+  /* ---- 座標覆寫不得改變連接關係 ---- */
+  const topo = r0 => r0.elems.map(e => e.i + "-" + e.j).join(",");
+  const CT = (edits) => {
+    const st0 = normState({ ...DEF_STATE(), groups:[
+      { ...defaultGroup("CURVE"), id:"ct", name:"主",
+        pieces:[
+          { ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:5 } },
+          { ...defaultPiece("SAG"),  cont:true, x2:300,y2:0,z2:0, curve:"parabola",
+            fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:10 } }],
+        edits:edits || {}, dels:[] },
+      { ...defaultGroup("OFFSET"), id:"ct2", name:"偏", ref:"ct", d:4, h:0 },
+      { ...defaultGroup("LINK2"), id:"ct3", name:"橫", a:"ct", b:"ct2", every:1 }
+    ] });
+    const E = [], W = [];
+    const md = buildModel(st0, E, W);
+    return { md, main:md.groups.find(r => r.g.id === "ct"), off:md.groups.find(r => r.g.id === "ct2"),
+             lk:md.groups.find(r => r.g.id === "ct3"), errs:E };
+  };
+  const T0 = CT(), T1 = CT({ 3:{ x:55, y:22, z:9 } });
+  yes("S1","覆寫座標後元素的 i–j 連接完全相同", topo(T1.main) === topo(T0.main),
+    topo(T1.main).slice(0,28) + "…", "與未覆寫相同");
+  chk("S1","節點數不變", T1.main.nodes.length, T0.main.nodes.length, 0, "");
+  chk("S1","元素數不變", T1.main.elems.length, T0.main.elems.length, 0, "");
+  chk("S1","節點編號不變", T1.main.nodes[3].num, T0.main.nodes[3].num, 0, "");
+  chk("S1","座標確實有改", T1.main.nodes[3].y, 22, 1e-12, "m");
+  yes("S2","相依的偏置組連接關係也不變", topo(T1.off) === topo(T0.off), "相同", "相同");
+  yes("S2","組對組連接關係也不變", topo(T1.lk) === topo(T0.lk), "相同", "相同");
+  chk("S2","偏置組節點數不變", T1.off.nodes.length, T0.off.nodes.length, 0, "");
+  yes("S2","覆寫後仍無錯誤", T1.errs.length === 0, T1.errs.length, 0);
+  // 逐軸容錯:只給 Y,X/Z 沿用原值
+  const T2 = CT({ 3:{ x:NaN, y:22, z:NaN } });
+  chk("S3","只覆寫 Y 時 X 沿用原值", T2.main.nodes[3].x, T0.main.nodes[3].x, 1e-12, "m");
+  chk("S3","只覆寫 Y 時 Z 沿用原值", T2.main.nodes[3].z, T0.main.nodes[3].z, 1e-12, "m");
+  chk("S3","Y 有生效", T2.main.nodes[3].y, 22, 1e-12, "m");
+  yes("S3","仍標記為已覆寫", T2.main.nodes[3].edited === true, "是", "是");
+
+  // 畫面畫的必須是「實際元素」,節點被移動後線要跟著走
+  const T3 = CT({ 3:{ x:55, y:22, z:9 } });
+  const polys = elemPolys(T3.main);
+  yes("S4","元素折線只有一條(全段連續)", polys.length === 1, polys.length, 1);
+  chk("S4","折線點數 = 節點數", polys[0].length, T3.main.nodes.length, 0, "");
+  const moved = polys[0][3];
+  chk("S4","折線第 4 點就是被移動後的座標 X", moved.x, 55, 1e-12, "m");
+  chk("S4","折線第 4 點 Y", moved.y, 22, 1e-12, "m");
+  yes("S4","前一點仍是原座標(只有被改的那點動)",
+    Math.abs(polys[0][2].x - T0.main.nodes[2].x) < 1e-12, "未動", "未動");
+  // 參數曲線(淡色底線)確實與元素折線不同 —— 這正是之前看起來「斷掉」的原因
+  const cp = curvePolys(T3.main).flatMap(pl => pl.pts);
+  const near = cp.some(q => Math.abs(q.x-55) < 1e-6 && Math.abs(q.y-22) < 1e-6);
+  yes("S4","參數曲線不含被移動的點(所以只能當參考底線)", !near, "不含", "不含");
+  // 刪除後折線要跨過去
+  const T4 = (() => {
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"t4", name:"主",
+      pieces:[{ ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+                split:{ ...SPLIT_DEF, count:5 } }], dels:[2] }] });
+    return buildModel(st0, [], []).groups[0];
+  })();
+  const p4 = elemPolys(T4);
+  yes("S5","刪除中間節點後仍是一條連續折線", p4.length === 1, p4.length, 1);
+  chk("S5","折線點數 = 5", p4[0].length, 5, 0, "");
+  chk("S5","跨過被刪節點的一段長度 = 40", Math.hypot(p4[0][2].x-p4[0][1].x, 0, 0), 40, 1e-9, "m");
+  // 分段折線:每一段各自一條,顏色才對得起來
+  const SEGP = (() => {
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"組", pieces:[
+      { ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:50,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
+      { ...defaultPiece("LINE"), cont:true, endMode:"polar", len:50, az:90, el:0, split:{ ...SPLIT_DEF, count:2 } }] }] });
+    return buildModel(st0, [], []).groups[0];
+  })();
+  const sp = elemPolysBy(SEGP);
+  yes("S6","兩段 → 兩條分段折線", sp.length === 2, sp.length, 2);
+  yes("S6","分段折線帶著段序號", sp.map(x => x.pi).join(",") === "0,1", sp.map(x => x.pi).join(","), "0,1");
+  chk("S6","接縫兩邊共用同一個點", Math.hypot(sp[0].pts[sp[0].pts.length-1].x - sp[1].pts[0].x, 0, 0), 0, 1e-12, "m");
+  yes("S6","段色互不相同", pieceColor(0) !== pieceColor(1), pieceColor(0) + "/" + pieceColor(1), "不同");
+
+  /* ---- 復原 / 重做 ---- */
+  const savedHist = { past:HIST.past.slice(), future:HIST.future.slice(), key:HIST.key, t:HIST.t };
+  const savedState = JSON.stringify(state);
+  HIST.past.length = 0; HIST.future.length = 0; HIST.key = ""; HIST.t = 0;
+  state = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"u1", name:"A",
+    pieces:[{ ...defaultPiece("LINE"), cont:false, x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
+              split:{ ...SPLIT_DEF, count:5 } }] }] });
+  const g0 = state.groups[0];
+  snapshot("t1"); g0.name = "B";
+  snapshot("t2"); g0.pieces[0].x2 = 200;
+  chk("U1","歷史堆疊 2 步", HIST.past.length, 2, 0, "");
+  undo();
+  yes("U1","復原一步:x2 回到 100", state.groups[0].pieces[0].x2 === 100 && state.groups[0].name === "B",
+    state.groups[0].pieces[0].x2 + "/" + state.groups[0].name, "100/B");
+  undo();
+  yes("U1","再復原一步:名稱回到 A", state.groups[0].name === "A", state.groups[0].name, "A");
+  chk("U1","可重做 2 步", HIST.future.length, 2, 0, "");
+  redo(); redo();
+  yes("U2","重做兩步回到最新", state.groups[0].pieces[0].x2 === 200 && state.groups[0].name === "B",
+    state.groups[0].pieces[0].x2 + "/" + state.groups[0].name, "200/B");
+  // 同欄位連續輸入只記一次
+  HIST.past.length = 0; HIST.key = ""; HIST.t = 0;
+  snapshot("f:g:x"); snapshot("f:g:x"); snapshot("f:g:x");
+  chk("U3","同欄位連打只記 1 步", HIST.past.length, 1, 0, "");
+  snapshot("f:g:y");
+  chk("U3","換欄位就記新的一步", HIST.past.length, 2, 0, "");
+  // 新操作要清掉 redo
+  HIST.future.length = 0; HIST.past.length = 0; HIST.key = ""; HIST.t = 0;
+  snapshot("a"); undo(); chk("U4","復原後可重做", HIST.future.length, 1, 0, "");
+  snapshot("b:" + Date.now());
+  chk("U4","做了新動作後 redo 被清空", HIST.future.length, 0, 0, "");
+  state = normState(JSON.parse(savedState));
+  HIST.past = savedHist.past; HIST.future = savedHist.future; HIST.key = savedHist.key; HIST.t = savedHist.t;
+
+  /* ---- 輸出 ---- */
+  const OUTF = build([
+    { id:"q1", type:"LINE", name:"甲", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
+    { id:"q2", type:"SAG", name:"乙", x1:0,y1:20,z1:30, x2:100,y2:20,z2:30, curve:"parabola",
+      fMode:"abs", f:5, split:{ ...SPLIT_DEF, count:5 }, etype:"CABLE", mat:2, sect:3 },
+    { id:"q3", type:"LINKZ", name:"吊", ref:"q2", targetZ:0, every:2, etype:"CABLE" }
+  ]);
+  const sv = { MODEL, state };
+  MODEL = OUTF.md; state = OUTF.st;
+  const mct = mctText().split("\r\n");
+  const idx = n => mct.findIndex(l => l.trim() === "*" + n);
+  const iU = idx("UNIT"), iN = idx("NODE"), iE = idx("ELEMENT"), iG = idx("GROUP");
+  yes("P1","區塊順序 UNIT → NODE → ELEMENT → GROUP",
+    iU > 0 && iU < iN && iN < iE && iE < iG, `${iU},${iN},${iE},${iG}`, "遞增");
+  const body = (a,b) => mct.slice(a+1, b < 0 ? mct.length : b).filter(l => l.trim() && !l.trim().startsWith(";"));
+  chk("P1","*NODE 列數 = 節點總數", body(iN,iE).length, OUTF.md.tot.n, 0, "");
+  chk("P1","*ELEMENT 列數 = 元素總數", body(iE,iG).length, OUTF.md.tot.e, 0, "");
+  chk("P1","*GROUP 列數 = 群組數", body(iG,-1).length, OUTF.md.names.length, 0, "");
+  yes("P2","BEAM 元素列", elemLine({num:7,type:"BEAM",mat:1,sect:2,i:10,j:11}) === "7, BEAM, 1, 2, 10, 11, 0, 0",
+    elemLine({num:7,type:"BEAM",mat:1,sect:2,i:10,j:11}), "7, BEAM, 1, 2, 10, 11, 0, 0");
+  yes("P2","CABLE 元素列(可調類型/iSUB/EXVAL)",
+    elemLine({num:8,type:"CABLE",mat:3,sect:4,i:20,j:21}) === "8, TENSTR, 3, 4, 20, 21, 0, 2, 0",
+    elemLine({num:8,type:"CABLE",mat:3,sect:4,i:20,j:21}), "8, TENSTR, 3, 4, 20, 21, 0, 2, 0");
+  const uL = state.units.length;
+  state.units.length = "M";  const rM  = body(iN,iE)[0];
+  state.units.length = "MM";
+  const mct2 = mctText().split("\r\n");
+  const rMM = mct2.slice(mct2.findIndex(l => l.trim()==="*NODE")+1).find(l => l.trim() && !l.trim().startsWith(";"));
+  const uLine = mct2.slice(mct2.findIndex(l => l.trim()==="*UNIT")+1).find(l => l.trim() && !l.trim().startsWith(";"));
+  state.units.length = uL;
+  yes("P3","換單位不動座標(輸入即輸出)", rMM.trim() === rM.trim(), rMM.trim(), rM.trim());
+  yes("P3","*UNIT 寫的是選定的單位", /(^|,)\s*MM\s*(,|$)/.test(uLine), uLine.trim(), "含 MM");
+  const back = extractParams(mctText());
+  yes("P4",".mct 檔頭參數可完整取回", !!back && back.state.groups.length === 3,
+    back ? back.state.groups.length : "null", 3);
+  yes("P4","無參數區塊 → null", extractParams("*NODE\n1,0,0,0") === null, "null", "null");
+  chk("P5","節點 CSV 列數", nodeCSV().split("\r\n").length - 1, OUTF.md.tot.n, 0, "");
+  chk("P5","元素 CSV 列數", elemCSV().split("\r\n").length - 1, OUTF.md.tot.e, 0, "");
+  yes("P5","CSV 逗號與引號跳脫", toCSV([["a,b",'c"d',1]]).replace("﻿","") === '"a,b","c""d",1',
+    toCSV([["a,b",'c"d',1]]).replace("﻿",""), '"a,b","c""d",1');
+  yes("P6","群組清單連號壓縮", compressList([3,1,2,5,9,7,8,5]) === "1to3 5 7to9",
+    compressList([3,1,2,5,9,7,8,5]), "1to3 5 7to9");
+  MODEL = sv.MODEL; state = sv.state;
+
+  renderTests(rows);
+  return rows;
+}
+function renderTests(rows){
+  const nOk = rows.filter(r => r.ok).length, all = nOk === rows.length;
+  const fmtV = v => typeof v === "number" ? (Math.abs(v) >= 1e6 ? v.toExponential(6) : v.toFixed(6)) : String(v);
+  $("#tests").innerHTML =
+    `<div style="font-size:12px;margin:6px 0"><span class="${all?"pass":"fail"}">${all?"✓ 全部通過":"✕ 有失敗項目"}</span>
+       <span style="color:var(--ink-3)"> — ${nOk}/${rows.length}</span></div>
+     <table class="tt"><thead><tr><th style="width:26px"></th><th style="width:32px">組</th><th>項目</th>
+       <th style="width:96px">實際</th><th style="width:96px">預期</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td class="${r.ok?"pass":"fail"}">${r.ok?"✓":"✕"}</td>
+      <td style="color:var(--ink-3)">${r.id}</td><td style="font-family:'Noto Sans TC',sans-serif">${esc(r.desc)}</td>
+      <td>${esc(r.str ? r.actual : fmtV(r.actual))}</td><td>${esc(r.str ? r.expect : fmtV(r.expect))}</td></tr>`).join("") +
+    `</tbody></table>`;
+}
+
+/* ==========================================================================
+   啟動
+   ========================================================================== */
+normState(state);
+recompute(true);
+runTests();
+
+</script>
+</body>
+</html>

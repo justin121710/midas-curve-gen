@@ -1,0 +1,4267 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>曲線節點/元素產生器 — 階段 1</title>
+<style>
+  :root{
+    --paper:#f7f6f2;
+    --ink:#1e2430;
+    --ink-2:#5a6472;
+    --ink-3:#8b95a3;
+    --line:#d6d2c8;
+    --line-2:#e6e3db;
+    --panel:#ffffff;
+    --accent:#1c5d99;
+    --accent-soft:#e8f0f8;
+    --ok:#1a7f4b;
+    --warn:#a8710d;
+    --err:#b3261e;
+    --mono:"Cascadia Mono","Consolas","SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    font-size:13px; line-height:1.5;
+  }
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+  header{
+    display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+    padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel);
+  }
+  header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
+  header .stage{
+    font-size:11px; padding:2px 8px; border-radius:10px;
+    background:var(--accent-soft); color:var(--accent); font-weight:600;
+  }
+  header .note{font-size:11px; color:var(--ink-3)}
+
+  #app{display:grid; grid-template-columns:minmax(420px,44%) 1fr; height:calc(100% - 43px)}
+  @media(max-width:980px){ #app{grid-template-columns:1fr; height:auto} }
+
+  .col{overflow:auto; padding:14px 16px 40px}
+  .col.right{border-left:1px solid var(--line); background:#fbfaf7; display:flex; flex-direction:column; padding-bottom:16px}
+
+  .block{margin-bottom:16px}
+  .block > h2{
+    font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--ink-3); margin:0 0 8px; font-weight:700;
+  }
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 12px}
+
+  .grid{display:grid; gap:8px 10px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+
+  label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2)}
+  label.f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  input[type=text], input[type=number], select{
+    font:inherit; font-family:var(--mono); font-size:12.5px;
+    padding:4px 6px; border:1px solid var(--line); border-radius:4px;
+    background:#fff; color:var(--ink); width:100%; min-width:0;
+  }
+  select{font-family:inherit}
+  input:focus, select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
+  input.bad{border-color:var(--err); background:#fdf3f2}
+
+  .seg{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    margin-bottom:8px; overflow:hidden;
+  }
+  .seg-head{
+    display:flex; align-items:center; gap:8px; padding:6px 8px 6px 0;
+    background:#fafaf7; border-bottom:1px solid var(--line-2);
+  }
+  .seg-tag{
+    width:30px; text-align:center; font-family:var(--mono); font-weight:700;
+    font-size:12px; color:#fff; padding:4px 0; align-self:stretch;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .seg-head select{width:auto; padding:3px 6px; font-size:12px}
+  .seg-head .spacer{flex:1}
+  .seg-head .chk{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--ink-2); cursor:pointer}
+  .iconbtn{
+    border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;
+    width:22px; height:22px; padding:0; color:var(--ink-2); font-size:12px; line-height:1;
+  }
+  .iconbtn:hover{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
+  .iconbtn.danger:hover{background:#fdf0ef; color:var(--err); border-color:var(--err)}
+  .seg-body{padding:9px 10px}
+  .seg-out{
+    border-top:1px dashed var(--line-2); margin-top:9px; padding-top:7px;
+    font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:2px 14px;
+  }
+  .seg-out b{color:var(--ink); font-weight:600}
+  .seg-out .k{color:var(--ink-3); font-family:inherit}
+
+  button.act{
+    font:inherit; font-size:12px; padding:5px 11px; border-radius:4px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+  }
+  button.act:hover{border-color:var(--accent); color:var(--accent)}
+  button.act.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.act.primary:hover{background:#17517f}
+  .row-btns{display:flex; gap:6px; flex-wrap:wrap}
+
+  #msgs:empty{display:none}
+  .msg{
+    display:flex; gap:7px; padding:5px 9px; border-radius:4px; margin-bottom:5px;
+    font-size:12px; align-items:flex-start;
+  }
+  .msg.err{background:#fdf0ef; color:var(--err); border:1px solid #f2d3d0}
+  .msg.warn{background:#fdf7e8; color:var(--warn); border:1px solid #f0e2bd}
+  .msg b{font-family:var(--mono)}
+
+  textarea{
+    font-family:var(--mono); font-size:12.5px; padding:5px 6px;
+    border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink);
+    width:100%; resize:vertical;
+  }
+  textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
+
+  /* 檢核面板 */
+  .checks{
+    margin:8px 16px 0; padding:9px 12px; background:var(--panel);
+    border:1px solid var(--line); border-radius:6px;
+  }
+  .checks .kpi{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:4px 16px;
+    font-family:var(--mono); font-size:12px;
+  }
+  .checks .kpi .k{font-family:inherit; font-size:10.5px; color:var(--ink-3); display:block}
+  .checks .kpi b{font-weight:600; font-size:13px}
+  .checks .kpi b.hot{color:var(--warn)}
+  .banner{
+    display:flex; align-items:center; gap:9px; margin-top:9px; padding:6px 10px;
+    background:#fdf7e8; border:1px solid #f0e2bd; border-radius:4px;
+    color:var(--warn); font-size:12px;
+  }
+  .banner button{
+    font:inherit; font-size:11.5px; padding:3px 9px; border-radius:4px; cursor:pointer;
+    border:1px solid var(--warn); background:#fff; color:var(--warn); white-space:nowrap;
+  }
+  table.seg-chk{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11.5px; margin-top:9px}
+  table.seg-chk th{
+    text-align:right; font-family:"Noto Sans TC",sans-serif; font-size:10px; color:var(--ink-3);
+    font-weight:600; padding:2px 6px; border-bottom:1px solid var(--line);
+  }
+  table.seg-chk th:first-child, table.seg-chk td:first-child{text-align:left}
+  table.seg-chk td{text-align:right; padding:2px 6px; border-bottom:1px solid var(--line-2)}
+  table.seg-chk tr:last-child td{border-bottom:none}
+  table.seg-chk td.hot{color:var(--warn); font-weight:600}
+
+  /* 餘數對話框 */
+  .modal-bd{
+    position:fixed; inset:0; background:rgba(30,36,48,.35); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-bd[hidden]{display:none}
+  .modal{
+    background:var(--panel); border-radius:8px; padding:16px 18px; max-width:640px; width:100%;
+    box-shadow:0 12px 40px rgba(30,36,48,.25); max-height:86vh; overflow:auto;
+  }
+  .modal h3{margin:0 0 4px; font-size:14px}
+  .modal table{width:100%; border-collapse:collapse; font-size:12px; margin-top:10px}
+  .modal th{
+    text-align:left; font-size:10.5px; color:var(--ink-3); font-weight:600;
+    padding:3px 6px; border-bottom:1px solid var(--line);
+  }
+  .modal td{padding:4px 6px; border-bottom:1px solid var(--line-2); font-family:var(--mono)}
+  .modal td select{font-family:inherit; font-size:12px}
+
+  /* preview */
+  .canvas-wrap{position:relative; flex:1; min-height:440px; margin:0 16px}
+  canvas{
+    width:100%; height:100%; display:block; background:#fff;
+    border:1px solid var(--line); border-radius:6px; cursor:crosshair;
+  }
+  .cv-tools{position:absolute; top:8px; right:8px; display:flex; gap:5px}
+  .cv-tools button{
+    font:inherit; font-size:11px; padding:3px 8px; border-radius:4px; cursor:pointer;
+    border:1px solid var(--line); background:rgba(255,255,255,.92); color:var(--ink-2);
+  }
+  .cv-tools button:hover{color:var(--accent); border-color:var(--accent)}
+  .readout{
+    position:absolute; left:8px; bottom:8px; background:rgba(255,255,255,.94);
+    border:1px solid var(--line); border-radius:4px; padding:5px 9px;
+    font-family:var(--mono); font-size:11.5px; color:var(--ink-2); pointer-events:none;
+    white-space:pre; min-height:20px;
+  }
+  .prof-wrap{position:relative; height:210px; margin:10px 16px 0; flex:0 0 auto}
+  .prof-wrap canvas{
+    width:100%; height:100%; display:block; background:#fff;
+    border:1px solid var(--line); border-radius:6px; cursor:crosshair;
+  }
+  .exag{
+    font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+    background:rgba(255,255,255,.92); border:1px solid var(--line);
+    border-radius:4px; padding:2px 7px;
+  }
+  .vpi{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    margin-bottom:6px; padding:8px 10px;
+  }
+  .vpi .row{display:flex; gap:9px; align-items:flex-end}
+  .vpi .row > label{flex:1}
+  .vpi .tag{
+    width:26px; height:26px; border-radius:4px; background:#5a6472; color:#fff;
+    font-family:var(--mono); font-weight:700; font-size:11.5px;
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto; margin-bottom:3px;
+  }
+  .vpi .tag.end{background:#b8bfc8}
+  .vpi-out{
+    border-top:1px dashed var(--line-2); margin-top:7px; padding-top:6px;
+    font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:2px 14px;
+  }
+  .vpi-out b{color:var(--ink); font-weight:600}
+  .vpi-out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
+
+  .legend{
+    display:flex; gap:12px; flex-wrap:wrap; padding:8px 16px 0;
+    font-size:11px; color:var(--ink-2);
+  }
+  .legend i{display:inline-block; width:13px; height:3px; border-radius:2px; margin-right:5px; vertical-align:middle}
+
+  .summary{
+    margin:10px 16px 0; padding:8px 12px; background:var(--panel);
+    border:1px solid var(--line); border-radius:6px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:4px 16px;
+    font-family:var(--mono); font-size:12px;
+  }
+  .summary .k{font-family:inherit; font-size:10.5px; color:var(--ink-3); display:block}
+  .summary b{font-weight:600; font-size:13px}
+
+  /* tests */
+  #tests{margin:12px 16px 0}
+  table.tt{width:100%; border-collapse:collapse; font-size:11.5px; font-family:var(--mono)}
+  table.tt th{
+    text-align:left; font-family:inherit; font-size:10.5px; color:var(--ink-3);
+    font-weight:600; padding:3px 6px; border-bottom:1px solid var(--line);
+  }
+  table.tt td{padding:2.5px 6px; border-bottom:1px solid var(--line-2); vertical-align:top}
+  table.tt tr:last-child td{border-bottom:none}
+  .pass{color:var(--ok); font-weight:700}
+  .fail{color:var(--err); font-weight:700}
+  .tsum{font-size:12px; margin-bottom:6px}
+  details > summary{cursor:pointer; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-3); font-weight:700; margin-bottom:8px}
+  .hint{font-size:11px; color:var(--ink-3); margin-top:6px}
+  pre#mct-prev{
+    font-family:var(--mono); font-size:11px; line-height:1.45; margin:6px 0 0;
+    background:#fbfaf7; border:1px solid var(--line); border-radius:6px;
+    padding:9px 11px; max-height:340px; overflow:auto; white-space:pre; color:var(--ink-2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>曲線節點/元素產生器</h1>
+  <span class="stage">全階段完成 · MCT 格式待實機驗證</span>
+  <span class="note">X=東 · Y=北 · 方位角自北順時針 · 樁號 0k+000.000</span>
+</header>
+
+<div id="app">
+
+  <!-- ============ 左:輸入 ============ -->
+  <div class="col left">
+
+    <div class="block">
+      <h2>起始設定</h2>
+      <div class="card grid g4">
+        <label class="f"><span>起點 X (東, m)</span><input type="number" step="any" id="sx"></label>
+        <label class="f"><span>起點 Y (北, m)</span><input type="number" step="any" id="sy"></label>
+        <label class="f"><span>起始方位角 (°)</span><input type="number" step="any" id="saz"></label>
+        <label class="f"><span>起始樁號</span><input type="text" id="ssta" placeholder="0k+000.000"></label>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>平面線形段落</h2>
+      <div id="segs"></div>
+      <div class="row-btns" style="margin-top:8px">
+        <button class="act primary" data-add="LINE">+ 直線</button>
+        <button class="act" data-add="ARC">+ 圓弧</button>
+        <button class="act" data-add="SPIRAL">+ 緩和曲線</button>
+        <span class="spacer" style="flex:1"></span>
+        <button class="act" id="btn-caseA">載入案例 A</button>
+        <button class="act" id="btn-caseS">載入 S 彎範例</button>
+      </div>
+      <div class="hint">除第一段外(或勾選「獨立起點」者),每段自動繼承前段終點座標與方位角 → 切線連續。</div>
+    </div>
+
+    <div class="block">
+      <h2>縱斷面(VPI)</h2>
+      <div id="vpis"></div>
+      <div class="row-btns" style="margin-top:8px">
+        <button class="act primary" id="btn-add-vpi">+ VPI</button>
+        <button class="act" id="btn-fit-prof">起訖對齊線形</button>
+        <span style="flex:1"></span>
+        <button class="act" id="btn-caseB">載入案例 B</button>
+      </div>
+      <div class="hint">第一列與最末列為起訖點(不設豎曲線)。豎曲線為<b>對稱拋物線</b>,<b>L = 0</b> 表示直接折角。樁號是<b>平面里程</b>——元素的真實 3D 長度會略大於樁號差。</div>
+    </div>
+
+    <div class="block">
+      <h2>強制節點與吸收</h2>
+      <div class="card">
+        <div class="grid g2">
+          <label class="f"><span>吸收容差 (m)</span><input type="number" step="any" id="atol"></label>
+          <label class="f"><span>&nbsp;</span>
+            <button class="act" id="btn-apply-all">分割設定:第 1 段 → 全部</button></label>
+        </div>
+        <label class="f" style="margin-top:9px"><span>強制節點樁號(逗號或換行分隔)</span>
+          <textarea id="forced" rows="3" placeholder="0k+120.000, 0k+180.500&#10;207.08"></textarea></label>
+        <div class="hint">支承中心、伸縮縫、橫隔梁、施工分段、預力錨定、變斷面起訖。容差內的均分節點會被吸收;<b>段落交界與線形端點受保護</b>,不會被移除。</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>偏置線與橫梁</h2>
+      <div id="offs"></div>
+      <div class="row-btns" style="margin-top:8px; align-items:flex-end">
+        <button class="act primary" id="btn-add-off">+ 偏置線</button>
+        <span style="flex:1"></span>
+        <label class="chk" style="gap:5px"><input type="checkbox" id="cross-on"> 產生橫梁</label>
+        <label class="f" style="width:92px"><span>每 n 個樁號</span><input type="number" id="cross-every" min="1" step="1"></label>
+      </div>
+      <div class="hint">偏置節點 = 主線同樁號的<b>法線投影</b>,所有線在同一樁號橫向嚴格對齊,橫梁必為直線;代價是偏置線上的節點間距不相等。<b>橫向 右 = 正、左 = 負</b>(以行進方向論);垂直 上 = 正。</div>
+    </div>
+
+    <div class="block">
+      <h2>主纜(懸索橋)+ 空間轉換</h2>
+      <div id="mains"></div>
+      <div class="row-btns" style="margin-top:8px">
+        <button class="act primary" id="btn-add-main">+ 主纜</button>
+        <span style="flex:1"></span>
+        <button class="act" id="btn-demo-main">載入懸索橋範例</button>
+      </div>
+      <div class="hint">在<b>局部座標</b>(x 沿跨徑、y 橫向、z 鉛直)算出主纜與吊索,再用<b>兩個控制點</b>做 3D 剛體轉換放到全域座標。轉換式為 <code>P_global = R·(P_local − P1) + Q1</code>。</div>
+    </div>
+
+    <div class="block">
+      <h2>纜索</h2>
+      <div id="cabs"></div>
+      <div class="row-btns" style="margin-top:8px">
+        <button class="act primary" id="btn-add-cab">+ 纜索組</button>
+        <span style="flex:1"></span>
+        <button class="act" id="btn-demo-cable">載入斜張索範例</button>
+      </div>
+      <div class="hint"><b>斜張索建議分割數 N = 1</b>:midas 的 CABLE 元素內建垂度處理(等效彈性模數),切分反而會失去它。<b>N &gt; 1</b> 適用懸索橋主纜,此時<b>必須給垂度</b>——共線的直線節點串在幾何非線性分析中橫向勁度為零。</div>
+    </div>
+
+    <div class="block">
+      <h2>主線屬性</h2>
+      <div class="card grid g3" id="main-attr"></div>
+    </div>
+
+    <div class="block">
+      <h2>編號與群組(§7 / §8)</h2>
+      <div class="card">
+        <div class="grid g4">
+          <label class="f"><span>節點起始編號</span><input type="number" step="1" id="nb"></label>
+          <label class="f"><span>元素起始編號</span><input type="number" step="1" id="eb"></label>
+          <label class="f"><span>號段增量</span><input type="number" step="1" id="inc"></label>
+          <label class="f"><span>橫梁元素起始</span><input type="number" step="1" id="xb"></label>
+          <label class="f"><span>纜索節點起始</span><input type="number" step="1" id="cnb"></label>
+          <label class="f"><span>纜索元素起始</span><input type="number" step="1" id="ceb"></label>
+          <label class="f"><span>主纜節點起始</span><input type="number" step="1" id="mnb"></label>
+          <label class="f"><span>主纜元素起始</span><input type="number" step="1" id="meb"></label>
+        </div>
+        <label class="f" style="margin-top:8px; max-width:220px"><span>群組前綴</span><input type="text" id="gp"></label>
+        <div class="hint" id="numhint"></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>輸出</h2>
+      <div class="card">
+        <div class="grid g4">
+          <label class="f"><span>MCT 長度單位</span><select id="u-len"></select></label>
+          <label class="f"><span>MCT 力單位</span><select id="u-frc"></select></label>
+          <label class="f"><span>纜索元素類型</span><input type="text" id="m-ct"></label>
+          <label class="f"><span>纜索 iSUB</span><input type="number" step="1" id="m-cs"></label>
+          <label class="f"><span>纜索 EXVAL</span><input type="number" step="any" id="m-ce"></label>
+        </div>
+        <div class="hint" style="margin-top:7px"><b>畫面上所有長度一律以「公尺」輸入</b>;匯出 .mct 時才換算成上面選定的長度單位(選 MM 就 ×1000),CSV 與檢核面板維持公尺。<b>纜索 EXVAL 請直接填目標單位的值</b>,不換算。</div>
+        <div class="msg warn" style="margin:9px 0 0">⚠ <span><b>MCT 格式尚未以 midas 實機 Export 驗證。</b>欄位順序依標準結構撰寫(UNIT → NODE → ELEMENT → GROUP),纜索元素的類型代碼與 EXVAL 欄位是最可能需要調整的地方——上面三個欄位可直接改。實際 Export 一份最小模型比對後,回報差異即可修正。</span></div>
+        <div class="row-btns" style="margin-top:10px">
+          <button class="act primary" id="btn-mct">下載 .mct</button>
+          <button class="act" id="btn-mct-copy">複製 MCT 文字</button>
+          <button class="act" id="btn-csv-node">節點 CSV</button>
+          <button class="act" id="btn-csv-elem">元素 CSV</button>
+          <button class="act" id="btn-json">參數 JSON</button>
+          <button class="act" id="btn-load">載入 JSON / MCT…</button>
+          <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt">
+        </div>
+        <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟。<b>.mct 的檔頭註解嵌了完整參數 JSON,把該檔拖回本頁面就能還原全部輸入重編。</b>若需要 .cst 副檔名,存檔後更名即可。</div>
+      </div>
+      <details style="margin-top:8px">
+        <summary>MCT 預覽</summary>
+        <pre id="mct-prev"></pre>
+      </details>
+    </div>
+
+    <div class="block">
+      <h2>檢核訊息</h2>
+      <div id="msgs"></div>
+      <div id="msgs-ok" class="hint">無錯誤。</div>
+    </div>
+
+  </div>
+
+  <!-- ============ 右:預覽 ============ -->
+  <div class="col right" style="padding-left:0;padding-right:0">
+
+    <div class="summary" id="summary"></div>
+
+    <div class="checks" id="checks"></div>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div class="cv-tools">
+        <button id="btn-fit">重新框選</button>
+        <button id="btn-nodes">節點:開</button>
+        <button id="btn-ticks">樁號標記:開</button>
+      </div>
+      <div class="readout" id="readout"></div>
+    </div>
+
+    <div class="prof-wrap">
+      <canvas id="pv"></canvas>
+      <div class="cv-tools"><span class="exag" id="exag"></span></div>
+      <div class="readout" id="preadout"></div>
+    </div>
+
+    <details id="tests-wrap" open>
+      <summary style="margin:14px 16px 6px">驗收測試(§13)</summary>
+      <div id="tests"></div>
+    </details>
+
+  </div>
+</div>
+
+<div id="modal-bd" class="modal-bd" hidden>
+  <div class="modal">
+    <h3>餘數處理(§4.3)</h3>
+    <div class="hint" style="margin:0">下列段落均分後有餘數,請選擇處理方式。<b>「截短曲線」只在該線形鏈的最末段可用</b>——中間段落截短會讓後續所有段落一起平移。</div>
+    <table><thead><tr><th>段落</th><th>段長</th><th>餘數</th><th>餘數/間距</th><th style="width:170px">處理方式</th></tr></thead>
+      <tbody id="modal-rows"></tbody></table>
+    <div class="row-btns" style="margin-top:12px; justify-content:flex-end">
+      <button class="act" data-all="keep">全部:獨立留一段</button>
+      <button class="act" data-all="merge">全部:併入前一元素</button>
+      <button class="act primary" data-all="even">全部:均分吸收</button>
+      <button class="act" id="modal-close">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   曲線節點/元素產生器 — 階段 1
+   範圍:平面線形核心(直線 / 圓弧 / 緩和曲線 + 切線繼承 + 樁號)、平面預覽、
+        規格 §13 案例 A 自動驗證。
+   尚未實作:節點分割(階段 2)、縱斷面(階段 3)、MCT 輸出(階段 4)。
+   慣例:X=東, Y=北, 方位角自 +Y 起順時針(度)。X += L·sin(az), Y += L·cos(az)
+        偏向 dir:右 = +1, 左 = -1
+   ========================================================================== */
+
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const norm360 = a => { a %= 360; return a < 0 ? a + 360 : a; };
+
+/* ---------- 樁號 ---------- */
+function fmtSta(s){
+  const neg = s < 0; const v = Math.abs(s);
+  const km = Math.floor(v / 1000);
+  const m  = v - km * 1000;
+  return (neg ? "-" : "") + km + "k+" + m.toFixed(3).padStart(7, "0");
+}
+function parseSta(txt){
+  if (txt == null) return NaN;
+  const t = String(txt).trim().toLowerCase().replace(/\s+/g, "");
+  if (t === "") return NaN;
+  const m = t.match(/^(-?)(\d+)k\+(\d+(?:\.\d+)?)$/);
+  if (m) return (m[1] ? -1 : 1) * (parseInt(m[2], 10) * 1000 + parseFloat(m[3]));
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/* ---------- 線形建構 ---------- */
+// 回傳 { segs:[built], total, errors:[], startSta }
+// built: { i, type, s0, s1, length, start:{x,y,az}, end:{x,y,az}, evalLocal(t), extra }
+function buildAlignment(state){
+  const errors = [];
+  const built = [];
+  let cur = { x:+state.startX, y:+state.startY, az:norm360(+state.startAz), s:+state.startSta };
+  if (![cur.x,cur.y,cur.az,cur.s].every(Number.isFinite)) {
+    errors.push({ seg:null, text:"起始設定含無效數值" });
+    return { segs:[], total:0, errors, startSta:0 };
+  }
+
+  state.segments.forEach((seg, i) => {
+    let st;
+    if (seg.independent){
+      const x = +seg.startX, y = +seg.startY, az = +seg.startAz, s = +seg.startSta;
+      if (![x,y,az,s].every(Number.isFinite)){
+        errors.push({ seg:i, text:"獨立起點含無效數值" });
+        return;
+      }
+      st = { x, y, az:norm360(az), s };
+    } else {
+      st = { ...cur };
+    }
+    const b = buildSegment(seg, st, i, errors);
+    if (!b) return;
+    built.push(b);
+    cur = { x:b.end.x, y:b.end.y, az:b.end.az, s:b.s1 };
+  });
+
+  const total = built.reduce((a, b) => a + b.length, 0);
+  return { segs:built, total, errors, startSta:+state.startSta };
+}
+
+function buildSegment(seg, st, i, errors){
+  const bad = t => { errors.push({ seg:i, text:t }); return null; };
+  const az0R = st.az * D2R;
+
+  if (seg.type === "LINE"){
+    const L = +seg.L;
+    if (!(L > 0)) return bad("直線長度 L 必須 > 0");
+    const evalLocal = t => ({
+      x: st.x + t * Math.sin(az0R),
+      y: st.y + t * Math.cos(az0R),
+      az: st.az, k: 0
+    });
+    return finish(seg, st, i, L, evalLocal, { R:Infinity });
+  }
+
+  if (seg.type === "ARC"){
+    const R = +seg.R, dir = +seg.dir;
+    if (!(R > 0)) return bad("圓弧半徑 R 必須 > 0");
+    let L;
+    if (seg.defBy === "delta"){
+      const d = +seg.delta;
+      if (!(d > 0)) return bad("圓弧偏角 Δ 必須 > 0");
+      if (d >= 360) return bad("圓弧偏角 Δ 必須 < 360°");
+      L = R * d * D2R;
+    } else {
+      L = +seg.L;
+      if (!(L > 0)) return bad("圓弧弧長 L 必須 > 0");
+      if (L / R >= 2 * Math.PI) return bad("圓弧弧長超過一整圈");
+    }
+    const Cx = st.x + R * Math.sin((st.az + dir * 90) * D2R);
+    const Cy = st.y + R * Math.cos((st.az + dir * 90) * D2R);
+    const b0 = (st.az - dir * 90) * D2R;
+    const evalLocal = t => {
+      const beta = b0 + dir * (t / R);
+      return {
+        x: Cx + R * Math.sin(beta),
+        y: Cy + R * Math.cos(beta),
+        az: norm360(st.az + dir * (t / R) * R2D),
+        k: dir / R
+      };
+    };
+    return finish(seg, st, i, L, evalLocal, { R, dir, center:{x:Cx,y:Cy}, delta:L / R * R2D });
+  }
+
+  if (seg.type === "SPIRAL"){
+    const dir = +seg.dir;
+    const R0 = seg.R0inf ? null : +seg.R0;
+    const R1 = seg.R1inf ? null : +seg.R1;
+    if (R0 === null && R1 === null) return bad("緩和曲線 R0、R1 不可同時為 ∞(退化成直線)");
+    if (R0 !== null && !(R0 > 0)) return bad("緩和曲線起始半徑 R0 必須 > 0");
+    if (R1 !== null && !(R1 > 0)) return bad("緩和曲線終止半徑 R1 必須 > 0");
+
+    let Ls;
+    if (seg.defBy === "A"){
+      const A = +seg.A;
+      if (!(A > 0)) return bad("緩和曲線 A 值必須 > 0");
+      if (R0 !== null && R1 !== null) return bad("R0、R1 皆為有限值時,A 值無定義,請改用 Ls");
+      const Rf = (R0 === null) ? R1 : R0;
+      Ls = A * A / Rf;
+    } else {
+      Ls = +seg.Ls;
+      if (!(Ls > 0)) return bad("緩和曲線長度 Ls 必須 > 0");
+    }
+
+    const k0 = R0 === null ? 0 : 1 / R0;
+    const k1 = R1 === null ? 0 : 1 / R1;
+    // 曲率線性:k(t) = k0 + (k1-k0)·t/Ls   →   az(t) = az0 + dir·[k0·t + (k1-k0)·t²/(2Ls)]
+    const azAt = t => az0R + dir * (k0 * t + (k1 - k0) * t * t / (2 * Ls));
+
+    // Simpson 累積積分(步長 ≤ min(0.1, Ls/1000))
+    const h  = Math.min(0.1, Ls / 1000);
+    const n  = Math.max(2, Math.ceil(Ls / h));
+    const hh = Ls / n;
+    const cx = new Float64Array(n + 1), cy = new Float64Array(n + 1);
+    cx[0] = st.x; cy[0] = st.y;
+    for (let j = 0; j < n; j++){
+      const a = j * hh, mid = a + hh / 2, b = a + hh;
+      cx[j+1] = cx[j] + (hh / 6) * (Math.sin(azAt(a)) + 4 * Math.sin(azAt(mid)) + Math.sin(azAt(b)));
+      cy[j+1] = cy[j] + (hh / 6) * (Math.cos(azAt(a)) + 4 * Math.cos(azAt(mid)) + Math.cos(azAt(b)));
+    }
+    const evalLocal = t => {
+      if (t <= 0)  return { x:cx[0], y:cy[0], az:st.az, k:dir * k0 };
+      if (t >= Ls) return { x:cx[n], y:cy[n], az:norm360(azAt(Ls) * R2D), k:dir * k1 };
+      const j = Math.min(n - 1, Math.floor(t / hh));
+      const a = j * hh, r = t - a;
+      const x = cx[j] + (r / 6) * (Math.sin(azAt(a)) + 4 * Math.sin(azAt(a + r/2)) + Math.sin(azAt(a + r)));
+      const y = cy[j] + (r / 6) * (Math.cos(azAt(a)) + 4 * Math.cos(azAt(a + r/2)) + Math.cos(azAt(a + r)));
+      const kt = k0 + (k1 - k0) * t / Ls;
+      return { x, y, az:norm360(azAt(t) * R2D), k:dir * kt };
+    };
+    return finish(seg, st, i, Ls, evalLocal, {
+      R0, R1, dir, Ls,
+      A: (R0 === null || R1 === null) ? Math.sqrt(Ls * (R0 === null ? R1 : R0)) : null
+    });
+  }
+
+  return bad("未知段落型別:" + seg.type);
+}
+
+function finish(seg, st, i, length, evalLocal, extra){
+  const e = evalLocal(length);
+  return {
+    i, type:seg.type, src:seg,
+    s0:st.s, s1:st.s + length, length,
+    start:{ x:st.x, y:st.y, az:st.az },
+    end:{ x:e.x, y:e.y, az:e.az },
+    evalLocal, extra
+  };
+}
+
+/* ---------- 取樣(供繪圖與滑鼠查詢) ---------- */
+function sampleAlignment(al, maxStep){
+  const pts = [];
+  al.segs.forEach(b => {
+    const n = Math.max(2, Math.min(4000, Math.ceil(b.length / (maxStep || 0.5))));
+    for (let j = 0; j <= n; j++){
+      const t = b.length * j / n;
+      const p = b.evalLocal(t);
+      if (j === 0 && pts.length && b.src.independent !== true) continue; // 共用節點只留一次
+      pts.push({ x:p.x, y:p.y, az:p.az, s:b.s0 + t, seg:b.i, brk:(j === 0) });
+    }
+  });
+  return pts;
+}
+
+/* ==========================================================================
+   縱斷面(§3)— VPI + 對稱拋物線豎曲線
+   與平面線形完全解耦,只在樁號上相遇
+   ========================================================================== */
+function buildProfile(rows, warns, errs, range){
+  const P = (rows || []).map(r => ({ sta:+r.sta, z:+r.z, L:Math.max(0, +r.L || 0) }))
+                        .filter(r => Number.isFinite(r.sta) && Number.isFinite(r.z))
+                        .sort((a, b) => a.sta - b.sta);
+  if (P.length < 2){
+    errs.push("縱斷面至少需要 2 列(起點與終點)");
+    return { P:[], g:[], curves:[], ok:false };
+  }
+  P[0].L = 0; P[P.length - 1].L = 0;          // 起訖點不設豎曲線
+
+  const g = [];
+  for (let i = 0; i < P.length - 1; i++){
+    const dS = P[i+1].sta - P[i].sta;
+    if (dS <= 1e-9){ errs.push(`縱斷面:VPI ${i+1} 與 ${i+2} 樁號重複`); return { P, g:[], curves:[], ok:false }; }
+    g.push((P[i+1].z - P[i].z) / dS);
+  }
+
+  const curves = [];
+  for (let i = 1; i < P.length - 1; i++){
+    const gin = g[i-1], gout = g[i], L = P[i].L;
+    const dg = gout - gin;
+    if (L <= 1e-9){
+      if (Math.abs(dg) > 1e-9)
+        warns.push(`縱斷面:VPI ${i+1}(${fmtSta(P[i].sta)})豎曲線長 = 0,坡度由 ${(gin*100).toFixed(3)}% 直接折到 ${(gout*100).toFixed(3)}%`);
+      continue;
+    }
+    const c = {
+      i, sta:P[i].sta, z:P[i].z, L, gin, gout,
+      BVC:P[i].sta - L/2, EVC:P[i].sta + L/2,
+      E:dg * L / 8,
+      K:Math.abs(dg) > 1e-12 ? L / Math.abs(dg * 100) : Infinity
+    };
+    curves.push(c);
+  }
+  // 檢核:相鄰豎曲線重疊、超出縱斷面起訖
+  for (let j = 0; j < curves.length; j++){
+    const c = curves[j];
+    if (c.BVC < P[0].sta - 1e-9 || c.EVC > P[P.length-1].sta + 1e-9)
+      errs.push(`縱斷面:VPI ${c.i+1} 的豎曲線 ${fmtSta(c.BVC)}–${fmtSta(c.EVC)} 超出縱斷面範圍`);
+    if (j > 0 && curves[j-1].EVC > c.BVC + 1e-9)
+      errs.push(`縱斷面:VPI ${curves[j-1].i+1} 與 ${c.i+1} 的豎曲線重疊(${fmtSta(c.BVC)} < ${fmtSta(curves[j-1].EVC)})`);
+  }
+  // 涵蓋範圍
+  // 容差 1 mm:小於此值的外插在工程上無意義,不必打擾使用者
+  if (range && (range[0] < P[0].sta - 1e-3 || range[1] > P[P.length-1].sta + 1e-3))
+    warns.push(`縱斷面範圍 ${fmtSta(P[0].sta)}–${fmtSta(P[P.length-1].sta)} 未涵蓋線形 ${fmtSta(range[0])}–${fmtSta(range[1])},超出部分以端點坡度外插`);
+
+  return { P, g, curves, ok:errs.length === 0 };
+}
+
+function zAt(pr, s){
+  const { P, g, curves } = pr;
+  if (!P.length) return 0;
+  const n = P.length;
+  if (s <= P[0].sta)      return P[0].z + g[0] * (s - P[0].sta);              // 外插
+  if (s >= P[n-1].sta)    return P[n-1].z + g[n-2] * (s - P[n-1].sta);        // 外插
+  for (const c of curves){
+    if (s >= c.BVC - 1e-9 && s <= c.EVC + 1e-9){
+      const x = s - c.BVC;
+      return c.z - c.gin * (c.L / 2) + c.gin * x + (c.gout - c.gin) * x * x / (2 * c.L);
+    }
+  }
+  for (let i = 0; i < n - 1; i++)
+    if (s >= P[i].sta - 1e-9 && s <= P[i+1].sta + 1e-9) return P[i].z + g[i] * (s - P[i].sta);
+  return P[n-1].z;
+}
+
+function gradeAt(pr, s){
+  const { P, g, curves } = pr;
+  if (!P.length) return 0;
+  const n = P.length;
+  if (s <= P[0].sta)   return g[0];
+  if (s >= P[n-1].sta) return g[n-2];
+  for (const c of curves)
+    if (s >= c.BVC - 1e-9 && s <= c.EVC + 1e-9)
+      return c.gin + (c.gout - c.gin) * (s - c.BVC) / c.L;
+  for (let i = 0; i < n - 1; i++)
+    if (s >= P[i].sta - 1e-9 && s <= P[i+1].sta + 1e-9) return g[i];
+  return 0;
+}
+
+/* ==========================================================================
+   節點分割(§4)
+   ========================================================================== */
+const SPLIT_DEF = { mode:"spacing", count:10, spacing:5, tolMm:20, maxSpacing:20, rem:"ask" };
+const REM_NAME = { ask:"(未決定)", even:"均分吸收", keep:"獨立留一段", merge:"併入前一元素", trim:"截短曲線" };
+
+function radiusAt(b, t){
+  if (b.type === "LINE") return Infinity;
+  if (b.type === "ARC")  return b.extra.R;
+  const k = Math.abs(b.evalLocal(Math.max(0, Math.min(b.length, t))).k);
+  return k < 1e-12 ? Infinity : 1 / k;
+}
+
+// 回傳 { ts:[局部樁號…], rem, nominal }
+// rem > 0 時 ts 不含終點 L(交由餘數政策決定);rem = 0 時 ts 已含 L
+function splitSegment(b, warns){
+  const sp = b.src.split || SPLIT_DEF;
+  const L = b.length;
+
+  if (sp.mode === "count"){
+    const N = Math.max(1, Math.round(+sp.count || 1));
+    const ts = [];
+    for (let j = 0; j <= N; j++) ts.push(L * j / N);
+    return { ts, rem:0, nominal:L / N };
+  }
+
+  if (sp.mode === "spacing"){
+    const d = +sp.spacing;
+    if (!(d > 0)){ warns.push(`段 ${b.i + 1}:間距必須 > 0,已改為整段一個元素`); return { ts:[0, L], rem:0, nominal:L }; }
+    const n = Math.floor(L / d + 1e-9);
+    if (n < 1){
+      warns.push(`段 ${b.i + 1}:段長 ${L.toFixed(3)} m < 間距 ${d} m,僅產生 1 個元素`);
+      return { ts:[0, L], rem:0, nominal:L };
+    }
+    const ts = [];
+    for (let j = 0; j <= n; j++) ts.push(d * j);
+    const rem = L - n * d;
+    if (rem <= 1e-9){ ts[ts.length - 1] = L; return { ts, rem:0, nominal:d }; }
+    return { ts, rem, nominal:d };
+  }
+
+  // 弦線偏差容差:沿段落逐步推進,每步以當地曲率重算容許弦長 √(8·R·m)
+  const m = Math.max(1e-6, (+sp.tolMm || 0) / 1000);
+  const dmax = (+sp.maxSpacing > 0) ? +sp.maxSpacing : L;
+  const ts = [0];
+  let t = 0, guard = 0, lastStep = dmax;
+  while (t < L - 1e-9 && guard++ < 20000){
+    let step = dmax;
+    for (let it = 0; it < 2; it++){                    // 兩次迭代,取步距內較小的半徑
+      const R = Math.min(radiusAt(b, t), radiusAt(b, Math.min(L, t + step)));
+      step = Math.min(dmax, Number.isFinite(R) ? Math.sqrt(8 * R * m) : dmax);
+    }
+    lastStep = step;
+    t += step;
+    if (t >= L - 1e-9) break;
+    ts.push(t);
+  }
+  const rem = L - ts[ts.length - 1];
+  if (rem <= 1e-9){ ts[ts.length - 1] = L; return { ts, rem:0, nominal:lastStep }; }
+  return { ts, rem, nominal:lastStep };
+}
+
+// 套用餘數政策 → { ts(含終點或截短), trim, policy }
+function applyRemainder(r, b, isChainLast, warns){
+  const sp = b.src.split || SPLIT_DEF;
+  const L = b.length;
+  let ts = r.ts.slice();
+  if (r.rem <= 1e-9) return { ts, trim:0, policy:null, rem:0, ratio:0 };
+
+  const ratio = r.rem / r.nominal;
+  if (ratio < 0.30)
+    warns.push(`段 ${b.i + 1}:餘數 ${r.rem.toFixed(3)} m 僅為間距的 ${(ratio * 100).toFixed(1)}%,將產生極短元素`);
+
+  let p = sp.rem || "ask";
+  if (p === "trim" && !isChainLast){
+    warns.push(`段 ${b.i + 1}:非線形鏈末段,不可截短曲線,已改用「均分吸收」`);
+    p = "even";
+  }
+  const eff = (p === "ask") ? "even" : p;   // 未決定時暫以均分吸收預覽
+
+  if (eff === "even"){
+    const n = ts.length - 1;                 // 原本的完整區間數(間距略為放大以吸收餘數)
+    const out = [];
+    for (let j = 0; j <= n; j++) out.push(L * j / n);
+    return { ts:out, trim:0, policy:p, rem:r.rem, ratio };
+  }
+  if (eff === "keep"){ ts.push(L); return { ts, trim:0, policy:p, rem:r.rem, ratio }; }
+  if (eff === "merge"){
+    if (ts.length >= 2) ts.pop();
+    ts.push(L);
+    return { ts, trim:0, policy:p, rem:r.rem, ratio };
+  }
+  // trim:節點停在最後一個完整位置,尾巴丟棄
+  return { ts, trim:r.rem, policy:p, rem:r.rem, ratio };
+}
+
+// 線形鏈:第一段,或任何「獨立起點」的段落,開啟一條新鏈
+function chainsOf(al){
+  const chains = [];
+  al.segs.forEach(b => {
+    if (!chains.length || b.src.independent) chains.push({ segs:[b] });
+    else chains[chains.length - 1].segs.push(b);
+  });
+  return chains;
+}
+function evalChainAt(ch, s){
+  for (let i = ch.segs.length - 1; i >= 0; i--){
+    const b = ch.segs[i];
+    if (s >= b.s0 - 1e-7 && s <= b.s1 + 1e-7){
+      const p = b.evalLocal(Math.max(0, Math.min(b.length, s - b.s0)));
+      return { x:p.x, y:p.y, az:p.az, k:p.k, seg:b.i, s };
+    }
+  }
+  return null;
+}
+// 弦線偏差:節點連線與真實曲線之間的最大垂距
+function maxDeviation(ch, sa, sb){
+  const A = evalChainAt(ch, sa), B = evalChainAt(ch, sb);
+  if (!A || !B) return 0;
+  const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
+  if (len < 1e-12) return 0;
+  const ux = dx / len, uy = dy / len;
+  let mx = 0;
+  const N = 40;
+  for (let j = 1; j < N; j++){
+    const P = evalChainAt(ch, sa + (sb - sa) * j / N);
+    if (!P) continue;
+    const d = Math.abs((P.x - A.x) * uy - (P.y - A.y) * ux);
+    if (d > mx) mx = d;
+  }
+  return mx;
+}
+
+function parseForced(txt){
+  if (!txt) return [];
+  return String(txt).split(/[,;\n\r\t]+/).map(s => s.trim()).filter(Boolean)
+    .map(parseSta).filter(Number.isFinite).sort((a, b) => a - b);
+}
+
+/* 產生節點與元素 */
+function generateNodes(al, opts){
+  const warns = [], errs = [];
+  const forced = Array.isArray(opts.forced) ? opts.forced : parseForced(opts.forced);
+  const tol = Math.max(0, Number.isFinite(+opts.absorbTol) ? +opts.absorbTol : 0.1);
+  const chains = chainsOf(al);
+  const segStat = new Map();          // segIdx → { maxDev, nElem, rem, ratio, policy, trim }
+  const out = { chains:[], nodes:[], elems:[], warns, errs, segStat,
+                trueLen:0, polyLen:0, len3d:0, forcedUsed:0, forcedSkipped:0, trims:[] };
+
+  chains.forEach((ch, ci) => {
+    const protectedSt = [];
+    let stations = [];
+    let chainEnd = ch.segs[ch.segs.length - 1].s1;
+
+    ch.segs.forEach((b, k) => {
+      const isLast = (k === ch.segs.length - 1);
+      const r  = splitSegment(b, warns);
+      const rr = applyRemainder(r, b, isLast, warns);
+      segStat.set(b.i, { rem:rr.rem, ratio:rr.ratio, policy:rr.policy, trim:rr.trim, maxDev:0, nElem:0 });
+      if (rr.trim > 0){
+        out.trims.push({ seg:b.i, from:b.s0 + rr.ts[rr.ts.length - 1], to:b.s1, len:rr.trim });
+        if (isLast) chainEnd = b.s0 + rr.ts[rr.ts.length - 1];
+      }
+      protectedSt.push(b.s0);
+      protectedSt.push(rr.trim > 0 ? b.s0 + rr.ts[rr.ts.length - 1] : b.s1);
+      rr.ts.forEach(t => stations.push(b.s0 + t));
+    });
+
+    // 去重(段落交界共用節點只留一次)
+    stations.sort((a, b) => a - b);
+    let list = [];
+    stations.forEach(s => { if (!list.length || s - list[list.length - 1] > 1e-7) list.push(s); });
+
+    // 強制節點:吸收容差內的均分節點,但不動受保護的樁號
+    const chS0 = ch.segs[0].s0;
+    const isProt = s => protectedSt.some(p => Math.abs(p - s) < 1e-6);
+    forced.forEach(f => {
+      if (f < chS0 - 1e-9 || f > chainEnd + 1e-9) return;
+      const near = protectedSt.find(p => Math.abs(p - f) <= tol);
+      if (near !== undefined){
+        if (Math.abs(near - f) > 1e-6){
+          warns.push(`強制節點 ${fmtSta(f)} 距受保護樁號 ${fmtSta(near)} 僅 ${Math.abs(near - f).toFixed(3)} m,已由後者取代`);
+          out.forcedSkipped++;
+        } else out.forcedUsed++;
+        return;
+      }
+      const kept = [];
+      let absorbed = 0;
+      list.forEach(s => {
+        if (isProt(s) || Math.abs(s - f) > tol) kept.push(s);
+        else if (Math.abs(s - f) > 1e-6) absorbed++;      // 與強制節點重合者不算被吸收
+      });
+      list = kept;
+      out.absorbed = (out.absorbed || 0) + absorbed;
+      out.forcedUsed++;
+      list.push(f);
+    });
+    list.sort((a, b) => a - b);
+    const uniq = [];
+    list.forEach(s => { if (!uniq.length || s - uniq[uniq.length - 1] > 1e-7) uniq.push(s); });
+
+    const isForced = s => forced.some(f => Math.abs(f - s) < 1e-6);
+    const pr = opts.prof;
+    const nodes = uniq.map(s => {
+      const p = evalChainAt(ch, s);
+      if (!p) return null;
+      return { ...p, z:pr ? zAt(pr, s) : 0, grade:pr ? gradeAt(pr, s) : 0, chain:ci, forced:isForced(s) };
+    }).filter(Boolean);
+
+    const elems = [];
+    for (let j = 0; j < nodes.length - 1; j++){
+      const a = nodes[j], b2 = nodes[j + 1];
+      const chord = Math.hypot(b2.x - a.x, b2.y - a.y);
+      const len3d = Math.hypot(chord, b2.z - a.z);
+      const arc = b2.s - a.s;
+      const dev = maxDeviation(ch, a.s, b2.s);
+      const segIdx = evalChainAt(ch, (a.s + b2.s) / 2).seg;
+      elems.push({ chain:ci, i:j, a, b:b2, chord, len3d, arc, dev, seg:segIdx });
+      out.len3d += len3d;
+      const st = segStat.get(segIdx);
+      if (st){ if (dev > st.maxDev) st.maxDev = dev; st.nElem++; }
+      out.polyLen += chord;
+      out.trueLen += arc;
+    }
+    out.chains.push({ ci, segs:ch.segs, nodes, elems, s0:chS0, s1:chainEnd });
+    out.nodes.push(...nodes);
+    out.elems.push(...elems);
+  });
+
+  return out;
+}
+
+/* ==========================================================================
+   模型層(§5 偏置線與橫梁、§7 編號、§8 群組)
+   ========================================================================== */
+const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CABLE 纜索"]];
+
+// 偏置點:主線同樁號的法線投影(右 = 正)
+function offsetPointAt(ch, s, d, h, prof){
+  const p = evalChainAt(ch, s);
+  if (!p) return null;
+  const a = (p.az + 90) * D2R;
+  return {
+    x: p.x + d * Math.sin(a),
+    y: p.y + d * Math.cos(a),
+    z: (prof ? zAt(prof, s) : 0) + h,
+    az:p.az, k:p.k, seg:p.seg, s
+  };
+}
+
+// 通用弦線偏差:任意「樁號 → 點」函式
+function maxDevOf(ptFn, sa, sb){
+  const A = ptFn(sa), B = ptFn(sb);
+  if (!A || !B) return 0;
+  const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
+  if (len < 1e-12) return 0;
+  const ux = dx / len, uy = dy / len;
+  let mx = 0;
+  for (let j = 1; j < 40; j++){
+    const P = ptFn(sa + (sb - sa) * j / 40);
+    if (!P) continue;
+    const dd = Math.abs((P.x - A.x) * uy - (P.y - A.y) * ux);
+    if (dd > mx) mx = dd;
+  }
+  return mx;
+}
+
+// 內側偏置量不得達到曲率中心:R_local = |1/k − d|,且不得變號
+// 注意:dir = +1(右偏)時圓心在右,所以「右側偏置(d > 0)是內側」,R_local = R − d
+function offsetRadiusCheck(al, d, name, errs){
+  al.segs.forEach(b => {
+    if (b.type === "LINE") return;
+    let bad = false;
+    for (let j = 0; j <= 20; j++){
+      const k = b.evalLocal(b.length * j / 20).k;
+      if (Math.abs(k) < 1e-12) continue;
+      const r = 1 / k, rl = r - d;
+      if (rl * r <= 0 || Math.abs(rl) < 1e-9) bad = true;
+    }
+    if (bad) errs.push(`偏置線「${name}」在段 ${b.i + 1} 的偏置量已達到或超過內側曲率中心,幾何退化`);
+  });
+}
+
+function buildModel(al, prof, gen, st, errs, warns){
+  const num = st.numbering;
+  const inc = Math.max(1, Math.round(+num.inc) || 1000);
+  const prefix = (st.groupPrefix || "GEN_");
+  const defs = [{ name:"MAIN", label:"主線", d:0, h:0, attr:st.mainAttr, main:true }]
+    .concat((st.offsets || []).filter(o => o.on !== false).map((o, i) => ({
+      name:(o.name || ("OFF" + (i + 1))), label:(o.name || ("OFF" + (i + 1))),
+      d:+o.d || 0, h:+o.h || 0, attr:o, main:false
+    })));
+
+  const lines = defs.map((def, li) => {
+    if (!def.main) offsetRadiusCheck(al, def.d, def.name, errs);
+    const nodeBase = (+num.nodeBase || 1) + li * inc;
+    const elemBase = (+num.elemBase || 1) + li * inc;
+    let nc = 0, ec = 0;
+    const nodes = [], elems = [], nodesByChain = [];
+
+    gen.chains.forEach((ch, ci) => {
+      const ptFn = def.main
+        ? s => evalChainAt(ch, s)
+        : s => offsetPointAt(ch, s, def.d, def.h, prof);
+      const cn = ch.nodes.map(n => {
+        const p = def.main ? { ...n } : { ...offsetPointAt(ch, n.s, def.d, def.h, prof), forced:n.forced, chain:ci };
+        return { ...p, num:nodeBase + nc++, line:li };
+      });
+      nodesByChain.push(cn);
+      nodes.push(...cn);
+      for (let j = 0; j < cn.length - 1; j++){
+        const a = cn[j], b = cn[j + 1];
+        const chord = Math.hypot(b.x - a.x, b.y - a.y);
+        const dev = def.main ? ch.elems[j].dev : maxDevOf(ptFn, a.s, b.s);
+        const segIdx = evalChainAt(ch, (a.s + b.s) / 2).seg;
+        const sg = al.segs.find(x => x.i === segIdx);
+        elems.push({
+          num:elemBase + ec++, i:a.num, j:b.num, a, b, line:li, seg:segIdx,
+          chord, len3d:Math.hypot(chord, b.z - a.z), arc:b.s - a.s, dev,
+          type:(def.attr && def.attr.etype) || "BEAM",
+          mat:(def.attr && +def.attr.mat) || 1,
+          sect:(def.attr && +def.attr.sect) || 1,
+          group: def.main
+            ? `${prefix}${sg ? sg.type : "SEG"}_${String(segIdx + 1).padStart(2, "0")}`
+            : `${prefix}OFF_${def.name}`
+        });
+      }
+    });
+
+    const chords = elems.map(e => e.chord);
+    return {
+      idx:li, def, nodes, elems, nodesByChain, nodeBase, elemBase,
+      stat:{
+        n:nodes.length, e:elems.length,
+        maxDev:elems.length ? Math.max(...elems.map(e => e.dev)) : 0,
+        minL:chords.length ? Math.min(...chords) : 0,
+        maxL:chords.length ? Math.max(...chords) : 0,
+        polyLen:chords.reduce((a, b) => a + b, 0),
+        len3d:elems.reduce((a, e) => a + e.len3d, 0),
+        arcLen:elems.reduce((a, e) => a + e.arc, 0)
+      }
+    };
+  });
+
+  // 橫梁:同一樁號上把所有線由左至右串成一排
+  const cross = [];
+  const cx = st.cross || {};
+  if (cx.on && lines.length >= 2){
+    const order = lines.map((L, i) => ({ i, d:defs[i].d })).sort((a, b) => a.d - b.d).map(o => o.i);
+    const every = Math.max(1, Math.round(+cx.every) || 1);
+    const base = +num.crossElemBase || 8001;
+    let cc = 0;
+    gen.chains.forEach((ch, ci) => {
+      for (let j = 0; j < ch.nodes.length; j += every){
+        for (let m = 0; m < order.length - 1; m++){
+          const A = lines[order[m]].nodesByChain[ci][j];
+          const B = lines[order[m + 1]].nodesByChain[ci][j];
+          if (!A || !B) continue;
+          const chord = Math.hypot(B.x - A.x, B.y - A.y);
+          cross.push({
+            num:base + cc++, i:A.num, j:B.num, a:A, b:B, sta:A.s,
+            chord, len3d:Math.hypot(chord, B.z - A.z),
+            type:cx.etype || "BEAM", mat:+cx.mat || 1, sect:+cx.sect || 1,
+            group:`${prefix}XBEAM`
+          });
+        }
+      }
+    });
+  }
+
+  // 號段重疊檢查(§7)
+  lines.forEach(L => {
+    if (L.nodes.length > inc) errs.push(`「${L.def.label}」節點數 ${L.nodes.length} 超過號段增量 ${inc},編號會與下一條線重疊`);
+    if (L.elems.length > inc) errs.push(`「${L.def.label}」元素數 ${L.elems.length} 超過號段增量 ${inc},編號會與下一條線重疊`);
+  });
+  if (cross.length){
+    const lastElemEnd = lines[lines.length - 1].elemBase + lines[lines.length - 1].elems.length - 1;
+    const cb = +num.crossElemBase || 8001;
+    if (cb <= lastElemEnd)
+      errs.push(`橫梁元素起始編號 ${cb} 與線元素號段(至 ${lastElemEnd})重疊`);
+  }
+
+  const cableGroups = buildCables(lines, st, errs, warns);
+  const poolNodes = lines.flatMap(L => L.nodes).concat(cableGroups.flatMap(G => G.nodes));
+  const mains = buildMains(poolNodes, st, errs, warns);
+
+  const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+  const tot = {
+    nodes:sum(lines, L => L.nodes.length) + sum(cableGroups, G => G.nodes.length) + sum(mains, M => M.nodes.length),
+    elems:sum(lines, L => L.elems.length) + cross.length
+          + sum(cableGroups, G => G.elems.length) + sum(mains, M => M.elems.length),
+    len3d:sum(lines, L => L.stat.len3d) + sum(cross, c => c.len3d)
+          + sum(cableGroups, G => G.stat.len) + sum(mains, M => sum(M.elems, e => e.len3d))
+  };
+  const groups = new Set();
+  lines.forEach(L => L.elems.forEach(e => groups.add(e.group)));
+  cross.forEach(c => groups.add(c.group));
+  cableGroups.forEach(G => G.elems.forEach(e => groups.add(e.group)));
+  mains.forEach(M => M.elems.forEach(e => groups.add(e.group)));
+  groups.add(prefix + "ALL");
+
+  return { lines, cross, cables:cableGroups, mains, tot, groups:[...groups], prefix, inc };
+}
+
+/* ---------- 纜索(§6)---------- */
+// "101-103, 110  1005 - 1007" → [101,102,103,110,1005,1006,1007]
+// 只吃掉連字號兩側的空白;其餘空白仍是分隔符,否則 "1006  1008-1010" 會黏成 "10061008-1010"
+const RANGE_CAP = 10000;
+function parseNodeList(txt, warns){
+  const out = [];
+  String(txt || "").replace(/\s*-\s*/g, "-").split(/[\s,;]+/).filter(Boolean).forEach(tok => {
+    const m = tok.match(/^(\d+)-(\d+)$/);
+    if (m){
+      const a = Math.min(+m[1], +m[2]), b = Math.max(+m[1], +m[2]);
+      if (b - a + 1 > RANGE_CAP){
+        if (warns) warns.push(`節點範圍 ${tok} 共 ${b - a + 1} 個編號,超過上限 ${RANGE_CAP},已略過(可能是輸入錯誤)`);
+        return;
+      }
+      for (let v = a; v <= b; v++) out.push(v);
+    } else if (/^\d+$/.test(tok)) out.push(+tok);
+    else if (warns) warns.push(`無法解析的節點編號「${tok}」,已略過`);
+  });
+  return [...new Set(out)];
+}
+const dist3 = (a, b) => Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+
+function buildCables(lines, st, errs, warns){
+  const num = st.numbering;
+  const inc = Math.max(1, Math.round(+num.inc) || 1000);
+  const prefix = st.groupPrefix || "GEN_";
+  const index = new Map();
+  lines.forEach(L => L.nodes.forEach(n => index.set(n.num, n)));
+
+  const groups = [];
+  (st.cables || []).filter(c => c.on !== false).forEach((c, gi) => {
+    const name = c.name || ("C" + (gi + 1));
+    const nb = (+num.cableNodeBase || 9001) + gi * inc;
+    const eb = (+num.cableElemBase || 9001) + gi * inc;
+    let nc = 0, ec = 0;
+    const nodes = [], elems = [], cables = [];
+
+    let src;
+    if (c.srcMode === "node"){
+      src = index.get(+c.srcNode);
+      if (!src){ errs.push(`纜索「${name}」的起點節點 ${c.srcNode} 不存在`); return; }
+    } else {
+      const x = +c.sx, y = +c.sy, z = +c.sz;
+      if (![x, y, z].every(Number.isFinite)){ errs.push(`纜索「${name}」的起點座標無效`); return; }
+      src = { x, y, z, num:nb + nc++, cableSrc:true, name };
+      nodes.push(src);
+    }
+
+    const targets = parseNodeList(c.targets, warns);
+    if (!targets.length) warns.push(`纜索「${name}」沒有指定任何目標節點`);
+    const N = Math.max(1, Math.round(+c.N) || 1);
+    let warnedFlat = false;
+
+    targets.forEach(t => {
+      const T = index.get(t);
+      if (!T){ warns.push(`纜索「${name}」的目標節點 ${t} 不存在,已略過`); return; }
+      const chord = dist3(src, T);
+      if (chord < 1e-9){ warns.push(`纜索「${name}」的目標節點 ${t} 與起點重合,已略過`); return; }
+      const f = (c.fMode === "ratio") ? (+c.f || 0) * chord : (+c.f || 0);
+      if (N > 1 && Math.abs(f) < 1e-9 && !warnedFlat){
+        warns.push(`纜索「${name}」分割數 ${N} > 1 但垂度 = 0:節點共線,幾何非線性分析的橫向勁度為零,極可能不收斂`);
+        warnedFlat = true;
+      }
+      const pts = [src];
+      for (let k = 1; k < N; k++){
+        const u = k / N;
+        pts.push({
+          x: src.x + (T.x - src.x) * u,
+          y: src.y + (T.y - src.y) * u,
+          z: src.z + (T.z - src.z) * u - 4 * f * u * (1 - u),
+          num: nb + nc++, cableMid:true, name
+        });
+      }
+      pts.push(T);
+      nodes.push(...pts.slice(1, pts.length - 1));
+      const es = [];
+      for (let k = 0; k < pts.length - 1; k++){
+        const e = {
+          num:eb + ec++, i:pts[k].num, j:pts[k + 1].num, a:pts[k], b:pts[k + 1],
+          len3d:dist3(pts[k], pts[k + 1]),
+          type:c.etype || "CABLE", mat:+c.mat || 1, sect:+c.sect || 1,
+          group:`${prefix}CABLE_${name}`, cable:name, target:t
+        };
+        es.push(e); elems.push(e);
+      }
+      cables.push({ target:t, src, T, pts, elems:es, chord, f,
+                    len:es.reduce((a, e) => a + e.len3d, 0) });
+    });
+
+    const ch = cables.map(k => k.chord);
+    groups.push({
+      gi, name, def:c, src, nodes, elems, cables, nodeBase:nb, elemBase:eb, N,
+      stat:{ n:nodes.length, e:elems.length, count:cables.length,
+             minChord:ch.length ? Math.min(...ch) : 0, maxChord:ch.length ? Math.max(...ch) : 0,
+             len:cables.reduce((a, k) => a + k.len, 0),
+             maxSag:cables.reduce((a, k) => Math.max(a, Math.abs(k.f)), 0) }
+    });
+    if (nodes.length > inc) errs.push(`纜索「${name}」節點數 ${nodes.length} 超過號段增量 ${inc}`);
+    if (elems.length > inc) errs.push(`纜索「${name}」元素數 ${elems.length} 超過號段增量 ${inc}`);
+  });
+  return groups;
+}
+
+/* ==========================================================================
+   主纜模組 A:3D 向量與剛體轉換
+   ========================================================================== */
+const V = {
+  sub:(a, b) => ({ x:a.x - b.x, y:a.y - b.y, z:a.z - b.z }),
+  add:(a, b) => ({ x:a.x + b.x, y:a.y + b.y, z:a.z + b.z }),
+  dot:(a, b) => a.x * b.x + a.y * b.y + a.z * b.z,
+  cross:(a, b) => ({ x:a.y * b.z - a.z * b.y, y:a.z * b.x - a.x * b.z, z:a.x * b.y - a.y * b.x }),
+  len:a => Math.hypot(a.x, a.y, a.z),
+  unit:a => { const L = V.len(a) || 1; return { x:a.x / L, y:a.y / L, z:a.z / L }; },
+  apply:(M, p) => ({
+    x:M[0][0] * p.x + M[0][1] * p.y + M[0][2] * p.z,
+    y:M[1][0] * p.x + M[1][1] * p.y + M[1][2] * p.z,
+    z:M[2][0] * p.x + M[2][1] * p.y + M[2][2] * p.z
+  })
+};
+const I3 = [[1,0,0],[0,1,0],[0,0,1]];
+const mul3 = (A, B) => A.map((r, i) => B[0].map((_, j) => A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]));
+
+// Rodrigues:繞單位軸 k 轉 th 弧度(右手定則)
+function rotAxis(k, th){
+  const C = Math.cos(th), S = Math.sin(th), t = 1 - C;
+  return [
+    [t*k.x*k.x + C,      t*k.x*k.y - S*k.z, t*k.x*k.z + S*k.y],
+    [t*k.x*k.y + S*k.z,  t*k.y*k.y + C,     t*k.y*k.z - S*k.x],
+    [t*k.x*k.z - S*k.y,  t*k.y*k.z + S*k.x, t*k.z*k.z + C]
+  ];
+}
+// 把向量 v 轉到與 u 同向的「最小旋轉」
+function rotAlign(v, u){
+  const a = V.unit(v), b = V.unit(u);
+  const c = V.dot(a, b), w = V.cross(a, b), s = V.len(w);
+  if (s < 1e-12){
+    if (c > 0) return I3;                                  // 已同向
+    const t = Math.abs(a.x) < 0.9 ? { x:1, y:0, z:0 } : { x:0, y:1, z:0 };
+    return rotAxis(V.unit(V.cross(a, t)), Math.PI);        // 反向 → 繞任一垂直軸轉 180°
+  }
+  return rotAxis({ x:w.x/s, y:w.y/s, z:w.z/s }, Math.atan2(s, c));
+}
+
+/* 建立剛體轉換
+   ⚠️ 正確形式是 P_global = R·(P_local − P1) + Q1,等價於 T = Q1 − R·P1。
+      寫成 T = Q1 − P1 只有在 R·P1 = P1(P1 在旋轉軸上)時才成立,
+      基準點不在原點時整個結構會平移錯位。 */
+function makeTransform(opt){
+  const { P1, Q1, v, u, mode, bearing, roll } = opt;
+  let R;
+  if (mode === "bearing"){
+    // 只繞整體 Z 軸轉,讓 v 的平面方位角對齊目標方位角;鉛直方向完全不動
+    const azV = norm360(Math.atan2(v.x, v.y) * R2D);
+    R = rotAxis({ x:0, y:0, z:1 }, -(bearing - azV) * D2R);   // 方位角順時針 = 繞 +Z 負向
+  } else {
+    R = rotAlign(v, u);
+  }
+  if (roll) R = mul3(rotAxis(V.unit(mode === "bearing" ? V.apply(R, v) : u), roll * D2R), R);
+  const T = V.sub(Q1, V.apply(R, P1));                        // ← 關鍵
+  return { R, T, map:p => V.add(V.apply(R, p), T) };
+}
+
+/* ==========================================================================
+   主纜模組 B:局部幾何(拋物線 / 懸鏈線)+ 吊索
+   ========================================================================== */
+// 由垂跨比解懸鏈線參數 a:f = a(cosh(Lx/2a) − 1)
+function solveCatenaryA(Lx, f){
+  if (!(Lx > 0) || !(f > 0)) return null;
+  const target = f / Lx;
+  const g = b => (Math.cosh(b) - 1) / (2 * b) - target;
+  let lo = 1e-8, hi = 40;
+  if (g(hi) < 0) return null;                                 // 垂度大到超出可解範圍
+  for (let k = 0; k < 200; k++){
+    const mid = (lo + hi) / 2;
+    if (g(mid) < 0) lo = mid; else hi = mid;
+  }
+  const b = (lo + hi) / 2;
+  return Lx / (2 * b);
+}
+
+// 局部座標:x 沿跨徑、y 橫向、z 鉛直;兩端鞍座在 (0,·,z1) 與 (Lx,·,z2)
+function mainCableLocal(m, warns){
+  const Lx = +m.span;
+  const z1 = +m.z1 || 0, z2 = +m.z2 || 0;
+  const N  = Math.max(1, Math.round(+m.N) || 1);
+  const f  = (m.fMode === "ratio") ? (+m.f || 0) * Lx : (+m.f || 0);
+  if (!(Lx > 0)) return null;
+
+  let dip;                                                    // 相對於弦線的下垂量(負值)
+  if (m.curve === "catenary"){
+    const a = solveCatenaryA(Lx, f);
+    if (a) dip = x => a * Math.cosh((x - Lx / 2) / a) - a * Math.cosh(Lx / (2 * a));
+    else { warns.push(`主纜「${m.name}」的垂度超出懸鏈線可解範圍,已改用拋物線`);
+           dip = x => -4 * f * (x / Lx) * (1 - x / Lx); }
+  } else {
+    dip = x => -4 * f * (x / Lx) * (1 - x / Lx);
+  }
+  const chord = x => z1 + (z2 - z1) * (x / Lx);
+  const pts = [];
+  for (let i = 0; i <= N; i++){
+    const x = Lx * i / N;
+    pts.push({ x, y:0, z:chord(x) + dip(x) });
+  }
+  return { pts, f, Lx, N, midDip:-dip(Lx / 2) };
+}
+
+const localPointOf = (m, which) =>
+  which === "P1" ? { x:0, y:0, z:+m.z1 || 0 } :
+  which === "P2" ? { x:+m.span || 0, y:0, z:+m.z2 || 0 } :
+  which === "O"  ? { x:0, y:0, z:0 } :
+                   { x:+m.cx || 0, y:+m.cy || 0, z:+m.cz || 0 };
+
+/* ==========================================================================
+   主纜模組 C:產生全域節點與元素
+   ========================================================================== */
+function buildMains(existingNodes, st, errs, warns){
+  const num = st.numbering;
+  const inc = Math.max(1, Math.round(+num.inc) || 1000);
+  const prefix = st.groupPrefix || "GEN_";
+  const out = [];
+
+  (st.mains || []).filter(m => m.on !== false).forEach((m, gi) => {
+    const name = m.name || ("MC" + (gi + 1));
+    const loc = mainCableLocal(m, warns);
+    if (!loc){ errs.push(`主纜「${name}」的跨徑必須 > 0`); return; }
+
+    // --- 轉換 ---
+    const P1 = localPointOf(m, m.basePt || "P1");
+    const P2 = localPointOf(m, m.dirPt  || "P2");
+    const Q1 = { x:+m.q1x || 0, y:+m.q1y || 0, z:+m.q1z || 0 };
+    const Q2 = { x:+m.q2x || 0, y:+m.q2y || 0, z:+m.q2z || 0 };
+    const v  = V.sub(P2, P1);
+    if (V.len(v) < 1e-9){ errs.push(`主纜「${name}」的基準點與方向點重合,無法定義方向`); return; }
+    const mode = m.dirMode === "bearing" ? "bearing" : "twoPoint";
+    let u = V.sub(Q2, Q1);
+    if (mode === "twoPoint" && V.len(u) < 1e-9){
+      errs.push(`主纜「${name}」的目標方向向量長度為 0(Q1 與 Q2 重合)`); return;
+    }
+    const TR = makeTransform({ P1, Q1, v, u, mode, bearing:+m.bearing || 0, roll:+m.roll || 0 });
+
+    // 殘差:剛體轉換不縮放,|u| ≠ |v| 時方向點不會落在 Q2
+    let residual = 0;
+    if (mode === "twoPoint"){
+      const P2g = TR.map(P2);
+      residual = V.len(V.sub(P2g, Q2));
+      if (residual > 1e-6)
+        warns.push(`主纜「${name}」:方向點落在 ${mnum(P2g.x)}, ${mnum(P2g.y)}, ${mnum(P2g.z)},` +
+          `與指定的 Q2 相差 ${residual.toFixed(4)} m。剛體轉換不縮放——|P2−P1| = ${V.len(v).toFixed(4)} 而 |Q2−Q1| = ${V.len(u).toFixed(4)}。` +
+          `方向正確,只是長度不同;若要完全落在 Q2 請改跨徑或改用方位角模式。`);
+    }
+
+    // --- 節點與元素 ---
+    const nb = (+num.mainNodeBase || 20001) + gi * inc;
+    const eb = (+num.mainElemBase || 20001) + gi * inc;
+    let nc = 0, ec = 0;
+    const nodes = [], elems = [], planes = [];
+    const nPlane = Math.max(1, Math.min(2, Math.round(+m.planes) || 1));
+    const gap = +m.planeGap || 0;
+    const yOff = nPlane === 2 ? [-gap / 2, gap / 2] : [0];
+    const deckZ = +m.deckZ;
+    const every = Math.max(1, Math.round(+m.every) || 1);
+    const snapTol = Math.max(0, +m.snapTol || 0);
+    const pool = m.hangerBottom === "snap" ? existingNodes : [];
+
+    yOff.forEach((yy, pi) => {
+      const cn = loc.pts.map(p => {
+        const g = TR.map({ x:p.x, y:p.y + yy, z:p.z });
+        return { ...g, num:nb + nc++, main:name, plane:pi, local:{ ...p, y:p.y + yy } };
+      });
+      nodes.push(...cn);
+      const ce = [];
+      for (let i = 0; i < cn.length - 1; i++){
+        const e = { num:eb + ec++, i:cn[i].num, j:cn[i + 1].num, a:cn[i], b:cn[i + 1],
+          len3d:dist3(cn[i], cn[i + 1]),
+          type:m.cableType || "CABLE", mat:+m.cableMat || 1, sect:+m.cableSect || 1,
+          group:`${prefix}MAIN_${name}`, kind:"main" };
+        ce.push(e); elems.push(e);
+      }
+      planes.push({ pi, y:yy, nodes:cn, elems:ce, hangers:[] });
+    });
+
+    // --- 吊索 ---
+    if (m.hangers){
+      if (!Number.isFinite(deckZ)) warns.push(`主纜「${name}」的橋面局部高程無效,吊索未產生`);
+      else planes.forEach(P => {
+        for (let i = every; i < P.nodes.length - 1; i += every){
+          const top = P.nodes[i];
+          if (top.local.z <= deckZ + 1e-9){
+            warns.push(`主纜「${name}」在 x = ${mnum(top.local.x)} 處主纜已低於橋面高程,該吊索略過`);
+            continue;
+          }
+          const gBot = TR.map({ x:top.local.x, y:top.local.y, z:deckZ });
+          let bot = null;
+          if (m.hangerBottom === "snap"){
+            let bd = Infinity;
+            pool.forEach(n => { const d = dist3(n, gBot); if (d < bd){ bd = d; bot = n; } });
+            if (!bot || bd > snapTol){
+              warns.push(`主纜「${name}」x = ${mnum(top.local.x)} 的吊索下端在容差 ${snapTol} m 內找不到既有節點,已改為新增節點`);
+              bot = null;
+            }
+          }
+          if (!bot){ bot = { ...gBot, num:nb + nc++, main:name, plane:P.pi, deck:true,
+                             local:{ x:top.local.x, y:top.local.y, z:deckZ } };
+                     nodes.push(bot); }
+          const e = { num:eb + ec++, i:top.num, j:bot.num, a:top, b:bot,
+            len3d:dist3(top, bot),
+            type:m.hangerType || "CABLE", mat:+m.hangerMat || 1, sect:+m.hangerSect || 2,
+            group:`${prefix}HANGER_${name}`, kind:"hanger" };
+          elems.push(e); P.hangers.push(e);
+        }
+      });
+    }
+
+    const mainE = elems.filter(e => e.kind === "main");
+    const hangE = elems.filter(e => e.kind === "hanger");
+    const hl = hangE.map(e => e.len3d);
+    out.push({
+      gi, name, def:m, nodes, elems, planes, nodeBase:nb, elemBase:eb, TR, residual, mode,
+      stat:{
+        n:nodes.length, e:elems.length, planes:nPlane, N:loc.N,
+        span:loc.Lx, sag:loc.midDip,
+        cableLen:mainE.reduce((a, e) => a + e.len3d, 0) / nPlane,
+        hangers:hangE.length,
+        hangMin:hl.length ? Math.min(...hl) : 0, hangMax:hl.length ? Math.max(...hl) : 0,
+        bearing:norm360(Math.atan2(TR.map(P2).x - Q1.x, TR.map(P2).y - Q1.y) * R2D)
+      }
+    });
+    if (nodes.length > inc) errs.push(`主纜「${name}」節點數 ${nodes.length} 超過號段增量 ${inc}`);
+    if (elems.length > inc) errs.push(`主纜「${name}」元素數 ${elems.length} 超過號段增量 ${inc}`);
+  });
+  return out;
+}
+
+/* ==========================================================================
+   報表與存檔(§9.2 / §10)
+   ========================================================================== */
+function csvEsc(v){ const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function toCSV(rows){ return "﻿" + rows.map(r => r.map(csvEsc).join(",")).join("\r\n"); }
+
+function nodeCSV(){
+  const rows = [["節點編號","樁號","X","Y","Z","所屬線","所屬段落","當地半徑","切線方位角","坡度(%)","前一元素長度(3D)","前一元素弦線偏差(mm)","強制節點"]];
+  MODEL.lines.forEach(L => {
+    const prev = new Map();
+    L.elems.forEach(e => prev.set(e.j, e));
+    L.nodes.forEach(n => {
+      const b = AL.segs.find(s => s.i === n.seg);
+      const kk = Math.abs(n.k || 0);
+      const pe = prev.get(n.num);
+      rows.push([
+        n.num, fmtSta(n.s), n.x.toFixed(4), n.y.toFixed(4), n.z.toFixed(4),
+        L.def.label,
+        b ? `${n.seg + 1} ${TYPE_NAME[b.type]}` : "",
+        kk < 1e-9 ? "∞" : (1 / kk).toFixed(3),
+        n.az.toFixed(4),
+        ((n.grade != null ? n.grade : gradeAt(PROF, n.s)) * 100).toFixed(4),
+        pe ? pe.len3d.toFixed(4) : "",
+        pe ? (pe.dev * 1000).toFixed(2) : "",
+        n.forced ? "Y" : ""
+      ]);
+    });
+  });
+  MODEL.cables.forEach(G => G.nodes.forEach(n => {
+    rows.push([n.num, "", n.x.toFixed(4), n.y.toFixed(4), n.z.toFixed(4),
+      `纜索 ${G.name}`, n.cableSrc ? "起點" : "中間節點", "", "", "", "", "", ""]);
+  }));
+  MODEL.mains.forEach(M => M.nodes.forEach(n => {
+    rows.push([n.num, "", n.x.toFixed(4), n.y.toFixed(4), n.z.toFixed(4),
+      `主纜 ${M.name}`,
+      (n.deck ? "吊索下端" : "主纜") + `(索面 ${n.plane + 1},局部 x=${n.local.x.toFixed(4)})`,
+      "", "", "", "", "", ""]);
+  }));
+  return toCSV(rows);
+}
+
+function elemCSV(){
+  const rows = [["元素編號","類型","材料","斷面","i節點","j節點","平面弦長","3D長度","弧長","弦線偏差(mm)","所屬線","所屬段落","群組"]];
+  MODEL.lines.forEach(L => L.elems.forEach(e => {
+    const b = AL.segs.find(s => s.i === e.seg);
+    rows.push([e.num, e.type, e.mat, e.sect, e.i, e.j,
+      e.chord.toFixed(4), e.len3d.toFixed(4), e.arc.toFixed(4), (e.dev * 1000).toFixed(2),
+      L.def.label, b ? `${e.seg + 1} ${TYPE_NAME[b.type]}` : "", e.group]);
+  }));
+  MODEL.cross.forEach(c => rows.push([c.num, c.type, c.mat, c.sect, c.i, c.j,
+    c.chord.toFixed(4), c.len3d.toFixed(4), "", "", "橫梁", fmtSta(c.sta), c.group]));
+  MODEL.cables.forEach(G => G.elems.forEach(e => rows.push([e.num, e.type, e.mat, e.sect, e.i, e.j,
+    Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y).toFixed(4), e.len3d.toFixed(4), "", "",
+    `纜索 ${G.name}`, `→ 節點 ${e.target}`, e.group])));
+  MODEL.mains.forEach(M => M.elems.forEach(e => rows.push([e.num, e.type, e.mat, e.sect, e.i, e.j,
+    Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y).toFixed(4), e.len3d.toFixed(4), "", "",
+    `主纜 ${M.name}`, e.kind === "main" ? "主纜" : "吊索", e.group])));
+  return toCSV(rows);
+}
+
+/* ==========================================================================
+   MCT 輸出(§9.1)
+   ⚠️ 格式尚未以 midas 實機 Export 驗證。若欄位順序或纜索代碼與實際不符,
+      只需要改本區塊的 MCT_FMT,其餘程式碼不必動。
+   ========================================================================== */
+const MCT_FMT = {
+  // 區塊順序:UNIT → NODE → ELEMENT → GROUP
+  sections:["UNIT", "NODE", "ELEMENT", "GROUP"],
+  // 各區塊的欄位說明(輸出成註解,方便與實機 Export 逐欄比對)
+  hint:{
+    UNIT:   "FORCE, LENGTH, HEAT, TEMPER",
+    NODE:   "iNO, X, Y, Z",
+    ELEMENT:"iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL",
+    GROUP:  "NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE"
+  },
+  indent:"   "
+};
+const UNIT_LENGTH = [["M","M(公尺)"],["CM","CM"],["MM","MM"],["IN","IN"],["FT","FT"]];
+const UNIT_FORCE  = [["KN","KN"],["N","N"],["KGF","KGF"],["TONF","TONF"],["LBF","LBF"],["KIPS","KIPS"]];
+// 介面上所有長度一律以「公尺」輸入;匯出時才換算成使用者選定的 MCT 長度單位。
+// 不換算的話,選了 MM 就會得到一座 1000 倍長的橋,而且 midas 不會報錯。
+const LEN_FACTOR = { M:1, CM:100, MM:1000, IN:1 / 0.0254, FT:1 / 0.3048 };
+const lenFactor = () => LEN_FACTOR[state.units.length] || 1;
+
+const mnum = v => String(+(+v).toFixed(6));
+const mlen = v => String(+(+v * lenFactor()).toFixed(6));
+
+// 連號壓縮:[1,2,3,5,7,8,9] → "1to3 5 7to9"
+function compressList(nums){
+  const a = [...new Set(nums)].sort((x, y) => x - y);
+  const out = [];
+  let i = 0;
+  while (i < a.length){
+    let j = i;
+    while (j + 1 < a.length && a[j + 1] === a[j] + 1) j++;
+    if (j - i >= 2) out.push(`${a[i]}to${a[j]}`);
+    else for (let k = i; k <= j; k++) out.push(String(a[k]));
+    i = j + 1;
+  }
+  return out.join(" ");
+}
+
+// 依群組收集節點與元素
+function groupMembers(){
+  const m = new Map();
+  const add = (g, nodes, elems) => {
+    if (!m.has(g)) m.set(g, { nodes:new Set(), elems:new Set() });
+    const e = m.get(g);
+    nodes.forEach(n => e.nodes.add(n));
+    elems.forEach(x => e.elems.add(x));
+  };
+  MODEL.lines.forEach(L => L.elems.forEach(e => add(e.group, [e.i, e.j], [e.num])));
+  MODEL.cross.forEach(c => add(c.group, [], [c.num]));           // 節點已屬各線的群組
+  MODEL.cables.forEach(G => {
+    const own = new Set(G.nodes.map(n => n.num));
+    G.elems.forEach(e => add(e.group, [e.i, e.j].filter(n => own.has(n)), [e.num]));
+  });
+  MODEL.mains.forEach(M => {
+    const own = new Set(M.nodes.map(n => n.num));
+    M.elems.forEach(e => add(e.group, [e.i, e.j].filter(n => own.has(n)), [e.num]));
+  });
+  // 總組
+  const allN = [], allE = [];
+  MODEL.lines.forEach(L => { L.nodes.forEach(n => allN.push(n.num)); L.elems.forEach(e => allE.push(e.num)); });
+  MODEL.cross.forEach(c => allE.push(c.num));
+  MODEL.cables.forEach(G => { G.nodes.forEach(n => allN.push(n.num)); G.elems.forEach(e => allE.push(e.num)); });
+  MODEL.mains.forEach(M => { M.nodes.forEach(n => allN.push(n.num)); M.elems.forEach(e => allE.push(e.num)); });
+  add(MODEL.prefix + "ALL", allN, allE);
+  return m;
+}
+
+function elemLine(e){
+  const c = state.mct;
+  const isCable = e.type === "CABLE";
+  const type = isCable ? (c.cableType || "TENSTR") : e.type;
+  const base = `${e.num}, ${type}, ${e.mat}, ${e.sect}, ${e.i}, ${e.j}, 0`;
+  if (isCable)          return `${base}, ${+c.cableSub || 0}, ${mnum(c.cableExval || 0)}`;
+  if (e.type === "TRUSS") return `${base}, 0, 0`;
+  return `${base}, 0`;                     // BEAM
+}
+
+function mctText(){
+  const C = MCT_COMMENT, I = MCT_FMT.indent, u = state.units;
+  const g = MODEL, gm = groupMembers();
+  const L = [];
+  const rule = C + "-".repeat(75);
+
+  // ---- 檔頭 ----
+  L.push(rule);
+  L.push(`${C} 曲線節點/元素產生器  (curve-node-gen)`);
+  L.push(`${C} 產生時間 : ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
+  L.push(`${C} 單位     : ${u.force}, ${u.length}` +
+         (lenFactor() !== 1 ? `   (座標已由 m 換算 ×${mnum(lenFactor())})` : ""));
+  L.push(`${C} 節點     : ${g.tot.nodes}`);
+  L.push(`${C} 元素     : ${g.tot.elems}`);
+  L.push(`${C} 群組     : ${g.groups.length}`);
+  L.push(`${C} 主線線形 : 平面弧長 ${mnum(GEN.trueLen)} / 平面折線 ${mnum(GEN.polyLen)} / 3D ${mnum(g.lines[0] ? g.lines[0].stat.len3d : 0)}`);
+  L.push(`${C} 元素總長 : ${mnum(g.tot.len3d)}(含偏置線、橫梁、纜索)`);
+  L.push(`${C}`);
+  L.push(`${C} ⚠ 匯入含 *UNIT 的 MCT 會改變模型當前的作用單位系統。`);
+  L.push(`${C} ⚠ 元素 beta angle 一律為 0;若有超高須於 midas 內另行指定。`);
+  L.push(`${C} 下方參數區塊可將本檔拖回產生器頁面,直接還原全部輸入重編。`);
+  L.push(rule);
+  embedParams(paramsJSON()).split("\n").forEach(l => L.push(l));   // 保持整份檔案的換行一致
+  L.push("");
+
+  // ---- *UNIT ----
+  L.push("*UNIT");
+  L.push(`${C} ${MCT_FMT.hint.UNIT}`);
+  L.push(`${I}${u.force}, ${u.length}, ${u.heat}, ${u.temper}`);
+  L.push("");
+
+  // ---- *NODE ----
+  L.push("*NODE");
+  L.push(`${C} ${MCT_FMT.hint.NODE}`);
+  const pushNodes = (label, nodes) => {
+    if (!nodes.length) return;
+    L.push(`${C} --- ${label} ---`);
+    nodes.forEach(n => L.push(`${I}${n.num}, ${mlen(n.x)}, ${mlen(n.y)}, ${mlen(n.z)}`));
+  };
+  g.lines.forEach(Ln => pushNodes(Ln.def.label, Ln.nodes));
+  g.cables.forEach(G => pushNodes(`纜索 ${G.name}`, G.nodes));
+  g.mains.forEach(M => pushNodes(`主纜 ${M.name}`, M.nodes));
+  L.push("");
+
+  // ---- *ELEMENT ----
+  L.push("*ELEMENT");
+  L.push(`${C} ${MCT_FMT.hint.ELEMENT}`);
+  g.lines.forEach(Ln => {
+    if (!Ln.elems.length) return;
+    L.push(`${C} --- ${Ln.def.label} ---`);
+    Ln.elems.forEach(e => L.push(I + elemLine(e)));
+  });
+  if (g.cross.length){
+    L.push(`${C} --- 橫梁 ---`);
+    g.cross.forEach(c => L.push(I + elemLine(c)));
+  }
+  g.cables.forEach(G => {
+    if (!G.elems.length) return;
+    L.push(`${C} --- 纜索 ${G.name} ---`);
+    G.elems.forEach(e => L.push(I + elemLine(e)));
+  });
+  g.mains.forEach(M => {
+    const mm = M.elems.filter(e => e.kind === "main"), hh = M.elems.filter(e => e.kind === "hanger");
+    if (mm.length){ L.push(`${C} --- 主纜 ${M.name} ---`); mm.forEach(e => L.push(I + elemLine(e))); }
+    if (hh.length){ L.push(`${C} --- 吊索 ${M.name} ---`); hh.forEach(e => L.push(I + elemLine(e))); }
+  });
+  L.push("");
+
+  // ---- *GROUP ----
+  L.push("*GROUP");
+  L.push(`${C} ${MCT_FMT.hint.GROUP}`);
+  g.groups.forEach(name => {
+    const m = gm.get(name) || { nodes:new Set(), elems:new Set() };
+    L.push(`${I}${name}, ${compressList([...m.nodes])}, ${compressList([...m.elems])}, 0`);
+  });
+  L.push("");
+  return L.join("\r\n");
+}
+
+const FORMAT_VERSION = 1;
+function paramsJSON(){
+  return JSON.stringify({ formatVersion:FORMAT_VERSION, tool:"curve-node-gen",
+                          generated:new Date().toISOString(), state }, null, 1);
+}
+
+// 嵌入 .mct 檔頭註解 —— 註解字元待階段 0 以實際 Export 驗證
+const MCT_COMMENT = ";";
+const PARAM_BEGIN = "==== CURVE-GEN-PARAMS-BEGIN ====";
+const PARAM_END   = "==== CURVE-GEN-PARAMS-END ====";
+function embedParams(json){
+  return [MCT_COMMENT + " " + PARAM_BEGIN]
+    .concat(json.split("\n").map(l => MCT_COMMENT + " " + l))
+    .concat([MCT_COMMENT + " " + PARAM_END]).join("\n");
+}
+function extractParams(text){
+  const lines = String(text).split(/\r?\n/);
+  const i0 = lines.findIndex(l => l.indexOf(PARAM_BEGIN) >= 0);
+  const i1 = lines.findIndex(l => l.indexOf(PARAM_END) >= 0);
+  if (i0 < 0 || i1 <= i0) return null;
+  const body = lines.slice(i0 + 1, i1).map(l => l.replace(/^\s*;\s?/, "")).join("\n");
+  try { return JSON.parse(body); } catch (e){ return null; }
+}
+
+function download(name, text, mime){
+  const blob = new Blob([text], { type:mime || "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+function applyLoaded(obj, srcName){
+  if (!obj || typeof obj !== "object"){ alert("檔案中找不到可用的參數"); return false; }
+  const s = obj.state || obj;
+  if (obj.formatVersion && obj.formatVersion > FORMAT_VERSION){
+    alert(`檔案格式版本 ${obj.formatVersion} 比本工具(${FORMAT_VERSION})新,可能無法完整載入`);
+  }
+  if (!Array.isArray(s.segments) || !s.segments.length){ alert("檔案中沒有平面線形段落"); return false; }
+  loadState(s);
+  return true;
+}
+
+/* ==========================================================================
+   狀態與 UI
+   ========================================================================== */
+const PALETTE = ["#1c5d99","#c1673d","#3f8f5f","#8a5fb5","#b3406b","#0f7c8f","#8a7a20","#5a6472"];
+const OFF_COLORS = ["#0f7c8f","#8a5fb5","#8a7a20","#3f8f5f","#b3406b","#c1673d"];
+const TYPE_NAME = { LINE:"直線", ARC:"圓弧", SPIRAL:"緩和曲線" };
+const DEF_NUM  = { nodeBase:1001, elemBase:1001, inc:1000, crossElemBase:8001,
+                   cableNodeBase:9001, cableElemBase:9001,
+                   mainNodeBase:20001, mainElemBase:20001 };
+const DEF_ATTR = { etype:"BEAM", mat:1, sect:1 };
+const DEF_CABLE = { name:"C1", on:true, srcMode:"coord", sx:0, sy:0, sz:130, srcNode:1001,
+                    targets:"", N:1, f:0, fMode:"abs", etype:"CABLE", mat:1, sect:1 };
+const CABLE_COLOR = "#b3406b";
+const MAIN_COLOR  = "#0f7c8f";
+const DEF_MAIN = {
+  name:"MC1", on:true,
+  // 局部幾何(x 沿跨徑、y 橫向、z 鉛直)
+  span:300, z1:0, z2:0, curve:"parabola", fMode:"ratio", f:0.1, N:30,
+  planes:2, planeGap:20,
+  // 吊索
+  hangers:true, deckZ:-25, every:1, hangerBottom:"new", snapTol:0.5,
+  // 空間轉換
+  basePt:"P1", dirPt:"P2", cx:0, cy:0, cz:0,
+  q1x:0, q1y:0, q1z:0, dirMode:"twoPoint", q2x:300, q2y:0, q2z:0, bearing:90, roll:0,
+  // 屬性
+  cableType:"CABLE", cableMat:1, cableSect:1,
+  hangerType:"CABLE", hangerMat:1, hangerSect:2
+};
+
+const CASE_A = {
+  startX:0, startY:0, startAz:90, startSta:0,
+  segments:[
+    { type:"LINE", L:50 },
+    { type:"ARC", R:100, dir:1, defBy:"delta", delta:90, L:157.0796 },
+    { type:"LINE", L:50 }
+  ],
+  // 案例 B:對稱豎曲線(g_in +4%,g_out −4%,L = 100)
+  profile:[
+    { sta:0,       z:100.0000, L:0 },
+    { sta:128.540, z:105.1416, L:100 },
+    { sta:257.080, z:100.0000, L:0 }
+  ]
+};
+const CASE_S = {
+  startX:0, startY:0, startAz:0, startSta:0,
+  segments:[
+    { type:"LINE", L:40 },
+    { type:"SPIRAL", R0inf:true, R1inf:false, R0:0, R1:150, dir:1, defBy:"Ls", Ls:60, A:0 },
+    { type:"ARC", R:150, dir:1, defBy:"delta", delta:45, L:0 },
+    { type:"SPIRAL", R0inf:false, R1inf:true, R0:150, R1:0, dir:1, defBy:"Ls", Ls:60, A:0 },
+    { type:"SPIRAL", R0inf:true, R1inf:false, R0:0, R1:120, dir:-1, defBy:"Ls", Ls:50, A:0 },
+    { type:"ARC", R:120, dir:-1, defBy:"delta", delta:60, L:0 },
+    { type:"SPIRAL", R0inf:false, R1inf:true, R0:120, R1:0, dir:-1, defBy:"Ls", Ls:50, A:0 },
+    { type:"LINE", L:40 }
+  ],
+  profile:[
+    { sta:0,        z:100, L:0 },
+    { sta:200,      z:106, L:120 },
+    { sta:400,      z:101, L:150 },
+    { sta:543.4734, z:103, L:0 }
+  ]
+};
+
+// 預設:空線形。要範例請按「載入案例 A / S 彎 / 懸索橋」。
+const EMPTY_STATE = {
+  startX:0, startY:0, startAz:90, startSta:0,
+  segments:[],
+  profile:[{ sta:0, z:0, L:0 }, { sta:100, z:0, L:0 }]
+};
+let state = clone(EMPTY_STATE);
+let AL = null, SAMPLES = [], GEN = null, PROF = { P:[], g:[], curves:[] };
+let MODEL = { lines:[], cross:[], cables:[], mains:[], tot:{}, groups:[] };
+let profWarns = [], profErrs = [], modelErrs = [], modelWarns = [], bootDone = false;
+
+function normState(s){
+  if (!Array.isArray(s.mains)) s.mains = [];
+  s.mains = s.mains.map((m, i) => ({ ...DEF_MAIN, name:"MC" + (i + 1), ...m }));
+  if (!Array.isArray(s.cables)) s.cables = [];
+  s.cables = s.cables.map((c, i) => ({ ...DEF_CABLE, name:"C" + (i + 1), ...c }));
+  if (!Array.isArray(s.offsets)) s.offsets = [];
+  s.offsets = s.offsets.map((o, i) => ({ name:"OFF" + (i + 1), d:0, h:0, on:true, ...DEF_ATTR, ...o }));
+  s.cross      = { on:false, every:1, ...DEF_ATTR, ...(s.cross || {}) };
+  s.numbering  = { ...DEF_NUM, ...(s.numbering || {}) };
+  s.mainAttr   = { ...DEF_ATTR, ...(s.mainAttr || {}) };
+  s.groupPrefix = s.groupPrefix || "GEN_";
+  s.units = { length:"M", force:"KN", heat:"KJ", temper:"C", ...(s.units || {}) };
+  s.mct   = { cableType:"TENSTR", cableSub:2, cableExval:0, ...(s.mct || {}) };
+  if (s.forced == null) s.forced = "";
+  if (s.absorbTol == null) s.absorbTol = 0.1;
+  return s;
+}
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function defaultSeg(type){
+  const base = { type, independent:false, startX:0, startY:0, startAz:0, startSta:0, split:{ ...SPLIT_DEF } };
+  if (type === "LINE")   return { ...base, L:50 };
+  if (type === "ARC")    return { ...base, R:100, dir:1, defBy:"delta", delta:45, L:78.5398 };
+  if (type === "SPIRAL") return { ...base, R0inf:true, R0:0, R1inf:false, R1:100, dir:1, defBy:"Ls", Ls:50, A:0 };
+}
+
+/* ---------- 渲染段落表 ---------- */
+const $ = s => document.querySelector(s);
+const segsEl = $("#segs");
+
+function renderSegs(){
+  segsEl.innerHTML = "";
+  if (!state.segments.length){
+    segsEl.innerHTML = `<div class="hint" style="margin:0 0 4px">尚無平面線形段落。<b>線形可以完全不存在</b>——主纜模組有自己的局部座標系,不需要線形也能單獨產生與匯出。</div>`;
+    return;
+  }
+  state.segments.forEach((seg, i) => segsEl.appendChild(segCard(seg, i)));
+}
+
+function segCard(seg, i){
+  const el = document.createElement("div");
+  el.className = "seg";
+  const color = PALETTE[i % PALETTE.length];
+
+  const head = document.createElement("div");
+  head.className = "seg-head";
+  head.innerHTML = `
+    <div class="seg-tag" style="background:${color}">${i + 1}</div>
+    <select data-k="type">
+      <option value="LINE">直線</option>
+      <option value="ARC">圓弧</option>
+      <option value="SPIRAL">緩和曲線</option>
+    </select>
+    <label class="chk"><input type="checkbox" data-k="independent"> 獨立起點</label>
+    <div class="spacer"></div>
+    <button class="iconbtn" data-op="up"    title="上移">▲</button>
+    <button class="iconbtn" data-op="down"  title="下移">▼</button>
+    <button class="iconbtn" data-op="dup"   title="複製">⧉</button>
+    <button class="iconbtn danger" data-op="del" title="刪除">✕</button>
+    <div style="width:6px"></div>`;
+  head.querySelector('[data-k=type]').value = seg.type;
+  head.querySelector('[data-k=independent]').checked = !!seg.independent;
+  el.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "seg-body";
+  body.appendChild(paramFields(seg));
+  if (seg.independent) body.appendChild(indepFields(seg));
+  body.appendChild(splitFields(seg, i));
+  const out = document.createElement("div");
+  out.className = "seg-out";
+  out.dataset.out = String(i);
+  body.appendChild(out);
+  el.appendChild(body);
+
+  el.addEventListener("input", ev => {
+    const t = ev.target, k = t.dataset.k;
+    if (!k) return;
+    const tgt = k.startsWith("split.") ? seg.split : seg;
+    const key = k.startsWith("split.") ? k.slice(6) : k;
+    if (t.type === "checkbox") tgt[key] = t.checked;
+    else if (t.type === "number") tgt[key] = t.value === "" ? NaN : Number(t.value);
+    else if (key === "startSta") tgt[key] = parseSta(t.value);
+    else tgt[key] = t.value;
+    if (k === "type"){ state.segments[i] = { ...defaultSeg(t.value), independent:seg.independent, split:seg.split }; renderSegs(); }
+    else if (k === "independent" || k === "defBy" || k === "R0inf" || k === "R1inf" || k === "split.mode") renderSegs();
+    recompute();
+  });
+  el.addEventListener("click", ev => {
+    const op = ev.target.dataset && ev.target.dataset.op;
+    if (!op) return;
+    const S = state.segments;
+    if (op === "del") S.splice(i, 1);
+    if (op === "dup") S.splice(i + 1, 0, clone(seg));
+    if (op === "up" && i > 0) S.splice(i - 1, 0, S.splice(i, 1)[0]);
+    if (op === "down" && i < S.length - 1) S.splice(i + 1, 0, S.splice(i, 1)[0]);
+    renderSegs(); recompute();
+  });
+  return el;
+}
+
+function fld(label, key, val, opts){
+  const l = document.createElement("label");
+  l.className = "f";
+  const s = document.createElement("span"); s.textContent = label; l.appendChild(s);
+  let inp;
+  if (opts && opts.select){
+    inp = document.createElement("select");
+    opts.select.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; inp.appendChild(o); });
+    inp.value = String(val);
+  } else if (opts && opts.text){
+    inp = document.createElement("input"); inp.type = "text"; inp.value = val;
+  } else {
+    inp = document.createElement("input"); inp.type = "number"; inp.step = "any";
+    inp.value = Number.isFinite(val) ? val : "";
+  }
+  inp.dataset.k = key;
+  if (opts && opts.disabled) inp.disabled = true;
+  l.appendChild(inp);
+  return l;
+}
+
+function paramFields(seg){
+  const g = document.createElement("div");
+  g.className = "grid";
+  if (seg.type === "LINE"){
+    g.classList.add("g4");
+    g.appendChild(fld("長度 L (m)", "L", seg.L));
+  }
+  if (seg.type === "ARC"){
+    g.classList.add("g4");
+    g.appendChild(fld("半徑 R (m)", "R", seg.R));
+    g.appendChild(fld("偏向", "dir", seg.dir, { select:[["1","右偏"],["-1","左偏"]] }));
+    g.appendChild(fld("定義方式", "defBy", seg.defBy, { select:[["delta","偏角 Δ"],["length","弧長 L"]] }));
+    if (seg.defBy === "delta") g.appendChild(fld("偏角 Δ (°)", "delta", seg.delta));
+    else                       g.appendChild(fld("弧長 L (m)", "L", seg.L));
+  }
+  if (seg.type === "SPIRAL"){
+    g.classList.add("g4");
+    const r0 = fld("起始半徑 R0 (m)", "R0", seg.R0, { disabled:seg.R0inf });
+    const r1 = fld("終止半徑 R1 (m)", "R1", seg.R1, { disabled:seg.R1inf });
+    r0.appendChild(infChk("R0inf", seg.R0inf));
+    r1.appendChild(infChk("R1inf", seg.R1inf));
+    g.appendChild(r0); g.appendChild(r1);
+    g.appendChild(fld("偏向", "dir", seg.dir, { select:[["1","右偏"],["-1","左偏"]] }));
+    g.appendChild(fld("定義方式", "defBy", seg.defBy, { select:[["Ls","長度 Ls"],["A","A 值"]] }));
+    if (seg.defBy === "A") g.appendChild(fld("A 值", "A", seg.A));
+    else                   g.appendChild(fld("長度 Ls (m)", "Ls", seg.Ls));
+  }
+  return g;
+}
+function infChk(key, on){
+  const w = document.createElement("label");
+  w.style.cssText = "display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--ink-3);margin-top:2px;cursor:pointer";
+  w.innerHTML = `<input type="checkbox" data-k="${key}" ${on ? "checked" : ""}> ∞ (直線端)`;
+  return w;
+}
+/* ---------- 偏置線表 ---------- */
+function attrFields(o, tgt){
+  const g = document.createElement("div");
+  g.className = "grid g3";
+  g.appendChild(fld("元素類型", tgt + "etype", o.etype || "BEAM", { select:ELEM_TYPES }));
+  g.appendChild(fld("材料 ID", tgt + "mat", o.mat));
+  g.appendChild(fld("斷面 ID", tgt + "sect", o.sect));
+  return g;
+}
+
+function renderOffs(){
+  const box = $("#offs");
+  box.innerHTML = "";
+  if (!state.offsets.length){
+    box.innerHTML = `<div class="hint" style="margin:0 0 4px">尚未新增偏置線。只有主線時不會產生橫梁。</div>`;
+  }
+  state.offsets.forEach((o, i) => {
+    const el = document.createElement("div");
+    el.className = "seg";
+    const head = document.createElement("div");
+    head.className = "seg-head";
+    head.innerHTML = `
+      <div class="seg-tag" style="background:${OFF_COLORS[i % OFF_COLORS.length]}">${i + 1}</div>
+      <label class="chk"><input type="checkbox" data-k="on"> 啟用</label>
+      <div class="spacer"></div>
+      <button class="iconbtn" data-op="dup" title="複製">⧉</button>
+      <button class="iconbtn danger" data-op="del" title="刪除">✕</button>
+      <div style="width:6px"></div>`;
+    head.querySelector("[data-k=on]").checked = o.on !== false;
+    el.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "seg-body";
+    const g = document.createElement("div");
+    g.className = "grid g3";
+    g.appendChild(fld("名稱(用於群組)", "name", o.name, { text:true }));
+    g.appendChild(fld("橫向偏置 d (m)", "d", o.d));
+    g.appendChild(fld("垂直偏置 h (m)", "h", o.h));
+    body.appendChild(g);
+    const a = attrFields(o, "");
+    a.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-2)";
+    body.appendChild(a);
+    const out = document.createElement("div");
+    out.className = "seg-out"; out.dataset.oout = String(i);
+    body.appendChild(out);
+    el.appendChild(body);
+
+    el.addEventListener("input", ev => {
+      const k = ev.target.dataset.k; if (!k) return;
+      if (ev.target.type === "checkbox") o[k] = ev.target.checked;
+      else if (ev.target.type === "number") o[k] = ev.target.value === "" ? NaN : Number(ev.target.value);
+      else o[k] = ev.target.value;
+      recompute();
+    });
+    el.addEventListener("click", ev => {
+      const op = ev.target.dataset && ev.target.dataset.op; if (!op) return;
+      if (op === "del") state.offsets.splice(i, 1);
+      if (op === "dup") state.offsets.splice(i + 1, 0, { ...clone(o), name:(o.name || "OFF") + "b" });
+      renderOffs(); recompute();
+    });
+    box.appendChild(el);
+  });
+}
+
+function renderOffOut(){
+  document.querySelectorAll("[data-oout]").forEach(el => {
+    const i = +el.dataset.oout;
+    const L = MODEL.lines.find(L => !L.def.main && L.def.attr === state.offsets[i]);
+    if (!L || !L.nodes.length){
+      el.innerHTML = `<span style="color:var(--ink-3)">${L ? "無線形節點可偏置" : "未啟用"}</span>`; return; }
+    el.innerHTML =
+      `<div><span class="k">節點編號</span> <b>${L.nodeBase} – ${L.nodeBase + L.nodes.length - 1}</b></div>
+       <div><span class="k">元素編號</span> <b>${L.elemBase} – ${L.elemBase + L.elems.length - 1}</b></div>
+       <div><span class="k">元素長</span> <b>${L.stat.minL.toFixed(3)} – ${L.stat.maxL.toFixed(3)} m</b></div>
+       <div><span class="k">最大弦線偏差</span> <b>${(L.stat.maxDev * 1000).toFixed(2)} mm</b></div>
+       <div><span class="k">3D 總長</span> <b>${L.stat.len3d.toFixed(3)} m</b></div>`;
+  });
+}
+
+/* ---------- 主纜表 ---------- */
+function subHead(t){
+  const d = document.createElement("div");
+  d.style.cssText = "font-size:10px;letter-spacing:.09em;color:var(--ink-3);font-weight:700;margin:9px 0 5px;padding-top:8px;border-top:1px dashed var(--line-2)";
+  d.textContent = t;
+  return d;
+}
+function renderMains(){
+  const box = $("#mains");
+  box.innerHTML = "";
+  if (!state.mains.length){
+    box.innerHTML = `<div class="hint" style="margin:0 0 4px">尚未新增主纜。適用懸索橋主纜 + 吊索;算完局部幾何後自動轉換到全域座標。</div>`;
+  }
+  state.mains.forEach((m, i) => {
+    const el = document.createElement("div");
+    el.className = "seg";
+    const head = document.createElement("div");
+    head.className = "seg-head";
+    head.innerHTML = `
+      <div class="seg-tag" style="background:${MAIN_COLOR}">${i + 1}</div>
+      <label class="chk"><input type="checkbox" data-k="on"> 啟用</label>
+      <div class="spacer"></div>
+      <button class="iconbtn" data-op="dup" title="複製">⧉</button>
+      <button class="iconbtn danger" data-op="del" title="刪除">✕</button>
+      <div style="width:6px"></div>`;
+    head.querySelector("[data-k=on]").checked = m.on !== false;
+    el.appendChild(head);
+
+    const b = document.createElement("div");
+    b.className = "seg-body";
+    const grid = (cls, ...fs) => { const g = document.createElement("div"); g.className = "grid " + cls; fs.forEach(f => g.appendChild(f)); return g; };
+
+    b.appendChild(grid("g4",
+      fld("名稱(用於群組)", "name", m.name, { text:true }),
+      fld("跨徑 Lx (m)", "span", m.span),
+      fld("左鞍座局部 z1 (m)", "z1", m.z1),
+      fld("右鞍座局部 z2 (m)", "z2", m.z2)));
+
+    b.appendChild(subHead("局部幾何"));
+    b.appendChild(grid("g4",
+      fld("曲線", "curve", m.curve, { select:[["parabola","拋物線"],["catenary","懸鏈線"]] }),
+      fld("垂度定義", "fMode", m.fMode, { select:[["ratio","垂跨比 f/L"],["abs","絕對值 (m)"]] }),
+      fld(m.fMode === "ratio" ? "垂跨比 f/L" : "垂度 f (m)", "f", m.f),
+      fld("主纜分割 N", "N", m.N),
+      fld("索面數", "planes", m.planes, { select:[["1","1(單索面)"],["2","2(雙索面)"]] }),
+      fld("索面橫向間距 (m)", "planeGap", m.planeGap, { disabled:(+m.planes || 1) < 2 })));
+
+    b.appendChild(subHead("吊索"));
+    const hg = grid("g4",
+      fld("產生吊索", "hangers", m.hangers, { select:[["true","是"],["false","否"]] }),
+      fld("橋面局部 z (m)", "deckZ", m.deckZ),
+      fld("每 n 個主纜節點", "every", m.every),
+      fld("下端節點", "hangerBottom", m.hangerBottom, { select:[["new","新增節點"],["snap","貼附既有節點"]] }));
+    if (m.hangerBottom === "snap") hg.appendChild(fld("貼附容差 (m)", "snapTol", m.snapTol));
+    b.appendChild(hg);
+
+    b.appendChild(subHead("空間轉換 — 基準點 P1 → Q1"));
+    const bp = grid("g4",
+      fld("局部基準點 P1", "basePt", m.basePt, { select:[["P1","左鞍座"],["P2","右鞍座"],["O","局部原點"],["C","自訂局部座標"]] }),
+      fld("目標 X1", "q1x", m.q1x), fld("目標 Y1", "q1y", m.q1y), fld("目標 Z1", "q1z", m.q1z));
+    b.appendChild(bp);
+    if (m.basePt === "C")
+      b.appendChild(grid("g4", fld("自訂局部 x", "cx", m.cx), fld("自訂局部 y", "cy", m.cy), fld("自訂局部 z", "cz", m.cz)));
+
+    b.appendChild(subHead("空間轉換 — 方向"));
+    const dg = grid("g4",
+      fld("局部方向點 P2", "dirPt", m.dirPt, { select:[["P2","右鞍座"],["P1","左鞍座"],["O","局部原點"],["C","自訂局部座標"]] }),
+      fld("方向定義", "dirMode", m.dirMode, { select:[["twoPoint","目標點 Q2"],["bearing","平面方位角"]] }));
+    if (m.dirMode === "bearing"){
+      dg.appendChild(fld("方位角 θ (°)", "bearing", m.bearing));
+    } else {
+      dg.appendChild(fld("目標 X2", "q2x", m.q2x));
+      dg.appendChild(fld("目標 Y2", "q2y", m.q2y));
+      dg.appendChild(fld("目標 Z2", "q2z", m.q2z));
+    }
+    dg.appendChild(fld("繞主軸滾轉 (°)", "roll", m.roll));
+    b.appendChild(dg);
+
+    b.appendChild(subHead("元素屬性"));
+    b.appendChild(grid("g3",
+      fld("主纜類型", "cableType", m.cableType, { select:ELEM_TYPES }),
+      fld("主纜材料 ID", "cableMat", m.cableMat),
+      fld("主纜斷面 ID", "cableSect", m.cableSect)));
+    b.appendChild(grid("g3",
+      fld("吊索類型", "hangerType", m.hangerType, { select:ELEM_TYPES }),
+      fld("吊索材料 ID", "hangerMat", m.hangerMat),
+      fld("吊索斷面 ID", "hangerSect", m.hangerSect)));
+
+    const out = document.createElement("div");
+    out.className = "seg-out"; out.dataset.mout = String(i);
+    b.appendChild(out);
+    el.appendChild(b);
+
+    el.addEventListener("input", ev => {
+      const k = ev.target.dataset.k; if (!k) return;
+      if (ev.target.type === "checkbox") m[k] = ev.target.checked;
+      else if (ev.target.type === "number") m[k] = ev.target.value === "" ? NaN : Number(ev.target.value);
+      else if (k === "hangers") m[k] = ev.target.value === "true";
+      else if (k === "planes") m[k] = +ev.target.value;
+      else m[k] = ev.target.value;
+      if (["fMode","planes","hangerBottom","basePt","dirMode","hangers"].includes(k)) renderMains();
+      recompute();
+    });
+    el.addEventListener("click", ev => {
+      const op = ev.target.dataset && ev.target.dataset.op; if (!op) return;
+      if (op === "del") state.mains.splice(i, 1);
+      if (op === "dup") state.mains.splice(i + 1, 0, { ...clone(m), name:(m.name || "MC") + "b" });
+      renderMains(); recompute();
+    });
+    box.appendChild(el);
+  });
+}
+
+function renderMainOut(){
+  document.querySelectorAll("[data-mout]").forEach(el => {
+    const i = +el.dataset.mout;
+    const M = MODEL.mains.find(M => M.def === state.mains[i]);
+    if (!M){ el.innerHTML = `<span style="color:var(--ink-3)">未啟用或參數無效</span>`; return; }
+    const s = M.stat;
+    el.innerHTML =
+      `<div><span class="k">節點編號</span> <b>${M.nodeBase} – ${M.nodeBase + s.n - 1}</b></div>
+       <div><span class="k">元素編號</span> <b>${M.elemBase} – ${M.elemBase + s.e - 1}</b></div>
+       <div><span class="k">跨徑 / 垂度</span> <b>${s.span.toFixed(3)} / ${s.sag.toFixed(3)} m</b></div>
+       <div><span class="k">單索面纜長</span> <b>${s.cableLen.toFixed(4)} m</b></div>
+       <div><span class="k">吊索</span> <b>${s.hangers} 根,${s.hangMin.toFixed(3)} – ${s.hangMax.toFixed(3)} m</b></div>
+       <div><span class="k">轉換後方位角</span> <b>${s.bearing.toFixed(4)}°</b></div>` +
+      (M.mode === "twoPoint"
+        ? `<div><span class="k">方向點殘差</span> <b${M.residual > 1e-6 ? ' style="color:var(--warn)"' : ""}>${M.residual.toFixed(4)} m</b></div>`
+        : "");
+  });
+}
+
+/* ---------- 纜索表 ---------- */
+function renderCabs(){
+  const box = $("#cabs");
+  box.innerHTML = "";
+  if (!state.cables.length){
+    box.innerHTML = `<div class="hint" style="margin:0 0 4px">尚未新增纜索組。每一組 = 一個起點 + 一組目標節點(扇形)。</div>`;
+  }
+  state.cables.forEach((c, i) => {
+    const el = document.createElement("div");
+    el.className = "seg";
+    const head = document.createElement("div");
+    head.className = "seg-head";
+    head.innerHTML = `
+      <div class="seg-tag" style="background:${CABLE_COLOR}">${i + 1}</div>
+      <label class="chk"><input type="checkbox" data-k="on"> 啟用</label>
+      <div class="spacer"></div>
+      <button class="iconbtn" data-op="dup" title="複製">⧉</button>
+      <button class="iconbtn danger" data-op="del" title="刪除">✕</button>
+      <div style="width:6px"></div>`;
+    head.querySelector("[data-k=on]").checked = c.on !== false;
+    el.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "seg-body";
+
+    const g1 = document.createElement("div");
+    g1.className = "grid g4";
+    g1.appendChild(fld("名稱(用於群組)", "name", c.name, { text:true }));
+    g1.appendChild(fld("起點來源", "srcMode", c.srcMode, { select:[["coord","自訂座標"],["node","既有節點"]] }));
+    if (c.srcMode === "node"){
+      g1.appendChild(fld("起點節點編號", "srcNode", c.srcNode));
+    } else {
+      g1.appendChild(fld("起點 X", "sx", c.sx));
+      g1.appendChild(fld("起點 Y", "sy", c.sy));
+      g1.appendChild(fld("起點 Z", "sz", c.sz));
+    }
+    body.appendChild(g1);
+
+    const lt = document.createElement("label");
+    lt.className = "f"; lt.style.marginTop = "8px";
+    lt.innerHTML = `<span>目標節點編號(支援 101-120 範圍)</span>`;
+    const ta = document.createElement("textarea");
+    ta.rows = 2; ta.dataset.k = "targets"; ta.value = c.targets || "";
+    ta.placeholder = "1015-1035, 1040";
+    lt.appendChild(ta);
+    body.appendChild(lt);
+
+    const g2 = document.createElement("div");
+    g2.className = "grid g4";
+    g2.style.marginTop = "8px";
+    g2.appendChild(fld("分割數 N", "N", c.N));
+    g2.appendChild(fld("垂度定義", "fMode", c.fMode, { select:[["abs","絕對值 (m)"],["ratio","垂跨比"]] , disabled:(+c.N || 1) <= 1 }));
+    g2.appendChild(fld(c.fMode === "ratio" ? "垂跨比 f/L" : "跨中垂度 f (m)", "f", c.f, { disabled:(+c.N || 1) <= 1 }));
+    body.appendChild(g2);
+
+    const a = attrFields(c, "");
+    a.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-2)";
+    body.appendChild(a);
+    const out = document.createElement("div");
+    out.className = "seg-out"; out.dataset.cout = String(i);
+    body.appendChild(out);
+    el.appendChild(body);
+
+    el.addEventListener("input", ev => {
+      const k = ev.target.dataset.k; if (!k) return;
+      if (ev.target.type === "checkbox") c[k] = ev.target.checked;
+      else if (ev.target.type === "number") c[k] = ev.target.value === "" ? NaN : Number(ev.target.value);
+      else c[k] = ev.target.value;
+      if (k === "srcMode" || k === "fMode" || k === "N") renderCabs();
+      recompute();
+    });
+    el.addEventListener("click", ev => {
+      const op = ev.target.dataset && ev.target.dataset.op; if (!op) return;
+      if (op === "del") state.cables.splice(i, 1);
+      if (op === "dup") state.cables.splice(i + 1, 0, { ...clone(c), name:(c.name || "C") + "b" });
+      renderCabs(); recompute();
+    });
+    box.appendChild(el);
+  });
+}
+
+function renderCabOut(){
+  document.querySelectorAll("[data-cout]").forEach(el => {
+    const i = +el.dataset.cout;
+    const G = MODEL.cables.find(G => G.def === state.cables[i]);
+    if (!G){ el.innerHTML = `<span style="color:var(--ink-3)">未啟用或起點無效</span>`; return; }
+    const s = G.stat;
+    el.innerHTML =
+      `<div><span class="k">纜索數</span> <b>${s.count}</b>(每條 ${G.N} 元素)</div>
+       <div><span class="k">新增節點</span> <b>${s.n ? `${G.nodeBase} – ${G.nodeBase + s.n - 1}` : "無"}</b></div>
+       <div><span class="k">元素編號</span> <b>${s.e ? `${G.elemBase} – ${G.elemBase + s.e - 1}` : "無"}</b></div>
+       <div><span class="k">弦長</span> <b>${s.minChord.toFixed(3)} – ${s.maxChord.toFixed(3)} m</b></div>
+       <div><span class="k">纜索總長</span> <b>${s.len.toFixed(3)} m</b></div>` +
+      (G.N > 1 ? `<div><span class="k">最大垂度</span> <b>${s.maxSag.toFixed(3)} m</b></div>` : "");
+  });
+}
+
+/* ---------- 縱斷面 VPI 表 ---------- */
+const vpisEl = () => $("#vpis");
+function renderVpis(){
+  const box = vpisEl();
+  box.innerHTML = "";
+  state.profile.forEach((v, i) => {
+    const last = i === state.profile.length - 1;
+    const isEnd = (i === 0 || last);
+    const el = document.createElement("div");
+    el.className = "vpi";
+    const row = document.createElement("div");
+    row.className = "row";
+    const tag = document.createElement("div");
+    tag.className = "tag" + (isEnd ? " end" : "");
+    tag.textContent = i === 0 ? "起" : (last ? "終" : String(i));
+    row.appendChild(tag);
+    row.appendChild(fld("樁號", "sta", fmtSta(v.sta || 0), { text:true }));
+    row.appendChild(fld("高程 Z (m)", "z", v.z));
+    row.appendChild(fld("豎曲線長 L (m)", "L", isEnd ? 0 : v.L, { disabled:isEnd }));
+    const del = document.createElement("button");
+    del.className = "iconbtn danger"; del.textContent = "✕"; del.dataset.del = "1";
+    del.style.marginBottom = "3px";
+    del.disabled = state.profile.length <= 2;
+    row.appendChild(del);
+    el.appendChild(row);
+    const out = document.createElement("div");
+    out.className = "vpi-out"; out.dataset.vout = String(i);
+    el.appendChild(out);
+
+    el.addEventListener("input", ev => {
+      const k = ev.target.dataset.k; if (!k) return;
+      if (k === "sta") v.sta = parseSta(ev.target.value);
+      else v[k] = ev.target.value === "" ? NaN : Number(ev.target.value);
+      recompute();
+    });
+    el.addEventListener("click", ev => {
+      if (!ev.target.dataset.del) return;
+      if (state.profile.length <= 2) return;
+      state.profile.splice(i, 1); renderVpis(); recompute();
+    });
+    box.appendChild(el);
+  });
+}
+
+function renderVpiOut(){
+  const pr = PROF;
+  document.querySelectorAll("[data-vout]").forEach(el => {
+    const i = +el.dataset.vout;
+    const P = pr.P, g = pr.g;
+    if (!P[i]){ el.innerHTML = ""; return; }
+    const gin  = i > 0 ? g[i-1] : null;
+    const gout = i < P.length - 1 ? g[i] : null;
+    const c = pr.curves.find(c => c.i === i);
+    let h = "";
+    if (gin  !== null) h += `<div><span class="k">進入坡度</span> <b>${(gin*100).toFixed(4)}%</b></div>`;
+    if (gout !== null) h += `<div><span class="k">離開坡度</span> <b>${(gout*100).toFixed(4)}%</b></div>`;
+    if (c){
+      h += `<div><span class="k">BVC → EVC</span> <b>${fmtSta(c.BVC)} → ${fmtSta(c.EVC)}</b></div>
+            <div><span class="k">中央縱距 E</span> <b>${c.E.toFixed(4)} m</b></div>
+            <div><span class="k">K 值</span> <b>${Number.isFinite(c.K) ? c.K.toFixed(3) : "∞"}</b></div>
+            <div><span class="k">曲線上高程</span> <b>${zAt(pr, c.sta).toFixed(4)} m</b></div>`;
+    } else if (gin !== null && gout !== null && Math.abs(gout - gin) > 1e-9){
+      h += `<div style="color:var(--warn)"><span class="k">豎曲線</span> <b>無(折角)</b></div>`;
+    }
+    el.innerHTML = h;
+  });
+}
+
+function splitFields(seg, i){
+  const sp = seg.split || (seg.split = { ...SPLIT_DEF });
+  const g = document.createElement("div");
+  g.className = "grid g4";
+  g.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-2)";
+  g.appendChild(fld("分割方式", "split.mode", sp.mode, { select:[
+    ["spacing","指定間距"], ["count","指定元素數"], ["tol","弦線偏差容差"]] }));
+  if (sp.mode === "spacing") g.appendChild(fld("間距 d (m)", "split.spacing", sp.spacing));
+  if (sp.mode === "count")   g.appendChild(fld("元素數 N", "split.count", sp.count));
+  if (sp.mode === "tol"){
+    g.appendChild(fld("容差 m (mm)", "split.tolMm", sp.tolMm));
+    g.appendChild(fld("最大間距 (m)", "split.maxSpacing", sp.maxSpacing));
+  }
+  if (sp.mode !== "count")
+    g.appendChild(fld("餘數處理", "split.rem", sp.rem, { select:[
+      ["ask","(未決定)"], ["even","均分吸收"], ["keep","獨立留一段"],
+      ["merge","併入前一元素"], ["trim","截短曲線(限末段)"]] }));
+  return g;
+}
+
+function indepFields(seg){
+  const g = document.createElement("div");
+  g.className = "grid g4";
+  g.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-2)";
+  g.appendChild(fld("起點 X (m)", "startX", seg.startX));
+  g.appendChild(fld("起點 Y (m)", "startY", seg.startY));
+  g.appendChild(fld("起始方位角 (°)", "startAz", seg.startAz));
+  g.appendChild(fld("起始樁號", "startSta", fmtSta(seg.startSta || 0), { text:true }));
+  return g;
+}
+
+/* ---------- 重算 ---------- */
+function recompute(){
+  AL = buildAlignment(state);
+  SAMPLES = sampleAlignment(AL, 0.5);
+  profWarns = []; profErrs = [];
+  const rng = AL.segs.length ? [AL.segs[0].s0, AL.segs[AL.segs.length-1].s1] : null;
+  PROF = buildProfile(state.profile, profWarns, profErrs, rng);
+  GEN = generateNodes(AL, { forced:state.forced, absorbTol:state.absorbTol, prof:PROF });
+  modelErrs = []; modelWarns = [];
+  MODEL = buildModel(AL, PROF, GEN, state, modelErrs, modelWarns);
+
+  // 段落輸出
+  const byIdx = new Map(AL.segs.map(b => [b.i, b]));
+  document.querySelectorAll("[data-out]").forEach(el => {
+    const b = byIdx.get(+el.dataset.out);
+    if (!b){ el.innerHTML = `<span style="color:var(--err)">— 參數無效,未產生 —</span>`; return; }
+    let geo = "";
+    if (b.type === "ARC")
+      geo = `<div><span class="k">圓心</span> <b>${b.extra.center.x.toFixed(3)}, ${b.extra.center.y.toFixed(3)}</b></div>
+             <div><span class="k">偏角 Δ</span> <b>${b.extra.delta.toFixed(4)}°</b></div>`;
+    if (b.type === "SPIRAL"){
+      const a = b.extra.A;
+      geo = `<div><span class="k">曲率</span> <b>${fmtR(b.extra.R0)} → ${fmtR(b.extra.R1)}</b></div>` +
+            (a ? `<div><span class="k">A 值</span> <b>${a.toFixed(3)}</b></div>` : "");
+    }
+    el.innerHTML =
+      `<div><span class="k">樁號</span> <b>${fmtSta(b.s0)} → ${fmtSta(b.s1)}</b></div>
+       <div><span class="k">長度</span> <b>${b.length.toFixed(4)} m</b></div>
+       <div><span class="k">終點</span> <b>${b.end.x.toFixed(3)}, ${b.end.y.toFixed(3)}</b></div>
+       <div><span class="k">終點方位角</span> <b>${b.end.az.toFixed(4)}°</b></div>` + geo;
+  });
+
+  renderMsgs();
+  renderSummary();
+  renderChecks();
+  renderVpiOut();
+  renderOffOut();
+  renderCabOut();
+  renderMainOut();
+  renderNumHint();
+  renderMctPreview();
+  renderLegend();
+  if (!view.locked) fitView();
+  fitProfile();
+  draw();
+  drawProfile();
+  scheduleRemModal();
+}
+
+/* ---------- 檢核面板(§4.4) ---------- */
+function renderChecks(){
+  const g = GEN;
+  const short = g.trueLen - g.polyLen;
+  const pct = g.trueLen > 1e-9 ? short / g.trueLen * 100 : 0;
+  const devs = g.elems.map(e => e.dev);
+  const maxDev = devs.length ? Math.max(...devs) : 0;
+  const lens = g.elems.map(e => e.chord);
+  const minL = lens.length ? Math.min(...lens) : 0;
+  const maxL = lens.length ? Math.max(...lens) : 0;
+  const nForced = g.nodes.filter(n => n.forced).length;
+  const grades = g.nodes.map(n => n.grade * 100);
+  const maxG = grades.length ? grades.reduce((a, b) => Math.abs(b) > Math.abs(a) ? b : a, 0) : 0;
+  const zs = g.nodes.map(n => n.z);
+  const zLo = zs.length ? Math.min(...zs) : 0, zHi = zs.length ? Math.max(...zs) : 0;
+
+  const hot = v => v ? " class=\"hot\"" : "";
+  let html = `<div class="kpi">
+    <div><span class="k">節點總數</span><b>${MODEL.tot.nodes}</b>${MODEL.lines.length > 1 ? `<span style="color:var(--ink-3);font-size:10.5px"> 主線 ${g.nodes.length}</span>` : ""}</div>
+    <div><span class="k">元素總數</span><b>${MODEL.tot.elems}</b>${MODEL.lines.length > 1 || MODEL.cross.length ? `<span style="color:var(--ink-3);font-size:10.5px"> 主線 ${g.elems.length}</span>` : ""}</div>
+    <div><span class="k">最大弦線偏差</span><b${hot(maxDev * 1000 > 50)}>${(maxDev * 1000).toFixed(2)} mm</b></div>
+    <div><span class="k">總長縮短</span><b${hot(pct > 0.05)}>${(short * 1000).toFixed(1)} mm (${pct.toFixed(4)}%)</b></div>
+    <div><span class="k">最短元素</span><b${hot(maxL > 0 && minL < maxL * 0.3)}>${minL.toFixed(3)} m</b></div>
+    <div><span class="k">最長元素</span><b>${maxL.toFixed(3)} m</b></div>
+    <div><span class="k">折線總長(平面)</span><b>${g.polyLen.toFixed(4)} m</b></div>
+    <div><span class="k">強制節點</span><b>${nForced}${g.absorbed ? ` <span style="color:var(--ink-3);font-size:11px">(吸收 ${g.absorbed})</span>` : ""}</b></div>
+    <div><span class="k">3D 元素總長</span><b>${g.len3d.toFixed(4)} m</b></div>
+    <div><span class="k">3D − 平面折線</span><b>${((g.len3d - g.polyLen) * 1000).toFixed(1)} mm (${g.polyLen > 1e-9 ? ((g.len3d - g.polyLen) / g.polyLen * 100).toFixed(4) : "0"}%)</b></div>
+    <div><span class="k">最大坡度</span><b${hot(Math.abs(maxG) > 8)}>${maxG >= 0 ? "+" : ""}${maxG.toFixed(3)}%</b></div>
+    <div><span class="k">高程範圍</span><b>${zLo.toFixed(3)} – ${zHi.toFixed(3)} m</b></div>
+  </div>`;
+
+  const asks = pendingRemainders();
+  if (asks.length)
+    html += `<div class="banner"><span>⚠ ${asks.length} 個段落有餘數尚未決定處理方式(暫以「均分吸收」預覽)</span>
+             <button id="btn-rem">處理餘數…</button></div>`;
+  if (g.trims.length)
+    html += `<div class="banner">✂ 已截短:${g.trims.map(t => `段 ${t.seg + 1} 終點後退 ${t.len.toFixed(3)} m`).join("、")}</div>`;
+
+  html += `<table class="seg-chk"><thead><tr>
+      <th>段落</th><th>元素數</th><th>元素長</th><th>最大弦線偏差</th><th>餘數</th><th>處理</th></tr></thead><tbody>`;
+  AL.segs.forEach(b => {
+    const st = g.segStat.get(b.i) || {};
+    const el = g.elems.filter(e => e.seg === b.i);
+    const lo = el.length ? Math.min(...el.map(e => e.chord)) : 0;
+    const hi = el.length ? Math.max(...el.map(e => e.chord)) : 0;
+    const dv = (st.maxDev || 0) * 1000;
+    html += `<tr>
+      <td>${b.i + 1} ${TYPE_NAME[b.type]}${b.type === "ARC" ? " R=" + b.extra.R : ""}</td>
+      <td>${el.length}</td>
+      <td>${lo.toFixed(3)}${Math.abs(hi - lo) > 1e-4 ? " – " + hi.toFixed(3) : ""}</td>
+      <td${dv > 50 ? ' class="hot"' : ""}>${dv.toFixed(2)} mm</td>
+      <td${st.ratio && st.ratio < 0.3 ? ' class="hot"' : ""}>${st.rem > 1e-9 ? st.rem.toFixed(3) + " m (" + (st.ratio * 100).toFixed(1) + "%)" : "—"}</td>
+      <td style="color:var(--ink-3)">${st.rem > 1e-9 ? REM_NAME[st.policy || "ask"] : "—"}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  if (MODEL.lines.length > 1 || MODEL.cross.length){
+    html += `<table class="seg-chk" style="margin-top:10px"><thead><tr>
+      <th>線</th><th>橫向 d</th><th>垂直 h</th><th>節點</th><th>元素</th>
+      <th>元素長</th><th>最大弦線偏差</th><th>3D 總長</th></tr></thead><tbody>`;
+    MODEL.lines.forEach(L => {
+      const dv = L.stat.maxDev * 1000;
+      html += `<tr>
+        <td>${L.def.label}</td>
+        <td>${L.def.main ? "—" : L.def.d.toFixed(3)}</td>
+        <td>${L.def.main ? "—" : L.def.h.toFixed(3)}</td>
+        <td>${L.nodes.length}</td><td>${L.elems.length}</td>
+        <td>${L.stat.minL.toFixed(3)}${Math.abs(L.stat.maxL - L.stat.minL) > 1e-4 ? " – " + L.stat.maxL.toFixed(3) : ""}</td>
+        <td${dv > 50 ? ' class="hot"' : ""}>${dv.toFixed(2)} mm</td>
+        <td>${L.stat.len3d.toFixed(3)} m</td></tr>`;
+    });
+    if (MODEL.cross.length){
+      const cl = MODEL.cross.map(c => c.len3d);
+      html += `<tr><td>橫梁</td><td>—</td><td>—</td><td>—</td><td>${MODEL.cross.length}</td>
+        <td>${Math.min(...cl).toFixed(3)} – ${Math.max(...cl).toFixed(3)}</td><td>—</td>
+        <td>${cl.reduce((a,b)=>a+b,0).toFixed(3)} m</td></tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+
+  if (MODEL.mains.length){
+    html += `<table class="seg-chk" style="margin-top:10px"><thead><tr>
+      <th>主纜</th><th>索面</th><th>跨徑</th><th>垂度</th><th>單索面纜長</th>
+      <th>吊索</th><th>節點</th><th>元素</th><th>方向殘差</th></tr></thead><tbody>`;
+    MODEL.mains.forEach(M => {
+      const s2 = M.stat;
+      html += `<tr><td>${M.name}</td><td>${s2.planes}</td>
+        <td>${s2.span.toFixed(3)}</td><td>${s2.sag.toFixed(3)}</td>
+        <td>${s2.cableLen.toFixed(4)}</td><td>${s2.hangers}</td>
+        <td>${s2.n}</td><td>${s2.e}</td>
+        <td${M.residual > 1e-6 ? ' class="hot"' : ""}>${M.mode === "twoPoint" ? M.residual.toFixed(4) + " m" : "—"}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+
+  if (MODEL.cables.length){
+    html += `<table class="seg-chk" style="margin-top:10px"><thead><tr>
+      <th>纜索組</th><th>條數</th><th>分割 N</th><th>新增節點</th><th>元素</th>
+      <th>弦長</th><th>最大垂度</th><th>總長</th></tr></thead><tbody>`;
+    MODEL.cables.forEach(G => {
+      const s = G.stat;
+      html += `<tr><td>${G.name}</td><td>${s.count}</td><td>${G.N}</td>
+        <td>${s.n}</td><td>${s.e}</td>
+        <td>${s.minChord.toFixed(3)} – ${s.maxChord.toFixed(3)}</td>
+        <td>${G.N > 1 ? s.maxSag.toFixed(3) + " m" : "—"}</td>
+        <td>${s.len.toFixed(3)} m</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  $("#checks").innerHTML = html;
+  const rb = $("#btn-rem"); if (rb) rb.onclick = () => openRemModal(true);
+}
+
+function renderMctPreview(){
+  const el = $("#mct-prev");
+  if (!el || !el.closest("details").open){ if (el) el.dataset.stale = "1"; return; }
+  const txt = mctText().split("\r\n");
+  const head = txt.slice(0, 120);
+  el.dataset.stale = "";
+  el.textContent = head.join("\n") + (txt.length > 120 ? `\n… 其餘 ${txt.length - 120} 行` : "");
+}
+
+function renderNumHint(){
+  const parts = [];
+  MODEL.lines.filter(L => L.nodes.length).forEach(L =>
+    parts.push(`<b>${L.def.label}</b> 節點 ${L.nodeBase}–${L.nodeBase + L.nodes.length - 1}、元素 ${L.elemBase}–${L.elemBase + Math.max(0, L.elems.length - 1)}`));
+  if (MODEL.cross.length)
+    parts.push(`<b>橫梁</b> 元素 ${MODEL.cross[0].num}–${MODEL.cross[MODEL.cross.length - 1].num}`);
+  MODEL.mains.forEach(M =>
+    parts.push(`<b>主纜 ${M.name}</b> 節點 ${M.nodeBase}–${M.nodeBase + M.nodes.length - 1}、元素 ${M.elemBase}–${M.elemBase + M.elems.length - 1}`));
+  MODEL.cables.forEach(G =>
+    parts.push(`<b>纜索 ${G.name}</b> ${G.nodes.length ? `節點 ${G.nodeBase}–${G.nodeBase + G.nodes.length - 1}、` : ""}元素 ${G.elemBase}–${G.elemBase + G.elems.length - 1}`));
+  $("#numhint").innerHTML = (parts.length ? parts.join(" ／ ") : "尚無任何節點或元素") +
+    `<br>群組(${MODEL.groups.length}):${MODEL.groups.join("、")}`;
+}
+
+function pendingRemainders(){
+  return AL.segs.filter(b => {
+    const st = GEN.segStat.get(b.i);
+    return st && st.rem > 1e-9 && (!b.src.split || (b.src.split.rem || "ask") === "ask");
+  });
+}
+const fmtR = r => r === null ? "∞" : r.toFixed(1) + " m";
+
+function renderMsgs(){
+  const box = $("#msgs"); box.innerHTML = "";
+  const list = [];
+  AL.errors.forEach(e => list.push({ cls:"err", txt:(e.seg === null ? "" : `段 ${e.seg + 1}:`) + e.text }));
+  profErrs.forEach(t => list.push({ cls:"err", txt:t }));
+  modelErrs.forEach(t => list.push({ cls:"err", txt:t }));
+  profWarns.forEach(t => list.push({ cls:"warn", txt:t }));
+  modelWarns.forEach(t => list.push({ cls:"warn", txt:t }));
+  GEN.warns.forEach(t => list.push({ cls:"warn", txt:t }));
+  // 落在線形範圍外的強制節點
+  const fs = GEN.chains.length ? parseForced(state.forced) : [];
+  fs.forEach(f => {
+    const inside = GEN.chains.some(c => f >= c.s0 - 1e-9 && f <= c.s1 + 1e-9);
+    if (!inside) list.push({ cls:"warn", txt:`強制節點 ${fmtSta(f)} 不在任何線形範圍內,已忽略` });
+  });
+
+  // 反曲點與複合曲線提示
+  for (let i = 1; i < AL.segs.length; i++){
+    const a = AL.segs[i - 1], b = AL.segs[i];
+    if (b.src.independent) continue;
+    const da = Math.abs(norm360(b.start.az - a.end.az + 540) - 180);
+    if (da > 1e-6) list.push({ cls:"warn", txt:`段 ${i} → 段 ${i + 1} 切線不連續(差 ${da.toFixed(6)}°)` });
+  }
+  list.forEach(m => {
+    const d = document.createElement("div");
+    d.className = "msg " + m.cls;
+    d.innerHTML = (m.cls === "err" ? "✕ " : "⚠ ") + m.txt;
+    box.appendChild(d);
+  });
+  $("#msgs-ok").style.display = list.length ? "none" : "";
+}
+
+function renderSummary(){
+  const prc = countPRC();
+  $("#summary").innerHTML = `
+    <div><span class="k">段落數</span><b>${AL.segs.length}</b></div>
+    <div><span class="k">總長度</span><b>${AL.total.toFixed(4)} m</b></div>
+    <div><span class="k">起訖樁號</span><b>${fmtSta(AL.startSta)} → ${fmtSta(AL.segs.length ? AL.segs[AL.segs.length-1].s1 : AL.startSta)}</b></div>
+    <div><span class="k">終點座標</span><b>${AL.segs.length ? AL.segs[AL.segs.length-1].end.x.toFixed(3) + ", " + AL.segs[AL.segs.length-1].end.y.toFixed(3) : "—"}</b></div>
+    <div><span class="k">終點方位角</span><b>${AL.segs.length ? AL.segs[AL.segs.length-1].end.az.toFixed(4) + "°" : "—"}</b></div>
+    <div><span class="k">反曲點 (PRC)</span><b>${prc}</b></div>`;
+}
+function countPRC(){
+  let n = 0;
+  for (let i = 1; i < AL.segs.length; i++){
+    const a = AL.segs[i-1], b = AL.segs[i];
+    const da = a.extra.dir, db = b.extra.dir;
+    if (da && db && da * db < 0) n++;
+  }
+  return n;
+}
+function renderLegend(){
+  $("#legend").innerHTML = AL.segs.map(b =>
+    `<span><i style="background:${PALETTE[b.i % PALETTE.length]}"></i>${b.i + 1} ${TYPE_NAME[b.type]}` +
+    (b.type === "ARC" ? ` R=${b.extra.R}` : "") +
+    (b.type === "SPIRAL" ? ` ${fmtR(b.extra.R0)}→${fmtR(b.extra.R1)}` : "") + `</span>`
+  ).join("") +
+  MODEL.lines.filter(L => !L.def.main).map(L =>
+    `<span><i style="background:${OFF_COLORS[(L.idx-1) % OFF_COLORS.length]}"></i>${L.def.label} d=${L.def.d}${L.def.h ? " h=" + L.def.h : ""}</span>`).join("") +
+  (MODEL.cross.length ? `<span><i style="background:#aab3bd"></i>橫梁</span>` : "") +
+  (MODEL.mains.length ? `<span><i style="background:${MAIN_COLOR}"></i>主纜/吊索(${MODEL.mains.length} 組)</span>` : "") +
+  (MODEL.cables.length ? `<span><i style="background:${CABLE_COLOR}"></i>纜索(${MODEL.cables.reduce((a,G)=>a+G.stat.count,0)} 條)</span>` : "") +
+  `<span style="margin-left:auto;color:var(--ink-3)">
+     <svg width="9" height="9" style="vertical-align:-1px"><circle cx="4.5" cy="4.5" r="2.6" fill="#2c3644"/></svg> 節點 &nbsp;
+     <svg width="13" height="13" style="vertical-align:-2px"><circle cx="6.5" cy="6.5" r="3" fill="#c1673d"/><circle cx="6.5" cy="6.5" r="5.4" fill="none" stroke="#c1673d" stroke-width="1.4"/></svg> 強制節點 &nbsp;
+     <svg width="13" height="13" style="vertical-align:-2px"><circle cx="6.5" cy="6.5" r="4" fill="#fff" stroke="#b3406b" stroke-width="1.8"/></svg> 反曲點</span>`;
+}
+
+/* ==========================================================================
+   平面預覽
+   ========================================================================== */
+const cv = $("#cv"), ctx = cv.getContext("2d");
+const view = { cx:0, cy:0, scale:1, locked:false };
+let showTicks = true, showNodes = true, hover = null, hoverSta = null;
+
+// 收集所有要入鏡的平面點:線形取樣 + 所有模型節點(線形可以完全不存在)
+function allPlanPoints(){
+  const pts = SAMPLES.slice();
+  if (MODEL){
+    MODEL.lines.forEach(L => pts.push(...L.nodes));
+    MODEL.cables.forEach(G => { pts.push(...G.nodes); G.cables.forEach(k => pts.push(k.T)); });
+    MODEL.mains.forEach(M => pts.push(...M.nodes));
+  }
+  return pts;
+}
+
+function fitView(){
+  const P = allPlanPoints();
+  if (!P.length){ view.cx = 0; view.cy = 0; view.scale = 1; return; }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  P.forEach(p => { if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; });
+  const W = cv.clientWidth || 600, H = cv.clientHeight || 400;
+  const dx = Math.max(x1 - x0, 1e-6), dy = Math.max(y1 - y0, 1e-6);
+  view.scale = Math.min(W / dx, H / dy) * 0.84;
+  view.cx = (x0 + x1) / 2; view.cy = (y0 + y1) / 2;
+}
+const toS = p => ({
+  x: (p.x - view.cx) * view.scale + cv.clientWidth / 2,
+  y: cv.clientHeight / 2 - (p.y - view.cy) * view.scale
+});
+const toW = (sx, sy) => ({
+  x: (sx - cv.clientWidth / 2) / view.scale + view.cx,
+  y: (cv.clientHeight / 2 - sy) / view.scale + view.cy
+});
+
+function niceStep(targetPx){
+  const raw = targetPx / view.scale;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+
+function draw(){
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!allPlanPoints().length) return;      // 線形可以不存在,但主纜/纜索仍要畫
+
+  drawGrid(W, H);
+  drawTrims();
+  drawOffsets();
+  drawCables();
+  drawMains();
+  drawAlignment();
+  if (showTicks) drawStationTicks();
+  drawNodes();
+  drawMarkers();
+  drawNorth(W, H);
+  drawScaleBar(W, H);
+  if (hover) drawHover();
+}
+
+function drawGrid(W, H){
+  const step = niceStep(85);
+  const tl = toW(0, 0), br = toW(W, H);
+  ctx.lineWidth = 1; ctx.font = "10px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.fillStyle = "#b8c0cb";
+  for (let x = Math.ceil(tl.x / step) * step; x <= br.x; x += step){
+    const s = toS({ x, y:0 }).x;
+    ctx.strokeStyle = Math.abs(x) < 1e-9 ? "#dfe4ea" : "#f0f2f4";
+    ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(s, H); ctx.stroke();
+    ctx.fillText(fmtNum(x), s + 3, H - 4);
+  }
+  for (let y = Math.ceil(br.y / step) * step; y <= tl.y; y += step){
+    const s = toS({ x:0, y }).y;
+    ctx.strokeStyle = Math.abs(y) < 1e-9 ? "#dfe4ea" : "#f0f2f4";
+    ctx.beginPath(); ctx.moveTo(0, s); ctx.lineTo(W, s); ctx.stroke();
+    ctx.fillText(fmtNum(y), 3, s - 3);
+  }
+}
+const fmtNum = v => Math.abs(v) < 1e-9 ? "0" : (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toFixed(Math.abs(v) % 1 ? 1 : 0));
+
+function drawAlignment(){
+  ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  let cur = -1;
+  ctx.beginPath();
+  SAMPLES.forEach((p, i) => {
+    if (p.seg !== cur){
+      if (cur >= 0) ctx.stroke();
+      cur = p.seg;
+      ctx.strokeStyle = PALETTE[cur % PALETTE.length];
+      ctx.beginPath();
+      const prev = SAMPLES[i - 1];
+      if (prev && !p.brk){ const s = toS(prev); ctx.moveTo(s.x, s.y); }
+      const s = toS(p); if (!prev || p.brk) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    } else {
+      const s = toS(p); ctx.lineTo(s.x, s.y);
+    }
+  });
+  ctx.stroke();
+}
+
+function drawStationTicks(){
+  const step = niceStep(90);
+  ctx.strokeStyle = "#9aa4b1"; ctx.fillStyle = "#7b8592";
+  ctx.lineWidth = 1; ctx.font = "9.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  // 逐段標記(獨立起點的段落有自己的樁號系統,不能用單一樁號軸掃描)
+  AL.segs.forEach(b => {
+    for (let s = Math.ceil(b.s0 / step) * step; s <= b.s1 + 1e-9; s += step){
+      const p = b.evalLocal(Math.max(0, Math.min(b.length, s - b.s0)));
+      const a = (p.az + 90) * D2R;
+      const c = toS(p);
+      const dx = Math.sin(a) * 5, dy = -Math.cos(a) * 5;
+      ctx.beginPath(); ctx.moveTo(c.x - dx, c.y - dy); ctx.lineTo(c.x + dx, c.y + dy); ctx.stroke();
+      ctx.fillText(fmtSta(s), c.x + dx * 1.6 - 20, c.y + dy * 1.6 + 3);
+    }
+  });
+}
+
+function drawTrims(){
+  if (!GEN.trims.length) return;
+  ctx.save();
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = "#b8bfc8"; ctx.lineWidth = 2;
+  GEN.trims.forEach(t => {
+    const b = AL.segs.find(s => s.i === t.seg); if (!b) return;
+    ctx.beginPath();
+    const N = Math.max(2, Math.ceil(t.len / 0.5));
+    for (let j = 0; j <= N; j++){
+      const p = b.evalLocal(Math.min(b.length, t.from - b.s0 + t.len * j / N));
+      const s = toS(p); j ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y);
+    }
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function drawOffsets(){
+  if (!MODEL || MODEL.lines.length < 2) return;
+  // 橫梁
+  if (MODEL.cross.length){
+    ctx.strokeStyle = "#aab3bd"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    MODEL.cross.forEach(c => {
+      const A = toS(c.a), B = toS(c.b);
+      ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
+    });
+    ctx.stroke();
+  }
+  // 偏置線(以真實偏置曲線取樣繪製)
+  MODEL.lines.forEach(L => {
+    if (L.def.main) return;
+    ctx.strokeStyle = OFF_COLORS[(L.idx - 1) % OFF_COLORS.length];
+    ctx.lineWidth = 1.6; ctx.lineJoin = "round";
+    GEN.chains.forEach(ch => {
+      ctx.beginPath();
+      const s0 = ch.s0, s1 = ch.s1, N = Math.max(2, Math.min(2000, Math.ceil((s1 - s0) / 0.5)));
+      for (let j = 0; j <= N; j++){
+        const p = offsetPointAt(ch, s0 + (s1 - s0) * j / N, L.def.d, L.def.h, PROF);
+        if (!p) continue;
+        const s = toS(p); j ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y);
+      }
+      ctx.stroke();
+    });
+    if (showNodes){
+      const r = L.nodes.length > 700 ? 1.2 : (L.nodes.length > 250 ? 1.6 : 2.1);
+      ctx.fillStyle = OFF_COLORS[(L.idx - 1) % OFF_COLORS.length];
+      L.nodes.forEach(n => { const s = toS(n); ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7); ctx.fill(); });
+    }
+  });
+}
+
+function drawCables(){
+  if (!MODEL || !MODEL.cables.length) return;
+  ctx.strokeStyle = CABLE_COLOR; ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  MODEL.cables.forEach(G => G.cables.forEach(k => {
+    k.pts.forEach((p, j) => { const s = toS(p); j ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+  }));
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // 起點(塔頂)
+  MODEL.cables.forEach(G => {
+    const s = toS(G.src);
+    ctx.fillStyle = CABLE_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y - 6); ctx.lineTo(s.x + 5, s.y + 4); ctx.lineTo(s.x - 5, s.y + 4);
+    ctx.closePath(); ctx.fill();
+  });
+  if (showNodes){
+    ctx.fillStyle = CABLE_COLOR;
+    MODEL.cables.forEach(G => G.nodes.forEach(n => {
+      if (n.cableSrc) return;
+      const s = toS(n);
+      ctx.beginPath(); ctx.arc(s.x, s.y, 1.6, 0, 7); ctx.fill();
+    }));
+  }
+}
+
+function drawMains(){
+  if (!MODEL || !MODEL.mains.length) return;
+  MODEL.mains.forEach(M => {
+    // 吊索
+    ctx.strokeStyle = MAIN_COLOR; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+    ctx.beginPath();
+    M.elems.filter(e => e.kind === "hanger").forEach(e => {
+      const a = toS(e.a), b = toS(e.b); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    });
+    ctx.stroke(); ctx.globalAlpha = 1;
+    // 主纜(每個索面一條)
+    ctx.strokeStyle = MAIN_COLOR; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    M.planes.forEach(P => {
+      ctx.beginPath();
+      P.nodes.forEach((n, j) => { const s = toS(n); j ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+      ctx.stroke();
+    });
+    // 鞍座
+    ctx.fillStyle = MAIN_COLOR;
+    M.planes.forEach(P => [P.nodes[0], P.nodes[P.nodes.length - 1]].forEach(n => {
+      const s = toS(n); ctx.beginPath(); ctx.rect(s.x - 3, s.y - 3, 6, 6); ctx.fill();
+    }));
+    if (showNodes){
+      ctx.fillStyle = MAIN_COLOR;
+      M.nodes.forEach(n => { const s = toS(n); ctx.beginPath(); ctx.arc(s.x, s.y, 1.5, 0, 7); ctx.fill(); });
+    }
+  });
+}
+
+// 起點投影到線形上求樁號,供側視圖使用
+function nearestStation(x, y){
+  let best = null, bd = Infinity;
+  for (const p of SAMPLES){
+    const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+    if (d < bd){ bd = d; best = p; }
+  }
+  return best ? best.s : null;
+}
+
+function drawNodes(){
+  if (!showNodes) return;
+  const r = GEN.nodes.length > 700 ? 1.4 : (GEN.nodes.length > 250 ? 1.9 : 2.6);
+  ctx.fillStyle = "#2c3644";
+  GEN.nodes.forEach(n => {
+    if (n.forced) return;
+    const s = toS(n);
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7); ctx.fill();
+  });
+  // 強制節點
+  ctx.lineWidth = 1.8;
+  GEN.nodes.filter(n => n.forced).forEach(n => {
+    const s = toS(n);
+    ctx.fillStyle = "#c1673d"; ctx.strokeStyle = "#c1673d";
+    ctx.beginPath(); ctx.arc(s.x, s.y, 3.4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, 6.4, 0, 7); ctx.stroke();
+  });
+}
+
+function drawMarkers(){
+  AL.segs.forEach((b, idx) => {
+    const p = toS(b.start);
+    if (idx === 0 || b.src.independent){
+      // 起點:三角形指向起始方位
+      ctx.fillStyle = "#1e2430";
+      const a = b.start.az * D2R;
+      ctx.beginPath();
+      ctx.moveTo(p.x + Math.sin(a) * 9, p.y - Math.cos(a) * 9);
+      ctx.lineTo(p.x + Math.sin(a + 2.5) * 6, p.y - Math.cos(a + 2.5) * 6);
+      ctx.lineTo(p.x + Math.sin(a - 2.5) * 6, p.y - Math.cos(a - 2.5) * 6);
+      ctx.closePath(); ctx.fill();
+    } else {
+      const prev = AL.segs[idx - 1];
+      const isPRC = prev.extra.dir && b.extra.dir && prev.extra.dir * b.extra.dir < 0;
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = isPRC ? "#b3406b" : "#5a6472";
+      ctx.lineWidth = isPRC ? 2 : 1.4;
+      ctx.beginPath(); ctx.arc(p.x, p.y, isPRC ? 4.5 : 3.2, 0, 7); ctx.fill(); ctx.stroke();
+    }
+  });
+  const last = AL.segs[AL.segs.length - 1];
+  if (last){
+    const p = toS(last.end);
+    ctx.fillStyle = "#1e2430";
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3.6, 0, 7); ctx.fill();
+  }
+}
+
+function drawNorth(W){
+  const x = W - 26, y = 30;
+  ctx.strokeStyle = "#5a6472"; ctx.fillStyle = "#5a6472"; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(x, y + 14); ctx.lineTo(x, y - 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y - 16); ctx.lineTo(x - 4, y - 8); ctx.lineTo(x + 4, y - 8); ctx.closePath(); ctx.fill();
+  ctx.font = "10px sans-serif"; ctx.fillText("N", x - 3.5, y + 26);
+}
+function drawScaleBar(W, H){
+  const step = niceStep(90);
+  const px = step * view.scale;
+  const x = 14, y = H - 30;
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.fillRect(x - 6, y - 14, px + 62, 22);
+  ctx.strokeStyle = "#5a6472"; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 4); ctx.lineTo(x, y); ctx.lineTo(x + px, y); ctx.lineTo(x + px, y - 4);
+  ctx.stroke();
+  ctx.fillStyle = "#5a6472"; ctx.font = "10px sans-serif";
+  ctx.fillText(fmtNum(step) + " m", x + px + 6, y + 3);
+}
+function drawHover(){
+  const p = toS(hover);
+  ctx.strokeStyle = "#1c5d99"; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, 7); ctx.stroke();
+}
+
+function evalAtStation(s){
+  for (const b of AL.segs){
+    if (s >= b.s0 - 1e-9 && s <= b.s1 + 1e-9) return b.evalLocal(Math.max(0, Math.min(b.length, s - b.s0)));
+  }
+  return null;
+}
+
+/* ==========================================================================
+   側視圖(縱斷面)
+   ========================================================================== */
+const pv = $("#pv"), pctx = pv.getContext("2d");
+const PM = { l:52, r:12, t:12, b:22 };           // 內距
+const pview = { s0:0, s1:1, z0:0, z1:1, exag:1 };
+
+/* 側視圖的橫軸有兩種來源:
+   - 有線形 → 樁號(原本的行為)
+   - 沒有線形但有主纜 → 以第一組主纜的主軸投影距離當橫軸(標準的立面圖)
+   這樣主纜可以完全獨立存在,側視圖仍然有意義。 */
+let PAXIS = { mode:"none" };
+function profSta(x, y){
+  if (PAXIS.mode === "station") return nearestStation(x, y);
+  if (PAXIS.mode === "main")    return (x - PAXIS.o.x) * PAXIS.d.x + (y - PAXIS.o.y) * PAXIS.d.y;
+  return null;
+}
+const profStaLabel = v => PAXIS.mode === "station" ? fmtSta(v) : (Math.round(v * 100) / 100) + " m";
+
+function fitProfile(){
+  // 決定橫軸
+  if (AL && AL.segs.length && PROF.P.length) PAXIS = { mode:"station" };
+  else if (MODEL && MODEL.mains.length && MODEL.mains[0].planes.length){
+    const pn = MODEL.mains[0].planes[0].nodes;
+    const a = pn[0], b = pn[pn.length - 1];
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+    PAXIS = L > 1e-9 ? { mode:"main", o:a, d:{ x:dx / L, y:dy / L } } : { mode:"none" };
+  } else PAXIS = { mode:"none" };
+  if (PAXIS.mode === "none") return;
+
+  const pts = [];
+  if (PAXIS.mode === "station"){
+    const s0 = AL.segs[0].s0, s1 = AL.segs[AL.segs.length - 1].s1;
+    for (let j = 0; j <= 240; j++){ const s = s0 + (s1 - s0) * j / 240; pts.push({ s, z:zAt(PROF, s) }); }
+    PROF.P.forEach(p => { if (p.sta >= s0 - 1e-6 && p.sta <= s1 + 1e-6) pts.push({ s:p.sta, z:p.z }); });
+    if (MODEL && MODEL.lines.length > 1){
+      const hs = MODEL.lines.map(L => L.def.h);
+      pts.push({ s:s0, z:Math.min(...hs, 0) + zAt(PROF, s0) }, { s:s0, z:Math.max(...hs, 0) + zAt(PROF, s0) });
+    }
+  }
+  const push = n => { const s = profSta(n.x, n.y); if (s != null) pts.push({ s, z:n.z }); };
+  if (MODEL){
+    MODEL.cables.forEach(G => { push(G.src); G.nodes.forEach(push); });
+    MODEL.mains.forEach(M => M.nodes.forEach(push));
+  }
+  if (!pts.length) return;
+
+  let sMin = Infinity, sMax = -Infinity, z0 = Infinity, z1 = -Infinity;
+  pts.forEach(p => { if (p.s < sMin) sMin = p.s; if (p.s > sMax) sMax = p.s;
+                     if (p.z < z0) z0 = p.z; if (p.z > z1) z1 = p.z; });
+  if (PAXIS.mode === "station"){ sMin = AL.segs[0].s0; sMax = AL.segs[AL.segs.length - 1].s1; }
+  if (!(sMax > sMin)) sMax = sMin + 1;
+  const pad = Math.max((z1 - z0) * 0.18, 0.5);
+  pview.s0 = sMin; pview.s1 = sMax; pview.z0 = z0 - pad; pview.z1 = z1 + pad;
+}
+const pW = () => Math.max(1, pv.clientWidth - PM.l - PM.r);
+const pH = () => Math.max(1, pv.clientHeight - PM.t - PM.b);
+const pX = s => PM.l + (s - pview.s0) / Math.max(1e-9, pview.s1 - pview.s0) * pW();
+const pY = z => PM.t + pH() - (z - pview.z0) / Math.max(1e-9, pview.z1 - pview.z0) * pH();
+const pInvX = px => pview.s0 + (px - PM.l) / pW() * (pview.s1 - pview.s0);
+
+function drawProfile(){
+  const dpr = window.devicePixelRatio || 1;
+  const W = pv.clientWidth, H = pv.clientHeight;
+  if (!W || !H) return;
+  pv.width = Math.round(W * dpr); pv.height = Math.round(H * dpr);
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  pctx.clearRect(0, 0, W, H);
+  if (PAXIS.mode === "none") return;
+  const hasAl = PAXIS.mode === "station";
+
+  const mono = getComputedStyle(document.body).getPropertyValue("--mono");
+  const spanS = pview.s1 - pview.s0, spanZ = pview.z1 - pview.z0;
+  pview.exag = (pH() / spanZ) / (pW() / spanS);
+  $("#exag").textContent = `垂直誇大 ×${pview.exag.toFixed(1)}`;
+
+  // 格線
+  pctx.font = "9.5px " + mono; pctx.lineWidth = 1;
+  const nice = (span, px, target) => {
+    const raw = span / Math.max(1, px / target);
+    const p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+    return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+  };
+  const dz = nice(spanZ, pH(), 38), ds = nice(spanS, pW(), 140);
+  pctx.strokeStyle = "#f0f2f4"; pctx.fillStyle = "#b8c0cb";
+  for (let z = Math.ceil(pview.z0 / dz) * dz; z <= pview.z1; z += dz){
+    const y = pY(z);
+    pctx.beginPath(); pctx.moveTo(PM.l, y); pctx.lineTo(W - PM.r, y); pctx.stroke();
+    pctx.fillText(z.toFixed(dz < 1 ? 2 : (dz < 10 ? 1 : 0)), 4, y + 3);
+  }
+  for (let s = Math.ceil(pview.s0 / ds) * ds; s <= pview.s1; s += ds){
+    const x = pX(s);
+    pctx.beginPath(); pctx.moveTo(x, PM.t); pctx.lineTo(x, PM.t + pH()); pctx.stroke();
+    pctx.fillText(profStaLabel(s), x - 22, H - 6);
+  }
+  pctx.strokeStyle = "#dfe4ea";
+  pctx.beginPath(); pctx.moveTo(PM.l, PM.t); pctx.lineTo(PM.l, PM.t + pH()); pctx.lineTo(W - PM.r, PM.t + pH()); pctx.stroke();
+
+  // 坡度切線(虛線)
+  if (hasAl){
+  pctx.save();
+  pctx.setLineDash([4, 3]); pctx.strokeStyle = "#c3cad3"; pctx.lineWidth = 1.2;
+  pctx.beginPath();
+  PROF.P.forEach((p, i) => { const x = pX(p.sta), y = pY(p.z); i ? pctx.lineTo(x, y) : pctx.moveTo(x, y); });
+  pctx.stroke();
+  pctx.restore();
+
+  // 縱斷面實線
+  pctx.strokeStyle = "#1c5d99"; pctx.lineWidth = 2; pctx.lineJoin = "round";
+  pctx.beginPath();
+  const NP = Math.max(60, Math.round(pW()));
+  for (let j = 0; j <= NP; j++){
+    const s = pview.s0 + spanS * j / NP;
+    const x = pX(s), y = pY(zAt(PROF, s));
+    j ? pctx.lineTo(x, y) : pctx.moveTo(x, y);
+  }
+  pctx.stroke();
+
+  // BVC / EVC
+  pctx.strokeStyle = "#9aa4b1"; pctx.lineWidth = 1; pctx.fillStyle = "#7b8592";
+  PROF.curves.forEach(c => {
+    [c.BVC, c.EVC].forEach(s => {
+      if (s < pview.s0 - 1e-6 || s > pview.s1 + 1e-6) return;
+      const x = pX(s), y = pY(zAt(PROF, s));
+      pctx.beginPath(); pctx.moveTo(x, y - 7); pctx.lineTo(x, y + 7); pctx.stroke();
+    });
+    pctx.fillText("BVC", pX(c.BVC) - 10, pY(zAt(PROF, c.BVC)) - 10);
+    pctx.fillText("EVC", pX(c.EVC) - 10, pY(zAt(PROF, c.EVC)) - 10);
+  });
+  }
+
+  // 偏置線(垂直偏置 h 造成的平行線)
+  if (hasAl && MODEL && MODEL.lines.length > 1){
+    MODEL.lines.forEach(L => {
+      if (L.def.main) return;
+      pctx.strokeStyle = OFF_COLORS[(L.idx - 1) % OFF_COLORS.length];
+      pctx.lineWidth = 1.2; pctx.globalAlpha = 0.85;
+      pctx.beginPath();
+      const NP2 = Math.max(40, Math.round(pW() / 2));
+      for (let j = 0; j <= NP2; j++){
+        const s = pview.s0 + spanS * j / NP2;
+        const x = pX(s), y = pY(zAt(PROF, s) + L.def.h);
+        j ? pctx.lineTo(x, y) : pctx.moveTo(x, y);
+      }
+      pctx.stroke(); pctx.globalAlpha = 1;
+    });
+  }
+
+  // 纜索(以起點投影到線形的樁號繪製立面示意)
+  if (MODEL && MODEL.cables.length){
+    pctx.strokeStyle = CABLE_COLOR; pctx.lineWidth = 1; pctx.globalAlpha = 0.75;
+    pctx.beginPath();
+    MODEL.cables.forEach(G => {
+      const s0c = G.src.s != null ? G.src.s : profSta(G.src.x, G.src.y);
+      if (s0c == null) return;
+      G.cables.forEach(k => {
+        const s1c = k.T.s != null ? k.T.s : profSta(k.T.x, k.T.y);
+        if (s1c == null) return;
+        k.pts.forEach((p, j) => {
+          const u = k.pts.length > 1 ? j / (k.pts.length - 1) : 0;
+          const x = pX(s0c + (s1c - s0c) * u), y = pY(p.z);
+          j ? pctx.lineTo(x, y) : pctx.moveTo(x, y);
+        });
+      });
+    });
+    pctx.stroke(); pctx.globalAlpha = 1;
+    MODEL.cables.forEach(G => {
+      const s0c = G.src.s != null ? G.src.s : profSta(G.src.x, G.src.y);
+      if (s0c == null) return;
+      const x = pX(s0c), y = pY(G.src.z);
+      pctx.fillStyle = CABLE_COLOR;
+      pctx.beginPath(); pctx.moveTo(x, y - 6); pctx.lineTo(x + 5, y + 4); pctx.lineTo(x - 5, y + 4);
+      pctx.closePath(); pctx.fill();
+    });
+  }
+
+  // 主纜(節點投影到線形樁號的立面示意)
+  if (MODEL && MODEL.mains.length){
+    MODEL.mains.forEach(M => {
+      pctx.strokeStyle = MAIN_COLOR; pctx.globalAlpha = 0.4; pctx.lineWidth = 1;
+      pctx.beginPath();
+      M.elems.filter(e => e.kind === "hanger").forEach(e => {
+        const sa = profSta(e.a.x, e.a.y), sb = profSta(e.b.x, e.b.y);
+        if (sa == null || sb == null) return;
+        pctx.moveTo(pX(sa), pY(e.a.z)); pctx.lineTo(pX(sb), pY(e.b.z));
+      });
+      pctx.stroke(); pctx.globalAlpha = 1;
+      pctx.lineWidth = 1.8;
+      M.planes.forEach(P => {
+        pctx.beginPath();
+        P.nodes.forEach((n, j) => {
+          const sn = profSta(n.x, n.y); if (sn == null) return;
+          const x = pX(sn), y = pY(n.z); j ? pctx.lineTo(x, y) : pctx.moveTo(x, y);
+        });
+        pctx.stroke();
+      });
+    });
+  }
+
+  // 節點
+  if (hasAl && showNodes && GEN){
+    const r = GEN.nodes.length > 700 ? 1.2 : (GEN.nodes.length > 250 ? 1.6 : 2.2);
+    pctx.fillStyle = "#2c3644";
+    GEN.nodes.forEach(n => {
+      if (n.forced) return;
+      pctx.beginPath(); pctx.arc(pX(n.s), pY(n.z), r, 0, 7); pctx.fill();
+    });
+    pctx.fillStyle = "#c1673d"; pctx.strokeStyle = "#c1673d"; pctx.lineWidth = 1.6;
+    GEN.nodes.filter(n => n.forced).forEach(n => {
+      pctx.beginPath(); pctx.arc(pX(n.s), pY(n.z), 2.8, 0, 7); pctx.fill();
+      pctx.beginPath(); pctx.arc(pX(n.s), pY(n.z), 5.4, 0, 7); pctx.stroke();
+    });
+  }
+
+  // VPI
+  if (hasAl) PROF.P.forEach((p, i) => {
+    const isEnd = (i === 0 || i === PROF.P.length - 1);
+    const x = pX(p.sta), y = pY(p.z);
+    pctx.fillStyle = "#fff"; pctx.strokeStyle = isEnd ? "#5a6472" : "#b3406b";
+    pctx.lineWidth = isEnd ? 1.4 : 2;
+    pctx.beginPath(); pctx.arc(x, y, isEnd ? 3.2 : 4.2, 0, 7); pctx.fill(); pctx.stroke();
+    if (!isEnd){
+      pctx.fillStyle = "#b3406b"; pctx.font = "9.5px " + mono;
+      pctx.fillText("VPI" + i, x - 9, y - 9);
+    }
+  });
+
+  // 游標連動
+  if (hasAl && hoverSta !== null && hoverSta >= pview.s0 && hoverSta <= pview.s1){
+    const x = pX(hoverSta), y = pY(zAt(PROF, hoverSta));
+    pctx.strokeStyle = "#1c5d99"; pctx.lineWidth = 1;
+    pctx.save(); pctx.setLineDash([3, 3]);
+    pctx.beginPath(); pctx.moveTo(x, PM.t); pctx.lineTo(x, PM.t + pH()); pctx.stroke();
+    pctx.restore();
+    pctx.lineWidth = 1.6;
+    pctx.beginPath(); pctx.arc(x, y, 4.5, 0, 7); pctx.stroke();
+  }
+}
+
+function profReadout(s){
+  if (s === null){ $("#preadout").textContent = ""; return; }
+  if (PAXIS.mode !== "station"){
+    $("#preadout").textContent = `主軸距離 ${s.toFixed(3)} m`;
+    return;
+  }
+  const g = gradeAt(PROF, s) * 100;
+  $("#preadout").textContent =
+    `樁號 ${fmtSta(s)}   高程 ${zAt(PROF, s).toFixed(4)} m   坡度 ${g >= 0 ? "+" : ""}${g.toFixed(4)}%`;
+}
+
+pv.addEventListener("mousemove", e => {
+  const s = pInvX(e.offsetX);
+  hoverSta = (s >= pview.s0 && s <= pview.s1) ? s : null;
+  profReadout(hoverSta);
+  const p = (hoverSta === null || PAXIS.mode !== "station") ? null : evalAtStation(hoverSta);
+  hover = p ? { ...p, s:hoverSta } : null;
+  $("#readout").textContent = hover
+    ? `樁號 ${fmtSta(hover.s)}   X ${hover.x.toFixed(3)}   Y ${hover.y.toFixed(3)}   Z ${zAt(PROF, hover.s).toFixed(3)}   方位角 ${hover.az.toFixed(4)}°`
+    : "";
+  draw(); drawProfile();
+});
+pv.addEventListener("mouseleave", () => {
+  hoverSta = null; hover = null; profReadout(null); $("#readout").textContent = "";
+  draw(); drawProfile();
+});
+
+/* ---------- 互動 ---------- */
+let drag = null;
+cv.addEventListener("mousedown", e => { drag = { x:e.offsetX, y:e.offsetY, cx:view.cx, cy:view.cy }; cv.style.cursor = "grabbing"; });
+window.addEventListener("mouseup", () => { drag = null; cv.style.cursor = "crosshair"; });
+cv.addEventListener("mousemove", e => {
+  if (drag){
+    view.cx = drag.cx - (e.offsetX - drag.x) / view.scale;
+    view.cy = drag.cy + (e.offsetY - drag.y) / view.scale;
+    view.locked = true; draw(); return;
+  }
+  const w = toW(e.offsetX, e.offsetY);
+  let best = null, bd = Infinity;
+  for (const p of SAMPLES){
+    const d = (p.x - w.x) ** 2 + (p.y - w.y) ** 2;
+    if (d < bd){ bd = d; best = p; }
+  }
+  const nearPx = Math.sqrt(bd) * view.scale;
+  hover = (best && nearPx < 26) ? best : null;
+  hoverSta = hover ? hover.s : null;
+  $("#readout").textContent = hover
+    ? `樁號 ${fmtSta(hover.s)}   X ${hover.x.toFixed(3)}   Y ${hover.y.toFixed(3)}   Z ${zAt(PROF, hover.s).toFixed(3)}   方位角 ${hover.az.toFixed(4)}°   [段 ${hover.seg + 1}]`
+    : `游標  X ${w.x.toFixed(3)}   Y ${w.y.toFixed(3)}`;
+  profReadout(hoverSta);
+  draw(); drawProfile();
+});
+cv.addEventListener("mouseleave", () => {
+  hover = null; hoverSta = null; $("#readout").textContent = ""; profReadout(null);
+  draw(); drawProfile();
+});
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const w = toW(e.offsetX, e.offsetY);
+  const f = Math.exp(-e.deltaY * 0.0015);
+  view.scale *= f;
+  view.cx = w.x - (e.offsetX - cv.clientWidth / 2) / view.scale;
+  view.cy = w.y + (e.offsetY - cv.clientHeight / 2) / view.scale;
+  view.locked = true; draw();
+}, { passive:false });
+
+$("#btn-fit").onclick = () => { view.locked = false; fitView(); draw(); };
+$("#btn-ticks").onclick = e => { showTicks = !showTicks; e.target.textContent = "樁號標記:" + (showTicks ? "開" : "關"); draw(); };
+$("#btn-nodes").onclick = e => { showNodes = !showNodes; e.target.textContent = "節點:" + (showNodes ? "開" : "關"); draw(); };
+window.addEventListener("resize", () => { if (!view.locked) fitView(); draw(); });
+
+/* ==========================================================================
+   餘數對話框(§4.3)
+   ========================================================================== */
+let remTimer = null, remDismissedSig = "";
+function remSig(){ return pendingRemainders().map(b => b.i + ":" + (GEN.segStat.get(b.i).rem).toFixed(4)).join("|"); }
+
+function scheduleRemModal(){
+  clearTimeout(remTimer);
+  if (!bootDone) return;
+  remTimer = setTimeout(() => {
+    const sig = remSig();
+    if (!sig || sig === remDismissedSig || !$("#modal-bd").hidden) return;
+    openRemModal(false);
+  }, 700);
+}
+
+function openRemModal(force){
+  const asks = force ? AL.segs.filter(b => (GEN.segStat.get(b.i) || {}).rem > 1e-9) : pendingRemainders();
+  if (!asks.length) return;
+  const body = $("#modal-rows");
+  body.innerHTML = asks.map(b => {
+    const st = GEN.segStat.get(b.i);
+    const isLast = isChainLastSeg(b);
+    const cur = (b.src.split && b.src.split.rem) || "ask";
+    const opts = [["ask","(未決定)"],["even","均分吸收"],["keep","獨立留一段"],["merge","併入前一元素"]]
+      .concat(isLast ? [["trim","截短曲線(終點後退)"]] : []);
+    return `<tr>
+      <td>${b.i + 1} ${TYPE_NAME[b.type]}</td>
+      <td>${b.length.toFixed(3)} m</td>
+      <td${st.ratio < 0.3 ? ' style="color:var(--warn);font-weight:600"' : ""}>${st.rem.toFixed(3)} m</td>
+      <td${st.ratio < 0.3 ? ' style="color:var(--warn);font-weight:600"' : ""}>${(st.ratio * 100).toFixed(1)}%</td>
+      <td><select data-seg="${b.i}">${opts.map(([v, t]) =>
+        `<option value="${v}"${v === cur ? " selected" : ""}>${t}</option>`).join("")}</select></td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll("select").forEach(sel => sel.onchange = () => {
+    const seg = state.segments[+sel.dataset.seg];
+    if (seg){ seg.split.rem = sel.value; renderSegs(); recompute(); }
+  });
+  $("#modal-bd").hidden = false;
+}
+function isChainLastSeg(b){
+  const chains = chainsOf(AL);
+  return chains.some(c => c.segs[c.segs.length - 1].i === b.i);
+}
+function closeRemModal(){ remDismissedSig = remSig(); $("#modal-bd").hidden = true; }
+
+$("#modal-close").onclick = closeRemModal;
+$("#modal-bd").addEventListener("click", e => { if (e.target.id === "modal-bd") closeRemModal(); });
+document.querySelectorAll("[data-all]").forEach(btn => btn.onclick = () => {
+  const v = btn.dataset.all;
+  $("#modal-rows").querySelectorAll("select").forEach(sel => {
+    const seg = state.segments[+sel.dataset.seg];
+    if (seg) seg.split.rem = v;
+  });
+  $("#modal-bd").hidden = true;
+  renderSegs(); recompute();
+});
+
+/* ==========================================================================
+   §13 驗收測試
+   ========================================================================== */
+function runTests(){
+  const rows = [];
+  const chk = (id, desc, actual, expect, tol, unit) => {
+    const ok = Math.abs(actual - expect) <= tol;
+    rows.push({ id, desc, actual, expect, tol, ok, unit:unit || "" });
+  };
+
+  /* --- 案例 A:平面線形 --- */
+  const A = buildAlignment({
+    startX:0, startY:0, startAz:90, startSta:0,
+    segments:[
+      { type:"LINE", L:50 },
+      { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 },
+      { type:"LINE", L:50 }
+    ]
+  });
+  const [a1, a2, a3] = A.segs;
+  chk("A1", "段1 終點 X", a1.end.x, 50, 1e-9, "m");
+  chk("A1", "段1 終點 Y", a1.end.y, 0, 1e-9, "m");
+  chk("A1", "段1 終點樁號", a1.s1, 50, 1e-9, "m");
+  chk("A1", "段1 終點方位角", a1.end.az, 90, 1e-9, "°");
+  chk("A2", "段2 圓心 X", a2.extra.center.x, 50, 1e-9, "m");
+  chk("A2", "段2 圓心 Y", a2.extra.center.y, -100, 1e-9, "m");
+  chk("A3", "段2 終點 X", a2.end.x, 150, 1e-9, "m");
+  chk("A3", "段2 終點 Y", a2.end.y, -100, 1e-9, "m");
+  chk("A3", "段2 終點樁號", a2.s1, 207.0796, 1e-4, "m");
+  chk("A3", "段2 終點方位角", a2.end.az, 180, 1e-9, "°");
+  chk("A4", "段3 終點 X", a3.end.x, 150, 1e-9, "m");
+  chk("A4", "段3 終點 Y", a3.end.y, -150, 1e-9, "m");
+  chk("A4", "段3 終點樁號", a3.s1, 257.0796, 1e-4, "m");
+  chk("A5", "總長度", A.total, 257.0796, 1e-4, "m");
+
+  /* --- 緩和曲線:對照 clothoid 級數解 --- */
+  // 起點 (0,0)、方位角 0°(正北)、右偏、R0=∞ → R1=300、Ls=60
+  // θs = Ls/(2R) = 0.1 rad
+  // X_local = Ls[1 − θs²/10 + θs⁴/216 − …]   (沿起始切線)
+  // Y_local = Ls[θs/3 − θs³/42 + θs⁵/1320 − …] (向偏轉側偏移)
+  const Ls = 60, Rs = 300, th = Ls / (2 * Rs);
+  const Xl = Ls * (1 - th**2 / 10 + th**4 / 216 - th**6 / 9360);
+  const Yl = Ls * (th / 3 - th**3 / 42 + th**5 / 1320);
+  const S = buildAlignment({
+    startX:0, startY:0, startAz:0, startSta:0,
+    segments:[{ type:"SPIRAL", R0inf:true, R1inf:false, R1:Rs, dir:1, defBy:"Ls", Ls }]
+  });
+  const s1 = S.segs[0];
+  chk("S1", "緩和曲線終點 X(= Y_local)", s1.end.x, Yl, 1e-5, "m");
+  chk("S1", "緩和曲線終點 Y(= X_local)", s1.end.y, Xl, 1e-5, "m");
+  chk("S2", "緩和曲線終點方位角", s1.end.az, th * R2D, 1e-7, "°");
+  // A 值定義:Ls = A²/R
+  const S2 = buildAlignment({
+    startX:0, startY:0, startAz:0, startSta:0,
+    segments:[{ type:"SPIRAL", R0inf:true, R1inf:false, R1:Rs, dir:1, defBy:"A", A:Math.sqrt(Ls * Rs) }]
+  });
+  chk("S3", "A 值換算長度 Ls = A²/R", S2.segs[0].length, Ls, 1e-9, "m");
+
+  /* --- 切線繼承 / 反向曲線 --- */
+  const T = buildAlignment({
+    startX:10, startY:20, startAz:35, startSta:1000,
+    segments:[
+      { type:"ARC", R:100, dir:1,  defBy:"delta", delta:60 },
+      { type:"ARC", R:80,  dir:-1, defBy:"delta", delta:60 }
+    ]
+  });
+  chk("T1", "反曲點 X 連續", T.segs[1].start.x, T.segs[0].end.x, 1e-12, "m");
+  chk("T1", "反曲點 Y 連續", T.segs[1].start.y, T.segs[0].end.y, 1e-12, "m");
+  chk("T1", "反曲點方位角連續", T.segs[1].start.az, T.segs[0].end.az, 1e-12, "°");
+  chk("T2", "起始樁號繼承", T.segs[1].s0, 1000 + 100 * 60 * D2R, 1e-9, "m");
+
+  /* --- 案例 C:分割與檢核(案例 A 的段 2,R=100、弧長 157.0796,間距 5 m) --- */
+  const mkC = (rem, forced, atol) => {
+    const st = {
+      startX:0, startY:0, startAz:90, startSta:0,
+      segments:[
+        { type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } },
+        { type:"ARC", R:100, dir:1, defBy:"delta", delta:90, split:{ ...SPLIT_DEF, spacing:5, rem } },
+        { type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } }
+      ]
+    };
+    const al = buildAlignment(st);
+    return { al, gen:generateNodes(al, { forced:forced || "", absorbTol:atol == null ? 0.1 : atol }) };
+  };
+
+  const Ck = mkC("keep");
+  const arc = 100 * Math.PI / 2;                       // 157.07963268
+  const nFull = 31, remC = arc - nFull * 5;            // 2.07963268
+  const seg2 = Ck.gen.elems.filter(e => e.seg === 1);
+  chk("C1", "段2 元素數(31 完整 + 1 餘數)", seg2.length, 32, 0, "");
+  chk("C1", "段2 餘數長度", Ck.gen.segStat.get(1).rem, remC, 1e-6, "m");
+  chk("C1", "段2 餘數/間距", Ck.gen.segStat.get(1).ratio, remC / 5, 1e-9, "");
+  // 弦線偏差解析解 m = R(1 − cos(θ/2)),θ = 5/100
+  const devExact = 100 * (1 - Math.cos(0.025)) * 1000; // mm
+  chk("C2", "段2 最大弦線偏差", Ck.gen.segStat.get(1).maxDev * 1000, devExact, 1e-6, "mm");
+  chk("C2", "  (對照 L²/8R 近似值 31.25 mm)", devExact, 31.25, 2e-3, "mm");
+  // 折線縮短:31×(5 − 2R·sin(θ/2)) + 餘數元素
+  const shortExact = nFull * (5 - 200 * Math.sin(0.025)) + (remC - 200 * Math.sin(remC / 200));
+  const shortSeg2 = seg2.reduce((a, e) => a + (e.arc - e.chord), 0);
+  chk("C3", "段2 總長縮短", shortSeg2 * 1000, shortExact * 1000, 1e-6, "mm");
+  chk("C3", "  縮短量約 16.18 mm", shortExact * 1000, 16.183, 5e-3, "mm");
+  // 全線:直線段不縮短
+  chk("C3", "全線縮短 = 段2 縮短", (Ck.gen.trueLen - Ck.gen.polyLen) * 1000, shortExact * 1000, 1e-6, "mm");
+  chk("C4", "總節點數(3 段共用交界)", Ck.gen.nodes.length, 10 + 32 + 10 + 1, 0, "");
+
+  /* --- 餘數政策 --- */
+  const Ce = mkC("even"), Cm = mkC("merge"), Ct = mkC("trim");
+  chk("C5", "均分吸收:段2 元素數", Ce.gen.elems.filter(e => e.seg === 1).length, 31, 0, "");
+  chk("C5", "均分吸收:元素長 = L/31", Ce.gen.elems.filter(e => e.seg === 1)[0].arc, arc / 31, 1e-9, "m");
+  chk("C6", "併入前一元素:段2 元素數", Cm.gen.elems.filter(e => e.seg === 1).length, 31, 0, "");
+  chk("C6", "併入前一元素:末元素弧長 = 5 + 餘數",
+      Cm.gen.elems.filter(e => e.seg === 1).slice(-1)[0].arc, 5 + remC, 1e-6, "m");
+  chk("C7", "截短(末段不適用→退回均分)", Ct.gen.elems.filter(e => e.seg === 1).length, 31, 0, "");
+  const Ctl = (() => {                                   // 把圓弧放在鏈末段才可截短
+    const st = { startX:0, startY:0, startAz:90, startSta:0, segments:[
+      { type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } },
+      { type:"ARC", R:100, dir:1, defBy:"delta", delta:90, split:{ ...SPLIT_DEF, spacing:5, rem:"trim" } }] };
+    const al = buildAlignment(st);
+    return { al, gen:generateNodes(al, { forced:"", absorbTol:0.1 }) };
+  })();
+  chk("C7", "末段截短:段2 元素數", Ctl.gen.elems.filter(e => e.seg === 1).length, 31, 0, "");
+  chk("C7", "末段截短:終點後退量", Ctl.gen.trims[0].len, remC, 1e-6, "m");
+
+  /* --- 強制節點吸收(§4.2) --- */
+  const Cf = mkC("keep", "180.02", 0.1);
+  const hasF  = Cf.gen.nodes.some(n => Math.abs(n.s - 180.02) < 1e-6);
+  const has180 = Cf.gen.nodes.some(n => Math.abs(n.s - 180) < 1e-6);
+  rows.push({ id:"C8", desc:"強制節點 180.02 已加入", actual:String(hasF), expect:"true", ok:hasF, str:true });
+  rows.push({ id:"C8", desc:"容差 0.1 內的均分節點 180.000 被吸收", actual:String(has180), expect:"false", ok:!has180, str:true });
+  const Cf2 = mkC("keep", "180.5", 0.1);
+  const both = Cf2.gen.nodes.some(n => Math.abs(n.s - 180.5) < 1e-6) && Cf2.gen.nodes.some(n => Math.abs(n.s - 180) < 1e-6);
+  rows.push({ id:"C8", desc:"距離 0.5 m > 容差 → 兩個節點都保留", actual:String(both), expect:"true", ok:both, str:true });
+  // 段落交界受保護
+  const Cf3 = mkC("keep", "50.05", 0.1);
+  const junc = Cf3.gen.nodes.some(n => Math.abs(n.s - 50) < 1e-6);
+  const added = Cf3.gen.nodes.some(n => Math.abs(n.s - 50.05) < 1e-6);
+  rows.push({ id:"C9", desc:"段落交界 0k+050.000 未被吸收", actual:String(junc), expect:"true", ok:junc, str:true });
+  rows.push({ id:"C9", desc:"容差內的強制節點 50.05 由交界取代", actual:String(added), expect:"false", ok:!added, str:true });
+
+  /* --- 弦線偏差容差模式 --- */
+  const Ctol = (() => {
+    const st = { startX:0, startY:0, startAz:90, startSta:0, segments:[
+      { type:"ARC", R:100, dir:1, defBy:"delta", delta:90,
+        split:{ ...SPLIT_DEF, mode:"tol", tolMm:20, maxSpacing:20, rem:"keep" } }] };
+    const al = buildAlignment(st);
+    return generateNodes(al, { forced:"", absorbTol:0.1 });
+  })();
+  // 容許弦長 √(8·R·m) = √(8·100·0.02) = 4.000 m
+  chk("C10", "容差模式:容許弦長 √(8Rm)", Math.sqrt(8 * 100 * 0.02), 4, 1e-12, "m");
+  const devMax = Math.max(...Ctol.elems.map(e => e.dev)) * 1000;
+  rows.push({ id:"C10", desc:"容差模式:所有元素偏差 ≤ 20 mm", actual:devMax.toFixed(3) + " mm",
+              expect:"≤ 20 mm", ok:devMax <= 20 + 1e-6, str:true });
+
+  /* --- 案例 B:縱斷面(對稱豎曲線) --- */
+  const bw = [], be = [];
+  const PB = buildProfile([
+    { sta:0,       z:100.0000, L:0 },
+    { sta:128.540, z:105.1416, L:100 },
+    { sta:257.080, z:100.0000, L:0 }], bw, be);
+  const cB = PB.curves[0];
+  chk("B1", "g_in", PB.g[0] * 100, 4, 1e-9, "%");
+  chk("B1", "g_out", PB.g[1] * 100, -4, 1e-9, "%");
+  chk("B2", "BVC", cB.BVC, 78.540, 1e-9, "m");
+  chk("B2", "EVC", cB.EVC, 178.540, 1e-9, "m");
+  chk("B3", "中央縱距 E = (g_out−g_in)L/8", cB.E, -1, 1e-12, "m");
+  chk("B3", "K = L/|Δg%|", cB.K, 12.5, 1e-12, "");
+  chk("B4", "VPI 樁號處實際高程(比 VPI 低 1.000 m)", zAt(PB, 128.540), 104.1416, 1e-9, "m");
+  chk("B5", "BVC 處高程(切線值)", zAt(PB, cB.BVC), 103.1416, 1e-9, "m");
+  chk("B5", "EVC 處高程(切線值)", zAt(PB, cB.EVC), 103.1416, 1e-9, "m");
+  chk("B6", "BVC 處坡度 = g_in", gradeAt(PB, cB.BVC) * 100, 4, 1e-9, "%");
+  chk("B6", "EVC 處坡度 = g_out", gradeAt(PB, cB.EVC) * 100, -4, 1e-9, "%");
+  chk("B6", "VPI 處坡度 = 0(對稱曲線頂點)", gradeAt(PB, 128.540) * 100, 0, 1e-9, "%");
+  chk("B7", "曲線外(BVC 前)為直線坡度", zAt(PB, 40), 100 + 0.04 * 40, 1e-9, "m");
+  chk("B7", "曲線外(EVC 後)為直線坡度", zAt(PB, 220), 100.0000 + 0.04 * (257.080 - 220) , 1e-9, "m");
+  rows.push({ id:"B8", desc:"案例 B 無錯誤訊息", actual:String(be.length), expect:"0", ok:be.length === 0, str:true });
+
+  /* --- 縱斷面檢核 --- */
+  const oe = [], ow = [];
+  buildProfile([{ sta:0, z:100, L:0 }, { sta:100, z:104, L:100 }, { sta:180, z:100, L:100 }, { sta:300, z:100, L:0 }], ow, oe);
+  const hasOverlap = oe.some(t => t.includes("重疊"));
+  rows.push({ id:"B9", desc:"豎曲線重疊 → 錯誤", actual:String(hasOverlap), expect:"true", ok:hasOverlap, str:true });
+  const ke = [], kw = [];
+  buildProfile([{ sta:0, z:100, L:0 }, { sta:50, z:104, L:0 }, { sta:300, z:100, L:0 }], kw, ke);
+  const hasKink = kw.some(t => t.includes("折"));
+  rows.push({ id:"B9", desc:"L = 0 且坡度變化 → 折角警告", actual:String(hasKink), expect:"true", ok:hasKink, str:true });
+
+  /* --- 3D 元素長度 vs 平面樁號 --- */
+  // 定坡 4%:5 m 平面間距的元素,真實長度 = 5·√(1+0.04²)
+  const P4 = buildProfile([{ sta:0, z:100, L:0 }, { sta:257.080, z:110.2832, L:0 }], [], []);
+  chk("B10", "定坡驗證 g = 4%", P4.g[0] * 100, 4, 1e-9, "%");
+  const G3 = (() => {
+    const al = buildAlignment({ startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } }] });
+    return generateNodes(al, { forced:"", absorbTol:0.1, prof:P4 });
+  })();
+  chk("B10", "直線段 5 m 元素的 3D 長度", G3.elems[0].len3d, 5 * Math.sqrt(1 + 0.04 * 0.04), 1e-12, "m");
+  chk("B10", "3D 總長 / 平面折線長", G3.len3d / G3.polyLen, Math.sqrt(1 + 0.04 * 0.04), 1e-12, "");
+  chk("B10", "  即 50 m 平面 → 3D 多出", (G3.len3d - G3.polyLen) * 1000, 50 * (Math.sqrt(1.0016) - 1) * 1000, 1e-9, "mm");
+  // 平坡時 3D 長度 = 平面弦長
+  const Gf = (() => {
+    const al = buildAlignment({ startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } }] });
+    return generateNodes(al, { forced:"", absorbTol:0.1,
+      prof:buildProfile([{ sta:0, z:50, L:0 }, { sta:100, z:50, L:0 }], [], []) });
+  })();
+  chk("B11", "平坡:3D 總長 = 平面折線長", Gf.len3d, Gf.polyLen, 1e-12, "m");
+
+  /* --- 案例 D:偏置線(§13) --- */
+  const mkD = (offs, cross) => {
+    const st = normState({
+      startX:0, startY:0, startAz:90, startSta:0,
+      segments:[
+        { type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } },
+        { type:"ARC", R:100, dir:1, defBy:"delta", delta:90, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } },
+        { type:"LINE", L:50, split:{ ...SPLIT_DEF, spacing:5, rem:"keep" } }],
+      profile:[{ sta:0, z:100, L:0 }, { sta:300, z:100, L:0 }],
+      offsets:offs, cross:cross || { on:false, every:1 }
+    });
+    const al = buildAlignment(st);
+    const pw = [], pe = [];
+    const pf = buildProfile(st.profile, pw, pe);
+    const gn = generateNodes(al, { forced:"", absorbTol:0.1, prof:pf });
+    const me = [], mw = [];
+    return { al, pf, gn, md:buildModel(al, pf, gn, st, me, mw), errs:me };
+  };
+
+  const D = mkD([{ name:"R6", d:6, h:0, on:true }]);
+  const LD = D.md.lines[1];
+  // 段 1(直線):偏置線與主線平行,間距 6.0
+  const n0m = D.md.lines[0].nodes[0], n0o = LD.nodes[0];
+  chk("D1", "段1 起點偏置距離", Math.hypot(n0o.x - n0m.x, n0o.y - n0m.y), 6, 1e-9, "m");
+  chk("D1", "段1 起點偏置方向(az=90 → 右 = −Y)", n0o.y - n0m.y, -6, 1e-9, "m");
+  // 段 2 終點:(150 + 6·sin270°, −100 + 6·cos270°) = (144, −100)
+  const endO = offsetPointAt(D.gn.chains[0], 100 * Math.PI / 2 + 50, 6, 0, D.pf);
+  chk("D2", "段2 終點偏置 X", endO.x, 144, 1e-9, "m");
+  chk("D2", "段2 終點偏置 Y", endO.y, -100, 1e-9, "m");
+  // 當地半徑:右偏(dir=+1)時圓心在右,右側偏置在內側 → R − d = 94
+  chk("D3", "段2 偏置線當地半徑 = R − d(內側)", Math.hypot(endO.x - 50, endO.y - (-100)), 94, 1e-9, "m");
+  // 橫向對齊:同樁號的主線與偏置線節點,連線必垂直於主線切線
+  const jn = 20, dA = D.md.lines[0].nodes[jn], dB = LD.nodes[jn];
+  chk("D4", "同索引節點樁號相同", dB.s, dA.s, 1e-12, "m");
+  const tx = Math.sin(dA.az * D2R), ty = Math.cos(dA.az * D2R);
+  chk("D4", "連線與主線切線正交(內積)", (dB.x - dA.x) * tx + (dB.y - dA.y) * ty, 0, 1e-9, "");
+  chk("D4", "橫向距離恆為 |d|", Math.hypot(dB.x - dA.x, dB.y - dA.y), 6, 1e-9, "m");
+  // 內側節點較密、外側較疏
+  const eIn = LD.elems.filter(e => e.seg === 1).map(e => e.chord);
+  const eMain = D.md.lines[0].elems.filter(e => e.seg === 1).map(e => e.chord);
+  rows.push({ id:"D5", desc:"內側偏置線的元素比主線短(94/100)",
+    actual:eIn[0].toFixed(4), expect:"< " + eMain[0].toFixed(4), ok:eIn[0] < eMain[0], str:true });
+  chk("D5", "  內側元素長 = 主線 × 94/100", eIn[0], eMain[0] * 94 / 100, 1e-9, "m");
+
+  // 幾何退化:右偏 100 m(= R)必須報錯;左偏 106 m 是外側,合法
+  chk("D6", "右偏 +106(內側超過圓心)→ 錯誤數", mkD([{ name:"X", d:106, h:0, on:true }]).errs.length, 1, 0, "");
+  chk("D6", "右偏 +100(恰達圓心)→ 錯誤數", mkD([{ name:"X", d:100, h:0, on:true }]).errs.length, 1, 0, "");
+  chk("D6", "左偏 −106(外側)→ 錯誤數", mkD([{ name:"X", d:-106, h:0, on:true }]).errs.length, 0, 0, "");
+
+  // 垂直偏置
+  const Dh = mkD([{ name:"H", d:0, h:-2.5, on:true }]);
+  chk("D7", "垂直偏置 h 直接加到 Z", Dh.md.lines[1].nodes[0].z, Dh.md.lines[0].nodes[0].z - 2.5, 1e-12, "m");
+
+  /* --- 橫梁 --- */
+  const X = mkD([{ name:"L", d:-4, h:0, on:true }, { name:"R", d:4, h:0, on:true }],
+                { on:true, every:1, etype:"BEAM", mat:1, sect:1 });
+  const nPer = X.gn.chains[0].nodes.length;
+  chk("D8", "橫梁元素數 = 樁號數 × (線數−1)", X.md.cross.length, nPer * 2, 0, "");
+  chk("D8", "同樁號橫梁總跨距 = 8 m", X.md.cross[0].chord + X.md.cross[1].chord, 8, 1e-9, "m");
+  const order = [X.md.cross[0], X.md.cross[1]];
+  rows.push({ id:"D8", desc:"橫梁由左至右串接(左→主→右)",
+    actual:`${order[0].a.line}→${order[0].b.line}, ${order[1].a.line}→${order[1].b.line}`,
+    expect:"1→0, 0→2", ok:order[0].a.line === 1 && order[0].b.line === 0 && order[1].a.line === 0 && order[1].b.line === 2, str:true });
+  const X3 = mkD([{ name:"L", d:-4, h:0, on:true }, { name:"R", d:4, h:0, on:true }], { on:true, every:3 });
+  chk("D8", "每 3 個樁號放一根", X3.md.cross.length, Math.ceil(nPer / 3) * 2, 0, "");
+
+  /* --- 編號與群組(§7 / §8) --- */
+  chk("E1", "主線節點起始編號", X.md.lines[0].nodes[0].num, 1001, 0, "");
+  chk("E1", "偏置線 1 節點起始編號(+號段增量)", X.md.lines[1].nodes[0].num, 2001, 0, "");
+  chk("E1", "偏置線 2 節點起始編號", X.md.lines[2].nodes[0].num, 3001, 0, "");
+  chk("E1", "主線元素起始編號", X.md.lines[0].elems[0].num, 1001, 0, "");
+  chk("E1", "橫梁元素起始編號", X.md.cross[0].num, 8001, 0, "");
+  const allNums = X.md.lines.flatMap(L => L.nodes.map(n => n.num));
+  rows.push({ id:"E2", desc:"所有節點編號不重複", actual:String(new Set(allNums).size), expect:String(allNums.length),
+              ok:new Set(allNums).size === allNums.length, str:true });
+  const allE = X.md.lines.flatMap(L => L.elems.map(e => e.num)).concat(X.md.cross.map(c => c.num));
+  rows.push({ id:"E2", desc:"所有元素編號不重複", actual:String(new Set(allE).size), expect:String(allE.length),
+              ok:new Set(allE).size === allE.length, str:true });
+  const gset = X.md.groups;
+  const wantG = ["GEN_LINE_01","GEN_ARC_02","GEN_LINE_03","GEN_OFF_L","GEN_OFF_R","GEN_XBEAM","GEN_ALL"];
+  rows.push({ id:"E3", desc:"群組名稱(段落組 + 偏置線組 + 橫梁組 + 總組)",
+              actual:gset.join(","), expect:wantG.join(","),
+              ok:wantG.every(g => gset.includes(g)) && gset.length === wantG.length, str:true });
+  // 號段溢出
+  const OV = (() => {
+    const st = normState({ startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:500, split:{ ...SPLIT_DEF, spacing:1, rem:"keep" } }],
+      profile:[{ sta:0, z:0, L:0 }, { sta:600, z:0, L:0 }],
+      offsets:[{ name:"A", d:3, h:0, on:true }], numbering:{ ...DEF_NUM, inc:100 } });
+    const al = buildAlignment(st), pf = buildProfile(st.profile, [], []);
+    const gn = generateNodes(al, { forced:"", absorbTol:0.1, prof:pf });
+    const me = []; buildModel(al, pf, gn, st, me, []);
+    return me;
+  })();
+  rows.push({ id:"E4", desc:"節點數超過號段增量 → 錯誤", actual:String(OV.length > 0), expect:"true", ok:OV.length > 0, str:true });
+
+  /* --- 纜索(§6) --- */
+  const mkC2 = (cables) => {
+    const st = normState({
+      startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:100, split:{ ...SPLIT_DEF, spacing:10, rem:"keep" } }],
+      profile:[{ sta:0, z:100, L:0 }, { sta:200, z:100, L:0 }],
+      cables
+    });
+    const al = buildAlignment(st);
+    const pf = buildProfile(st.profile, [], []);
+    const gn = generateNodes(al, { forced:"", absorbTol:0.1, prof:pf });
+    const me = [], mw = [];
+    return { md:buildModel(al, pf, gn, st, me, mw), errs:me, warns:mw };
+  };
+  // 主線:0k+000 → 0k+100,每 10 m 一個節點 → 節點 1001..1011,z = 100
+  const towerAt = { sx:50, sy:0, sz:140 };
+
+  // 節點清單解析
+  const pl = parseNodeList("1001-1003, 1006  1008 - 1010, 1006");
+  rows.push({ id:"G1", desc:"節點清單解析(範圍 + 單點 + 去重 + 空白分隔)",
+    actual:pl.join(","), expect:"1001,1002,1003,1006,1008,1009,1010",
+    ok:pl.join(",") === "1001,1002,1003,1006,1008,1009,1010", str:true });
+  const capW = [];
+  const plc = parseNodeList("1001-9999999", capW);
+  rows.push({ id:"G1", desc:`超大範圍(> ${RANGE_CAP})被擋下並警告`,
+    actual:`${plc.length} 個 / ${capW.length} 則警告`, expect:"0 個 / 1 則警告",
+    ok:plc.length === 0 && capW.length === 1, str:true });
+
+  // N = 1:斜張索
+  const S1c = mkC2([{ ...DEF_CABLE, name:"ST", ...towerAt, targets:"1001-1011", N:1 }]);
+  const G1 = S1c.md.cables[0];
+  chk("G2", "N=1:纜索條數", G1.cables.length, 11, 0, "");
+  chk("G2", "N=1:每條 1 根元素", G1.elems.length, 11, 0, "");
+  chk("G2", "N=1:只新增起點 1 個節點", G1.nodes.length, 1, 0, "");
+  chk("G2", "N=1:起點節點編號", G1.src.num, 9001, 0, "");
+  chk("G2", "N=1:元素起始編號", G1.elems[0].num, 9001, 0, "");
+  chk("G2", "N=1:元素端點 = 起點 → 目標", G1.elems[0].j, 1001, 0, "");
+  // 端點索:(50,0,140) → (0,0,100),長度 = √(50²+40²)
+  chk("G3", "端點索長度", G1.cables[0].len, Math.hypot(50, 40), 1e-9, "m");
+  // 塔正下方那條:(50,0,140) → (50,0,100) = 40
+  const mid = G1.cables.find(k => k.target === 1006);
+  chk("G3", "塔正下方索長度", mid.len, 40, 1e-9, "m");
+  rows.push({ id:"G3", desc:"元素類型為 CABLE", actual:G1.elems[0].type, expect:"CABLE",
+              ok:G1.elems[0].type === "CABLE", str:true });
+  rows.push({ id:"G3", desc:"群組名稱", actual:G1.elems[0].group, expect:"GEN_CABLE_ST",
+              ok:G1.elems[0].group === "GEN_CABLE_ST", str:true });
+
+  // N > 1 + 垂度:懸索橋主纜
+  const S4 = mkC2([{ ...DEF_CABLE, name:"MC", ...towerAt, targets:"1001", N:4, f:2, fMode:"abs" }]);
+  const G4 = S4.md.cables[0];
+  chk("G4", "N=4:元素數", G4.elems.length, 4, 0, "");
+  chk("G4", "N=4:新增節點 = 起點 + (N−1) 中間節點", G4.nodes.length, 1 + 3, 0, "");
+  // 跨中(u = 0.5):Z = 線性中點 − 4f·0.25 = 線性中點 − f
+  const pmid = G4.cables[0].pts[2];
+  chk("G4", "跨中節點 Z = 線性中點 − f", pmid.z, (140 + 100) / 2 - 2, 1e-12, "m");
+  chk("G4", "跨中節點 X 仍在弦線上", pmid.x, 25, 1e-12, "m");
+  // u = 0.25 → 4f·u(1−u) = 4·2·0.1875 = 1.5
+  chk("G4", "1/4 點垂度 = 4f·u(1−u)", (140 + (100 - 140) * 0.25) - G4.cables[0].pts[1].z, 1.5, 1e-12, "m");
+  rows.push({ id:"G4", desc:"有垂度時纜索總長 > 弦長",
+    actual:G4.cables[0].len.toFixed(4), expect:"> " + G4.cables[0].chord.toFixed(4),
+    ok:G4.cables[0].len > G4.cables[0].chord, str:true });
+
+  // 垂跨比
+  const S5 = mkC2([{ ...DEF_CABLE, name:"R", ...towerAt, targets:"1001", N:2, f:0.05, fMode:"ratio" }]);
+  const k5 = S5.md.cables[0].cables[0];
+  chk("G5", "垂跨比:f = 0.05 × 弦長", k5.f, 0.05 * Math.hypot(50, 40), 1e-12, "m");
+
+  // 警告與錯誤
+  const W1 = mkC2([{ ...DEF_CABLE, name:"F", ...towerAt, targets:"1001", N:5, f:0 }]);
+  rows.push({ id:"G6", desc:"N>1 且垂度 = 0 → 警告(橫向勁度為零)",
+    actual:String(W1.warns.some(w => w.includes("橫向勁度"))), expect:"true",
+    ok:W1.warns.some(w => w.includes("橫向勁度")), str:true });
+  const W2 = mkC2([{ ...DEF_CABLE, name:"X", ...towerAt, targets:"1001, 7777", N:1 }]);
+  rows.push({ id:"G6", desc:"目標節點不存在 → 警告並略過",
+    actual:String(W2.md.cables[0].cables.length), expect:"1",
+    ok:W2.md.cables[0].cables.length === 1 && W2.warns.some(w => w.includes("7777")), str:true });
+  const W3 = mkC2([{ ...DEF_CABLE, name:"S", srcMode:"node", srcNode:5555, targets:"1001", N:1 }]);
+  rows.push({ id:"G6", desc:"起點節點不存在 → 錯誤",
+    actual:String(W3.errs.length > 0), expect:"true", ok:W3.errs.length > 0, str:true });
+
+  // 起點取用既有節點:不新增節點
+  const S7 = mkC2([{ ...DEF_CABLE, name:"N", srcMode:"node", srcNode:1011, targets:"1001-1003", N:1 }]);
+  chk("G7", "起點用既有節點時不新增節點", S7.md.cables[0].nodes.length, 0, 0, "");
+  chk("G7", "元素 i 端 = 指定的既有節點", S7.md.cables[0].elems[0].i, 1011, 0, "");
+
+  // 兩組纜索各佔一個號段
+  const S8 = mkC2([{ ...DEF_CABLE, name:"A", ...towerAt, targets:"1001-1005", N:1 },
+                   { ...DEF_CABLE, name:"B", sx:50, sy:0, sz:120, targets:"1007-1011", N:1 }]);
+  chk("G8", "纜索組 1 節點起始", S8.md.cables[0].src.num, 9001, 0, "");
+  chk("G8", "纜索組 2 節點起始(+號段增量)", S8.md.cables[1].src.num, 10001, 0, "");
+  chk("G8", "纜索組 2 元素起始", S8.md.cables[1].elems[0].num, 10001, 0, "");
+  const cNums = S8.md.cables.flatMap(G => G.elems.map(e => e.num))
+    .concat(S8.md.lines.flatMap(L => L.elems.map(e => e.num)));
+  rows.push({ id:"G8", desc:"纜索與主線元素編號不衝突",
+    actual:String(new Set(cNums).size), expect:String(cNums.length),
+    ok:new Set(cNums).size === cNums.length, str:true });
+  chk("G8", "總元素數含纜索", S8.md.tot.elems, 10 + 5 + 5, 0, "");
+  chk("G8", "總節點數含纜索起點", S8.md.tot.nodes, 11 + 1 + 1, 0, "");
+
+  /* --- 主纜:剛體轉換 --- */
+  const P1t = { x:10, y:20, z:30 }, Q1t = { x:1000, y:-500, z:80 };
+  const vT = { x:100, y:0, z:0 }, uT = { x:0, y:100, z:0 };
+  const TR1 = makeTransform({ P1:P1t, Q1:Q1t, v:vT, u:uT, mode:"twoPoint", roll:0 });
+  const q1g = TR1.map(P1t);
+  chk("M1", "基準點 P1 精確落在 Q1(X)", q1g.x, Q1t.x, 1e-9, "m");
+  chk("M1", "基準點 P1 精確落在 Q1(Y)", q1g.y, Q1t.y, 1e-9, "m");
+  chk("M1", "基準點 P1 精確落在 Q1(Z)", q1g.z, Q1t.z, 1e-9, "m");
+  // 反例:規格原本的 T = Q1 − P1 會偏掉
+  const Rbad = rotAlign(vT, uT);
+  const bad = V.add(V.apply(Rbad, P1t), V.sub(Q1t, P1t));
+  rows.push({ id:"M1", desc:"對照:T = Q1 − P1 的寫法會讓基準點偏離",
+    actual:`偏移 ${V.len(V.sub(bad, Q1t)).toFixed(3)} m`, expect:"> 0(故不採用)",
+    ok:V.len(V.sub(bad, Q1t)) > 1, str:true });
+  // 旋轉是剛體:長度與夾角不變
+  const p3 = { x:10, y:60, z:35 }, p4 = { x:-5, y:20, z:31 };
+  chk("M2", "轉換保長度", V.len(V.sub(TR1.map(p3), TR1.map(p4))), V.len(V.sub(p3, p4)), 1e-9, "m");
+  const dirg = V.unit(V.sub(TR1.map({ x:110, y:20, z:30 }), Q1t));
+  chk("M2", "v 轉到 u 的方向(X)", dirg.x, 0, 1e-9, "");
+  chk("M2", "v 轉到 u 的方向(Y)", dirg.y, 1, 1e-9, "");
+  // 反向(180°)不可 NaN
+  const TR180 = makeTransform({ P1:{x:0,y:0,z:0}, Q1:{x:0,y:0,z:0}, v:{x:1,y:0,z:0}, u:{x:-1,y:0,z:0}, mode:"twoPoint", roll:0 });
+  const r180 = TR180.map({ x:5, y:0, z:0 });
+  chk("M3", "180° 反向轉換", r180.x, -5, 1e-9, "m");
+  rows.push({ id:"M3", desc:"180° 反向不產生 NaN", actual:`${mnum(r180.y)}, ${mnum(r180.z)}`,
+    expect:"0, 0", ok:Number.isFinite(r180.y) && Number.isFinite(r180.z) &&
+    Math.abs(r180.y) < 1e-9 && Math.abs(r180.z) < 1e-9, str:true });
+  // 方位角模式:只繞 Z 轉,鉛直不動
+  const TRb = makeTransform({ P1:{x:0,y:0,z:0}, Q1:{x:0,y:0,z:0},
+    v:{x:0,y:100,z:0}, u:null, mode:"bearing", bearing:90, roll:0 });
+  const pb = TRb.map({ x:0, y:100, z:7 });
+  chk("M4", "方位角 90°:局部 +Y 轉到全域 +X", pb.x, 100, 1e-9, "m");
+  chk("M4", "方位角模式 Y 分量歸零", pb.y, 0, 1e-9, "m");
+  chk("M4", "方位角模式鉛直完全不動", pb.z, 7, 1e-12, "m");
+
+  /* --- 主纜:局部幾何 --- */
+  const mk = (o) => {
+    const st = normState({ startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:100, split:{ ...SPLIT_DEF, spacing:10, rem:"keep" } }],
+      profile:[{ sta:0, z:0, L:0 }, { sta:200, z:0, L:0 }],
+      mains:[{ ...DEF_MAIN, ...o }] });
+    const al = buildAlignment(st), pf = buildProfile(st.profile, [], []);
+    const gn = generateNodes(al, { forced:"", absorbTol:0.1, prof:pf });
+    const me = [], mw = [];
+    return { md:buildModel(al, pf, gn, st, me, mw), errs:me, warns:mw };
+  };
+  // 拋物線:跨中垂度必須等於 f
+  const MP = mk({ name:"P", span:400, z1:0, z2:0, curve:"parabola", fMode:"abs", f:40, N:40,
+                  planes:1, hangers:false, basePt:"P1", q1x:0, q1y:0, q1z:0,
+                  dirMode:"twoPoint", q2x:400, q2y:0, q2z:0 });
+  const MPn = MP.md.mains[0].nodes;
+  chk("M5", "拋物線:跨中垂度 = f", MPn[20].z, -40, 1e-9, "m");
+  chk("M5", "拋物線:兩端鞍座 z = 0", MPn[0].z, 0, 1e-12, "m");
+  chk("M5", "拋物線:1/4 點 = 4f·t(1−t) = 30", MPn[10].z, -30, 1e-9, "m");
+  chk("M5", "節點數 = N + 1", MPn.length, 41, 0, "");
+  chk("M5", "元素數 = N", MP.md.mains[0].elems.length, 40, 0, "");
+  // 懸鏈線:跨中垂度也必須等於 f,且比拋物線「胖」(1/4 點較高)
+  const MC = mk({ name:"C", span:400, z1:0, z2:0, curve:"catenary", fMode:"abs", f:40, N:40,
+                  planes:1, hangers:false, basePt:"P1", q1x:0, q1y:0, q1z:0,
+                  dirMode:"twoPoint", q2x:400, q2y:0, q2z:0 });
+  const MCn = MC.md.mains[0].nodes;
+  chk("M6", "懸鏈線:跨中垂度 = f", MCn[20].z, -40, 1e-6, "m");
+  chk("M6", "懸鏈線:兩端鞍座 z = 0", MCn[0].z, 0, 1e-9, "m");
+  // 1/4 點解析解:z = −f·(cosh β − cosh(β/2))/(cosh β − 1),β = Lx/(2a)
+  const aC = solveCatenaryA(400, 40), bC = 400 / (2 * aC);
+  const q4 = -40 * (Math.cosh(bC) - Math.cosh(bC / 2)) / (Math.cosh(bC) - 1);
+  chk("M6", "懸鏈線 1/4 點 = 解析解", MCn[10].z, q4, 1e-9, "m");
+  chk("M6", "  β → 0 時該比值 → 0.75(退化為拋物線)",
+      (Math.cosh(bC) - Math.cosh(bC / 2)) / (Math.cosh(bC) - 1), 0.75, 5e-3, "");
+  // 懸鏈線按弧長分布自重(端部較陡處重量較多)→ 同垂度下 1/4 點更低、纜長更長
+  rows.push({ id:"M6", desc:"懸鏈線 1/4 點低於拋物線",
+    actual:`${MCn[10].z.toFixed(4)} vs ${MPn[10].z.toFixed(4)}`, expect:"懸鏈線較低",
+    ok:MCn[10].z < MPn[10].z, str:true });
+  rows.push({ id:"M6", desc:"懸鏈線纜長 > 拋物線纜長(同跨徑同垂度)",
+    actual:`${MC.md.mains[0].stat.cableLen.toFixed(4)} vs ${MP.md.mains[0].stat.cableLen.toFixed(4)}`,
+    expect:"懸鏈線較長", ok:MC.md.mains[0].stat.cableLen > MP.md.mains[0].stat.cableLen, str:true });
+  // 不等高鞍座:垂度是相對弦線量的
+  const MU = mk({ name:"U", span:400, z1:0, z2:20, curve:"parabola", fMode:"abs", f:40, N:40,
+                  planes:1, hangers:false, basePt:"P1", q1x:0, q1y:0, q1z:0,
+                  dirMode:"twoPoint", q2x:400, q2y:0, q2z:20 });
+  chk("M7", "不等高鞍座:右端 z = z2", MU.md.mains[0].nodes[40].z, 20, 1e-9, "m");
+  chk("M7", "不等高鞍座:跨中 = 弦線中點 − f", MU.md.mains[0].nodes[20].z, 10 - 40, 1e-9, "m");
+
+  /* --- 主纜:索面、吊索、編號 --- */
+  const MH = mk({ name:"H", span:400, z1:0, z2:0, curve:"parabola", fMode:"abs", f:40, N:40,
+                  planes:2, planeGap:20, hangers:true, deckZ:-45, every:4, hangerBottom:"new",
+                  basePt:"P1", q1x:0, q1y:0, q1z:0, dirMode:"twoPoint", q2x:400, q2y:0, q2z:0 });
+  const MM = MH.md.mains[0];
+  const nHang = MM.elems.filter(e => e.kind === "hanger").length;
+  chk("M8", "雙索面:主纜節點 = 2 × (N+1)", MM.planes.reduce((a, P) => a + P.nodes.length, 0), 82, 0, "");
+  chk("M8", "雙索面:索面橫向間距", MM.planes[1].nodes[0].y - MM.planes[0].nodes[0].y, 20, 1e-9, "m");
+  chk("M8", "吊索數 = 2 索面 × 每 4 節點(不含兩端鞍座)", nHang, 2 * 9, 0, "");
+  chk("M8", "跨中吊索長度 = 橋面到主纜 = 45 − 40 = 5", MM.elems.filter(e => e.kind === "hanger")[4].len3d, 5, 1e-9, "m");
+  chk("M9", "主纜節點起始編號", MM.nodes[0].num, 20001, 0, "");
+  chk("M9", "主纜元素起始編號", MM.elems[0].num, 20001, 0, "");
+  const mn = MM.nodes.map(n => n.num), meN = MM.elems.map(e => e.num);
+  rows.push({ id:"M9", desc:"主纜節點/元素編號皆不重複",
+    actual:`${new Set(mn).size}/${mn.length}, ${new Set(meN).size}/${meN.length}`, expect:"皆相等",
+    ok:new Set(mn).size === mn.length && new Set(meN).size === meN.length, str:true });
+  const mg = MH.md.groups;
+  rows.push({ id:"M9", desc:"主纜與吊索各一個群組",
+    actual:mg.filter(g => g.includes("MAIN_") || g.includes("HANGER_")).join(","),
+    expect:"GEN_MAIN_H,GEN_HANGER_H",
+    ok:mg.includes("GEN_MAIN_H") && mg.includes("GEN_HANGER_H"), str:true });
+
+  /* --- 主纜:殘差警告 --- */
+  const MR = mk({ name:"R", span:400, z1:0, z2:0, curve:"parabola", fMode:"abs", f:40, N:10,
+                  planes:1, hangers:false, basePt:"P1", q1x:0, q1y:0, q1z:0,
+                  dirMode:"twoPoint", q2x:300, q2y:0, q2z:0 });   // |u| = 300 ≠ |v| = 400
+  rows.push({ id:"M10", desc:"|Q2−Q1| ≠ |P2−P1| → 警告方向點不落在 Q2",
+    actual:String(MR.warns.some(w => w.includes("剛體轉換不縮放"))), expect:"true",
+    ok:MR.warns.some(w => w.includes("剛體轉換不縮放")), str:true });
+  chk("M10", "殘差 = 400 − 300", MR.md.mains[0].residual, 100, 1e-9, "m");
+  const MOK = mk({ name:"K", span:400, z1:0, z2:0, curve:"parabola", fMode:"abs", f:40, N:10,
+                   planes:1, hangers:false, basePt:"P1", q1x:100, q1y:200, q1z:50,
+                   dirMode:"twoPoint", q2x:100, q2y:600, q2z:50 });  // |u| = |v| = 400
+  chk("M10", "長度相等時殘差為 0", MOK.md.mains[0].residual, 0, 1e-9, "m");
+  chk("M10", "基準點落在 Q1", MOK.md.mains[0].nodes[0].x, 100, 1e-9, "m");
+  chk("M10", "基準點落在 Q1(Y)", MOK.md.mains[0].nodes[0].y, 200, 1e-9, "m");
+
+  /* --- 空線形 / 主纜獨立存在 --- */
+  const bare = normState({ startX:0, startY:0, startAz:90, startSta:0,
+    segments:[], profile:[{ sta:0, z:0, L:0 }, { sta:100, z:0, L:0 }] });
+  const alB = buildAlignment(bare);
+  chk("N1", "空線形:段落數", alB.segs.length, 0, 0, "");
+  chk("N1", "空線形:總長", alB.total, 0, 0, "m");
+  rows.push({ id:"N1", desc:"空線形不產生錯誤", actual:String(alB.errors.length), expect:"0",
+              ok:alB.errors.length === 0, str:true });
+  const pfB = buildProfile(bare.profile, [], []);
+  const gnB = generateNodes(alB, { forced:"", absorbTol:0.1, prof:pfB });
+  chk("N1", "空線形:節點數", gnB.nodes.length, 0, 0, "");
+  const meB = [], mwB = [];
+  const mdB = buildModel(alB, pfB, gnB, bare, meB, mwB);
+  chk("N1", "空線形:模型節點/元素總數", mdB.tot.nodes + mdB.tot.elems, 0, 0, "");
+  rows.push({ id:"N1", desc:"空線形不產生模型錯誤", actual:String(meB.length), expect:"0",
+              ok:meB.length === 0, str:true });
+
+  // 主纜單獨存在(完全沒有線形)
+  const solo = normState({ startX:0, startY:0, startAz:90, startSta:0,
+    segments:[], profile:[{ sta:0, z:0, L:0 }, { sta:100, z:0, L:0 }],
+    mains:[{ ...DEF_MAIN, name:"SOLO", span:300, z1:0, z2:0, curve:"parabola",
+             fMode:"ratio", f:0.1, N:20, planes:2, planeGap:18,
+             hangers:true, deckZ:-40, every:2, hangerBottom:"new",
+             basePt:"P1", dirPt:"P2", q1x:500, q1y:700, q1z:120,
+             dirMode:"bearing", bearing:45, roll:0 }] });
+  const alS = buildAlignment(solo), pfS = buildProfile(solo.profile, [], []);
+  const gnS = generateNodes(alS, { forced:"", absorbTol:0.1, prof:pfS });
+  const meS = [], mwS = [];
+  const mdS = buildModel(alS, pfS, gnS, solo, meS, mwS);
+  const MS = mdS.mains[0];
+  chk("N2", "主纜獨立:主纜節點 = 2×(N+1) + 吊索下端", MS.nodes.length, 2 * 21 + 2 * 9, 0, "");
+  chk("N2", "主纜獨立:元素 = 2×N + 吊索", MS.elems.length, 2 * 20 + 2 * 9, 0, "");
+  chk("N2", "主纜獨立:模型總節點 = 主纜節點", mdS.tot.nodes, MS.nodes.length, 0, "");
+  const q1S = MS.TR.map({ x:0, y:0, z:0 });                 // 局部 P1(左鞍座)
+  chk("N2", "基準點落在 Q1(X)", q1S.x, 500, 1e-9, "m");
+  chk("N2", "基準點落在 Q1(Y)", q1S.y, 700, 1e-9, "m");
+  chk("N2", "基準點落在 Q1(Z)", q1S.z, 120, 1e-9, "m");
+  // 索面 0 的第一個節點 = Q1 + R·(0, −gap/2, 0);繞 +Z 轉 45° → (+6.364, −6.364)
+  chk("N2", "索面橫向偏置隨轉換一起旋轉(X)",
+      MS.planes[0].nodes[0].x, 500 + 9 * Math.SQRT1_2, 1e-9, "m");
+  chk("N2", "索面橫向偏置隨轉換一起旋轉(Y)",
+      MS.planes[0].nodes[0].y, 700 - 9 * Math.SQRT1_2, 1e-9, "m");
+  rows.push({ id:"N2", desc:"主纜獨立時不產生錯誤", actual:String(meS.length), expect:"0",
+              ok:meS.length === 0, str:true });
+  // 方位角 45°:主軸方向的平面方位角必須是 45°
+  const pnS = MS.planes[0].nodes;
+  const azS = norm360(Math.atan2(pnS[pnS.length-1].x - pnS[0].x, pnS[pnS.length-1].y - pnS[0].y) * R2D);
+  chk("N2", "主軸平面方位角 = 45°", azS, 45, 1e-9, "°");
+  // MCT 仍可正常輸出
+  const savedModel = MODEL, savedAL = AL, savedGEN = GEN, savedPROF = PROF, savedState = state;
+  MODEL = mdS; AL = alS; GEN = gnS; PROF = pfS; state = solo;
+  const mctS = mctText().split("\r\n");
+  const iN2 = mctS.findIndex(l => l.trim() === "*NODE"), iE2 = mctS.findIndex(l => l.trim() === "*ELEMENT");
+  const iG2 = mctS.findIndex(l => l.trim() === "*GROUP");
+  const bodyS = (a, b) => mctS.slice(a + 1, b < 0 ? mctS.length : b)
+    .filter(l => l.trim() && !l.trim().startsWith(MCT_COMMENT));
+  chk("N3", "主纜獨立:*NODE 列數", bodyS(iN2, iE2).length, MS.nodes.length, 0, "");
+  chk("N3", "主纜獨立:*ELEMENT 列數", bodyS(iE2, iG2).length, MS.elems.length, 0, "");
+  const gS = mdS.groups;
+  rows.push({ id:"N3", desc:"主纜獨立:群組只有主纜、吊索、總組",
+    actual:gS.join(","), expect:"GEN_MAIN_SOLO,GEN_HANGER_SOLO,GEN_ALL",
+    ok:gS.length === 3 && gS.includes("GEN_MAIN_SOLO") && gS.includes("GEN_HANGER_SOLO"), str:true });
+  const csvN = nodeCSV().split("\r\n").length - 1;
+  chk("N3", "主纜獨立:節點 CSV 列數", csvN, MS.nodes.length, 0, "");
+  MODEL = savedModel; AL = savedAL; GEN = savedGEN; PROF = savedPROF; state = savedState;
+
+  /* --- JSON / MCT 註解往返(§10) --- */
+  const jsonTxt = JSON.stringify({ formatVersion:1, tool:"curve-node-gen", state:{ startX:1.5, segments:[{ type:"LINE", L:12 }] } }, null, 1);
+  const embedded = "; 產生時間 2026-01-01\n" + embedParams(jsonTxt) + "\n*UNIT\nkN, m\n*NODE\n1, 0, 0, 0\n";
+  const back = extractParams(embedded);
+  rows.push({ id:"F3", desc:"參數 JSON 嵌入 .mct 註解後可完整取回",
+              actual:back ? JSON.stringify(back.state.segments) : "null", expect:'[{"type":"LINE","L":12}]',
+              ok:!!back && back.state.startX === 1.5 && back.state.segments[0].L === 12, str:true });
+  rows.push({ id:"F3", desc:"無參數區塊的檔案回傳 null",
+              actual:String(extractParams("*NODE\n1, 0, 0, 0")), expect:"null",
+              ok:extractParams("*NODE\n1, 0, 0, 0") === null, str:true });
+
+  /* --- MCT 輸出(§9.1) --- */
+  const cl = compressList([3, 1, 2, 5, 9, 7, 8, 5]);
+  rows.push({ id:"H1", desc:"群組清單連號壓縮", actual:cl, expect:"1to3 5 7to9",
+              ok:cl === "1to3 5 7to9", str:true });
+  rows.push({ id:"H1", desc:"單點不壓縮", actual:compressList([4, 9]), expect:"4 9",
+              ok:compressList([4, 9]) === "4 9", str:true });
+  rows.push({ id:"H1", desc:"兩個連號不壓縮(比 AtoB 短)", actual:compressList([4, 5]), expect:"4 5",
+              ok:compressList([4, 5]) === "4 5", str:true });
+
+  // 自建 fixture(不依賴畫面上的狀態):線形 + 偏置線 + 橫梁 + 纜索
+  const HF = (() => {
+    const st = normState({ startX:0, startY:0, startAz:90, startSta:0,
+      segments:[{ type:"LINE", L:100, split:{ ...SPLIT_DEF, spacing:10, rem:"keep" } }],
+      profile:[{ sta:0, z:100, L:0 }, { sta:200, z:100, L:0 }],
+      offsets:[{ name:"L", d:-4, h:0, on:true }],
+      cross:{ on:true, every:5, etype:"BEAM", mat:1, sect:9 },
+      cables:[{ ...DEF_CABLE, name:"S", sx:50, sy:0, sz:140, targets:"1001-1003", N:1 }] });
+    const al = buildAlignment(st), pf = buildProfile(st.profile, [], []);
+    const gn = generateNodes(al, { forced:"", absorbTol:0.1, prof:pf });
+    return { st, al, pf, gn, md:buildModel(al, pf, gn, st, [], []) };
+  })();
+  const sv = { MODEL, AL, GEN, PROF, state };
+  MODEL = HF.md; AL = HF.al; GEN = HF.gn; PROF = HF.pf; state = HF.st;
+
+  const mct = mctText();
+  const lines = mct.split("\r\n");
+  const idx = n => lines.findIndex(l => l.trim() === "*" + n);
+  const iU = idx("UNIT"), iN = idx("NODE"), iE = idx("ELEMENT"), iG = idx("GROUP");
+  rows.push({ id:"H2", desc:"區塊順序 UNIT → NODE → ELEMENT → GROUP",
+    actual:`${iU},${iN},${iE},${iG}`, expect:"遞增且皆存在",
+    ok:iU > 0 && iU < iN && iN < iE && iE < iG, str:true });
+  const body = (a, b) => lines.slice(a + 1, b < 0 ? lines.length : b)
+    .filter(l => l.trim() && !l.trim().startsWith(MCT_COMMENT));
+  chk("H3", "*NODE 資料列數 = 節點總數", body(iN, iE).length, MODEL.tot.nodes, 0, "");
+  chk("H3", "*ELEMENT 資料列數 = 元素總數", body(iE, iG).length, MODEL.tot.elems, 0, "");
+  chk("H3", "*GROUP 資料列數 = 群組數", body(iG, -1).length, MODEL.groups.length, 0, "");
+  const uline = body(iU, iN)[0].trim();
+  rows.push({ id:"H4", desc:"*UNIT 內容 = 力, 長度, 熱, 溫度",
+    actual:uline, expect:`${state.units.force}, ${state.units.length}, ${state.units.heat}, ${state.units.temper}`,
+    ok:uline === `${state.units.force}, ${state.units.length}, ${state.units.heat}, ${state.units.temper}`, str:true });
+  // 節點列:編號, X, Y, Z
+  const n1 = body(iN, iE)[0].trim().split(/\s*,\s*/);
+  const firstNode = MODEL.lines[0].nodes[0];
+  rows.push({ id:"H4", desc:"*NODE 列 = iNO, X, Y, Z(4 欄且編號相符)",
+    actual:n1.join(","), expect:`${firstNode.num},…(4 欄)`,
+    ok:n1.length === 4 && +n1[0] === firstNode.num && Math.abs(+n1[3] - firstNode.z) < 1e-6, str:true });
+  // 元素列:BEAM 8 欄、纜索 9 欄且套用自訂類型
+  const eBeam = elemLine({ num:7, type:"BEAM", mat:1, sect:2, i:10, j:11 });
+  rows.push({ id:"H5", desc:"BEAM 元素列", actual:eBeam, expect:"7, BEAM, 1, 2, 10, 11, 0, 0",
+    ok:eBeam === "7, BEAM, 1, 2, 10, 11, 0, 0", str:true });
+  const savedMct = state.mct;
+  state.mct = { cableType:"TENSTR", cableSub:2, cableExval:0 };
+  const eCab = elemLine({ num:8, type:"CABLE", mat:3, sect:4, i:20, j:21 });
+  rows.push({ id:"H5", desc:"纜索元素列(套用可調的類型/iSUB/EXVAL)",
+    actual:eCab, expect:"8, TENSTR, 3, 4, 20, 21, 0, 2, 0",
+    ok:eCab === "8, TENSTR, 3, 4, 20, 21, 0, 2, 0", str:true });
+  state.mct = { cableType:"TRUSS", cableSub:0, cableExval:1.5 };
+  const eCab2 = elemLine({ num:8, type:"CABLE", mat:3, sect:4, i:20, j:21 });
+  rows.push({ id:"H5", desc:"改成 TRUSS 後元素列跟著變",
+    actual:eCab2, expect:"8, TRUSS, 3, 4, 20, 21, 0, 0, 1.5",
+    ok:eCab2 === "8, TRUSS, 3, 4, 20, 21, 0, 0, 1.5", str:true });
+  state.mct = savedMct;
+  // 長度單位換算
+  const savedU = state.units.length;
+  const nodeX = () => {
+    const t2 = mctText().split("\r\n");
+    const i2 = t2.findIndex(l => l.trim() === "*NODE");
+    return t2.slice(i2 + 1).find(l => l.trim() && !l.trim().startsWith(MCT_COMMENT)).trim().split(/\s*,\s*/);
+  };
+  state.units.length = "M";  const rowM  = nodeX();
+  state.units.length = "MM"; const rowMM = nodeX();
+  state.units.length = savedU;
+  rows.push({ id:"H8", desc:"長度單位 MM:座標 ×1000",
+    actual:`${rowM[3]} → ${rowMM[3]}`, expect:"×1000",
+    ok:Math.abs(+rowMM[3] - +rowM[3] * 1000) < 1e-6, str:true });
+  rows.push({ id:"H8", desc:"節點編號不受單位影響",
+    actual:`${rowM[0]} / ${rowMM[0]}`, expect:"相同",
+    ok:rowM[0] === rowMM[0], str:true });
+
+  // 群組:所有元素都必須被總組涵蓋
+  const gm = groupMembers();
+  const allG = gm.get(MODEL.prefix + "ALL");
+  chk("H6", "總組涵蓋全部節點", allG.nodes.size, MODEL.tot.nodes, 0, "");
+  chk("H6", "總組涵蓋全部元素", allG.elems.size, MODEL.tot.elems, 0, "");
+  // 檔頭參數可還原
+  const bk = extractParams(mct);
+  rows.push({ id:"H7", desc:".mct 檔頭嵌入的參數可完整取回",
+    actual:bk ? `${bk.state.segments.length} 段` : "null", expect:`${state.segments.length} 段`,
+    ok:!!bk && bk.state.segments.length === state.segments.length, str:true });
+  rows.push({ id:"H7", desc:"參數區塊全部是註解行(不會被 midas 當指令)",
+    actual:"檢查中", expect:"全為註解",
+    ok:lines.slice(0, Math.max(iU, 1)).every(l => l === "" || l.startsWith(MCT_COMMENT)), str:true });
+  MODEL = sv.MODEL; AL = sv.AL; GEN = sv.GEN; PROF = sv.PROF; state = sv.state;
+
+  /* --- CSV 欄位 --- */
+  const csvRows = toCSV([["a,b", 'c"d', 1]]).replace("﻿", "");
+  rows.push({ id:"F4", desc:"CSV 逗號與引號跳脫", actual:csvRows, expect:'"a,b","c""d",1',
+              ok:csvRows === '"a,b","c""d",1', str:true });
+
+  /* --- 樁號格式 --- */
+  chk("F1", "parseSta('0k+125.500')", parseSta("0k+125.500"), 125.5, 1e-12, "m");
+  chk("F1", "parseSta('1K+025')", parseSta("1K+025"), 1025, 1e-12, "m");
+  chk("F1", "parseSta('125.5')", parseSta("125.5"), 125.5, 1e-12, "m");
+  const f1 = fmtSta(125.5) === "0k+125.500", f2 = fmtSta(1025) === "1k+025.000";
+  rows.push({ id:"F2", desc:"fmtSta(125.5) → 0k+125.500", actual:fmtSta(125.5), expect:"0k+125.500", ok:f1, str:true });
+  rows.push({ id:"F2", desc:"fmtSta(1025) → 1k+025.000", actual:fmtSta(1025), expect:"1k+025.000", ok:f2, str:true });
+
+  renderTests(rows);
+}
+
+function renderTests(rows){
+  const nOk = rows.filter(r => r.ok).length;
+  const all = nOk === rows.length;
+  $("#tests").innerHTML =
+    `<div class="tsum"><span class="${all ? "pass" : "fail"}">${all ? "✓ 全部通過" : "✕ 有失敗項目"}</span>
+       <span style="color:var(--ink-3)"> — ${nOk}/${rows.length}</span></div>
+     <table class="tt">
+       <thead><tr><th style="width:34px"></th><th style="width:40px">案例</th><th>項目</th>
+         <th style="width:118px">實際</th><th style="width:118px">預期</th><th style="width:62px">容差</th></tr></thead>
+       <tbody>${rows.map(r => `<tr>
+         <td class="${r.ok ? "pass" : "fail"}">${r.ok ? "✓" : "✕"}</td>
+         <td style="color:var(--ink-3)">${r.id}</td>
+         <td style="font-family:inherit">${r.desc}</td>
+         <td>${r.str ? r.actual : fmtT(r.actual)}</td>
+         <td>${r.str ? r.expect : fmtT(r.expect)}</td>
+         <td style="color:var(--ink-3)">${r.str ? "—" : r.tol.toExponential(0)}</td>
+       </tr>`).join("")}</tbody></table>`;
+}
+const fmtT = v => Number.isFinite(v) ? (Math.abs(v) >= 1e6 ? v.toExponential(6) : v.toFixed(6)) : String(v);
+
+/* ==========================================================================
+   啟動
+   ========================================================================== */
+document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
+  state.segments.push(defaultSeg(b.dataset.add));
+  renderSegs(); recompute();
+});
+$("#btn-caseA").onclick = () => loadState(CASE_A);
+$("#btn-caseS").onclick = () => loadState(CASE_S);
+function loadState(s){
+  state = normState(clone(s));
+  state.segments = state.segments.map(x => ({ ...defaultSeg(x.type), ...x, split:{ ...SPLIT_DEF, ...(x.split || {}) } }));
+  if (!Array.isArray(state.profile) || state.profile.length < 2)
+    state.profile = [{ sta:0, z:100, L:0 }, { sta:100, z:100, L:0 }];
+  remDismissedSig = "";
+  syncStartInputs(); renderSegs(); renderVpis(); renderOffs(); renderCabs(); renderMains(); renderMainAttr();
+  view.locked = false; recompute();
+}
+function syncStartInputs(){
+  $("#sx").value = state.startX; $("#sy").value = state.startY;
+  $("#saz").value = state.startAz; $("#ssta").value = fmtSta(state.startSta);
+  $("#atol").value = state.absorbTol;
+  $("#forced").value = state.forced;
+  $("#cross-on").checked = !!state.cross.on;
+  $("#cross-every").value = state.cross.every;
+  $("#nb").value = state.numbering.nodeBase;
+  $("#eb").value = state.numbering.elemBase;
+  $("#inc").value = state.numbering.inc;
+  $("#xb").value = state.numbering.crossElemBase;
+  $("#cnb").value = state.numbering.cableNodeBase;
+  $("#ceb").value = state.numbering.cableElemBase;
+  $("#mnb").value = state.numbering.mainNodeBase;
+  $("#meb").value = state.numbering.mainElemBase;
+  $("#gp").value = state.groupPrefix;
+  syncOutputInputs();
+}
+function renderMainAttr(){
+  const box = $("#main-attr");
+  box.innerHTML = "";
+  const g = attrFields(state.mainAttr, "");
+  while (g.firstChild) box.appendChild(g.firstChild);
+  box.oninput = ev => {
+    const k = ev.target.dataset.k; if (!k) return;
+    state.mainAttr[k] = ev.target.type === "number" ? Number(ev.target.value) : ev.target.value;
+    recompute();
+  };
+}
+$("#btn-add-off").onclick = () => {
+  const n = state.offsets.length + 1;
+  state.offsets.push({ name:"OFF" + n, d:n % 2 ? 6 : -6, h:0, on:true, ...DEF_ATTR });
+  renderOffs(); recompute();
+};
+$("#cross-on").addEventListener("input", e => { state.cross.on = e.target.checked; recompute(); });
+$("#cross-every").addEventListener("input", e => { state.cross.every = Math.max(1, +e.target.value || 1); recompute(); });
+$("#btn-add-main").onclick = () => {
+  state.mains.push({ ...DEF_MAIN, name:"MC" + (state.mains.length + 1) });
+  renderMains(); recompute();
+};
+$("#btn-demo-main").onclick = () => {
+  // 有線形就對齊線形起點與方位;沒有線形就放在原點、方位角 90°(主纜可獨立存在)
+  const a = AL.segs[0];
+  const q = a ? { x:+a.start.x.toFixed(3), y:+a.start.y.toFixed(3), z:+(zAt(PROF, a.s0) + 30).toFixed(3) }
+              : { x:0, y:0, z:30 };
+  state.mains = [{ ...DEF_MAIN, name:"MC1",
+    span:250, z1:0, z2:0, curve:"parabola", fMode:"ratio", f:0.1, N:25,
+    planes:2, planeGap:16, hangers:true, deckZ:-30, every:1, hangerBottom:"new",
+    basePt:"P1", dirPt:"P2",
+    q1x:q.x, q1y:q.y, q1z:q.z,
+    dirMode:"bearing", bearing:a ? +a.start.az.toFixed(4) : 90, roll:0,
+    cableType:"CABLE", cableMat:2, cableSect:11, hangerType:"CABLE", hangerMat:2, hangerSect:12 }];
+  renderMains(); view.locked = false; recompute();
+};
+$("#btn-add-cab").onclick = () => {
+  state.cables.push({ ...DEF_CABLE, name:"C" + (state.cables.length + 1) });
+  renderCabs(); recompute();
+};
+$("#btn-demo-cable").onclick = () => {
+  if (!MODEL.lines[0].nodes.length){ alert("斜張索範例需要先有平面線形(可按「載入案例 A」)"); return; }
+  // 塔頂位於樁號 0k+128.540 正上方 40 m,索面拉到該區段的主線節點
+  const s = 128.540, p = evalAtStation(s);
+  const first = MODEL.lines[0].nodes[0].num;
+  const near = MODEL.lines[0].nodes.filter(n => Math.abs(n.s - s) <= 60).map(n => n.num);
+  state.cables = [{ ...DEF_CABLE, name:"STAY",
+    srcMode:"coord", sx:p ? +p.x.toFixed(3) : 0, sy:p ? +p.y.toFixed(3) : 0,
+    sz:+(zAt(PROF, s) + 40).toFixed(3),
+    targets:near.length ? `${near[0]}-${near[near.length - 1]}` : String(first),
+    N:1, f:0, fMode:"abs", etype:"CABLE", mat:2, sect:5 }];
+  renderCabs(); view.locked = false; recompute();
+};
+[["nb","nodeBase"],["eb","elemBase"],["inc","inc"],["xb","crossElemBase"],
+ ["cnb","cableNodeBase"],["ceb","cableElemBase"],
+ ["mnb","mainNodeBase"],["meb","mainElemBase"]].forEach(([id, k]) =>
+  $("#" + id).addEventListener("input", e => { state.numbering[k] = Math.round(+e.target.value) || 0; recompute(); }));
+$("#gp").addEventListener("input", e => { state.groupPrefix = e.target.value; recompute(); });
+
+/* ---------- 輸出 / 載入 ---------- */
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+function fillSel(id, opts, val){
+  const s = $("#" + id);
+  s.innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+  s.value = val;
+}
+function syncOutputInputs(){
+  fillSel("u-len", UNIT_LENGTH, state.units.length);
+  fillSel("u-frc", UNIT_FORCE, state.units.force);
+  $("#m-ct").value = state.mct.cableType;
+  $("#m-cs").value = state.mct.cableSub;
+  $("#m-ce").value = state.mct.cableExval;
+}
+$("#u-len").addEventListener("input", e => { state.units.length = e.target.value; recompute(); });
+$("#u-frc").addEventListener("input", e => { state.units.force = e.target.value; recompute(); });
+$("#m-ct").addEventListener("input", e => { state.mct.cableType = e.target.value; recompute(); });
+$("#m-cs").addEventListener("input", e => { state.mct.cableSub = Math.round(+e.target.value) || 0; recompute(); });
+$("#m-ce").addEventListener("input", e => { state.mct.cableExval = +e.target.value || 0; recompute(); });
+
+$("#mct-prev").closest("details").addEventListener("toggle", renderMctPreview);
+$("#btn-mct").onclick = () => download(`model_${stamp()}.mct`, mctText(), "text/plain;charset=utf-8");
+$("#btn-mct-copy").onclick = async e => {
+  const txt = mctText();
+  try { await navigator.clipboard.writeText(txt); }
+  catch (err){
+    const ta = document.createElement("textarea");
+    ta.value = txt; ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e2){}
+    ta.remove();
+  }
+  const b = e.target, old = b.textContent;
+  b.textContent = "已複製 ✓";
+  setTimeout(() => { b.textContent = old; }, 1400);
+};
+$("#btn-csv-node").onclick = () => download(`nodes_${stamp()}.csv`, nodeCSV(), "text/csv;charset=utf-8");
+$("#btn-csv-elem").onclick = () => download(`elements_${stamp()}.csv`, elemCSV(), "text/csv;charset=utf-8");
+$("#btn-json").onclick     = () => download(`alignment_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8");
+$("#btn-load").onclick     = () => $("#file-in").click();
+$("#file-in").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { loadText(String(rd.result), f.name); e.target.value = ""; };
+  rd.readAsText(f);
+});
+function loadText(txt, name){
+  let obj = extractParams(txt);
+  if (!obj){ try { obj = JSON.parse(txt); } catch (err){ obj = null; } }
+  if (!obj){ alert(`「${name}」中找不到參數(既不是本工具的 JSON,檔頭也沒有嵌入的參數區塊)`); return; }
+  applyLoaded(obj, name);
+}
+["dragover","drop"].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+document.addEventListener("drop", e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => loadText(String(rd.result), f.name);
+  rd.readAsText(f);
+});
+$("#atol").addEventListener("input", e => { state.absorbTol = e.target.value === "" ? 0 : Number(e.target.value); recompute(); });
+$("#forced").addEventListener("input", e => { state.forced = e.target.value; recompute(); });
+$("#btn-add-vpi").onclick = () => {
+  const P = state.profile;
+  const a = P[P.length - 2], b = P[P.length - 1];
+  P.splice(P.length - 1, 0, { sta:(a.sta + b.sta) / 2, z:(a.z + b.z) / 2, L:0 });
+  renderVpis(); recompute();
+};
+$("#btn-fit-prof").onclick = () => {
+  if (!AL.segs.length) return;
+  const P = state.profile;
+  P[0].sta = AL.segs[0].s0;
+  P[P.length - 1].sta = AL.segs[AL.segs.length - 1].s1;
+  renderVpis(); recompute();
+};
+$("#btn-caseB").onclick = () => {
+  state.profile = clone(CASE_A.profile);
+  renderVpis(); recompute();
+};
+$("#btn-apply-all").onclick = () => {
+  const src = state.segments[0] && state.segments[0].split;
+  if (!src) return;
+  state.segments.forEach(s => s.split = { ...src });
+  remDismissedSig = ""; renderSegs(); recompute();
+};
+["sx","sy","saz"].forEach(id => $("#" + id).addEventListener("input", e => {
+  state[{ sx:"startX", sy:"startY", saz:"startAz" }[id]] = e.target.value === "" ? NaN : Number(e.target.value);
+  recompute();
+}));
+$("#ssta").addEventListener("input", e => {
+  const v = parseSta(e.target.value);
+  e.target.classList.toggle("bad", !Number.isFinite(v));
+  if (Number.isFinite(v)){ state.startSta = v; recompute(); }
+});
+
+normState(state);
+state.segments = state.segments.map(x => ({ ...defaultSeg(x.type), ...x, split:{ ...SPLIT_DEF } }));
+syncStartInputs();
+renderSegs();
+renderVpis();
+renderOffs();
+renderCabs();
+renderMains();
+renderMainAttr();
+recompute();
+runTests();
+bootDone = true;
+</script>
+</body>
+</html>
