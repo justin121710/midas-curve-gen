@@ -1066,6 +1066,67 @@ function addManualElems(groups, errs){
   });
 }
 
+/* ---------- 合併座標重合的節點 ----------
+   兩個節點座標一樣時,在 midas 裡是兩個各自獨立的節點 —— 看起來相連,其實沒有連。
+   這裡照 midas 自己的 Merge Nodes 做法:同一個位置**只留編號最小的那一個**,
+   其餘刪掉,所有元素的端點改指到留下來的那個。
+
+   為什麼要放在 buildModel 的最後:節點編號是全域的,而且手動元素也要一起改,
+   所以必須等所有組(含手動元素)都建完。                                            */
+function weldNodes(groups, warns, opt){
+  const on = !opt || opt.on !== false;
+  if (!on) return 0;
+  const tol = Math.max(0, num(opt && opt.tol) || 0);
+  const cell = tol > 0 ? tol : 1e-6;
+  const key = (x, y, z) => [Math.floor(x/cell), Math.floor(y/cell), Math.floor(z/cell)].join(",");
+  // 先照編號由小到大掃,先看到的自然就是那一群裡編號最小的
+  const all = [];
+  groups.forEach(r => r.nodes.forEach(n => all.push(n)));
+  all.sort((a, b) => a.num - b.num);
+
+  const buckets = new Map();                           // 格子 → 已留下的節點
+  const winner = new Map();                            // 被併掉的編號 → 留下來的節點
+  all.forEach(n => {
+    let hit = null;
+    // 檢查自己與相鄰的 26 個格子(只用格子當索引會漏掉剛好跨在格線兩側的點)
+    for (let dx = -1; dx <= 1 && !hit; dx++)
+      for (let dy = -1; dy <= 1 && !hit; dy++)
+        for (let dz = -1; dz <= 1 && !hit; dz++){
+          const arr = buckets.get(key(n.x + dx*cell, n.y + dy*cell, n.z + dz*cell));
+          if (!arr) continue;
+          for (let i = 0; i < arr.length; i++){
+            const m = arr[i];
+            const d = Math.max(Math.abs(m.x-n.x), Math.abs(m.y-n.y), Math.abs(m.z-n.z));
+            if (d <= (tol > 0 ? tol : 1e-9)){ hit = m; break; }
+          }
+        }
+    if (hit){ winner.set(n.num, hit); return; }
+    const k = key(n.x, n.y, n.z);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(n);
+  });
+  if (!winner.size) return 0;
+
+  // 元素端點改指到留下來的節點;兩端併成同一點的元素退化了,直接刪掉
+  let degen = 0;
+  groups.forEach(r => {
+    r.elems = r.elems.filter(e => {
+      const wa = winner.get(e.i), wb = winner.get(e.j);
+      if (wa){ e.a = wa; e.i = wa.num; }
+      if (wb){ e.b = wb; e.j = wb.num; }
+      if (e.i === e.j){ degen++; return false; }
+      e.chord = distXY(e.a, e.b); e.len3d = dist3(e.a, e.b);
+      return true;
+    });
+    r.nodes = r.nodes.filter(n => !winner.has(n.num));
+    finishStat(r);
+  });
+  warns.push(`已合併 ${winner.size} 個座標重合的節點(每個位置只留編號最小的那一個)` +
+    (degen ? `,並刪掉 ${degen} 根因此退化成零長度的元素` : "") +
+    `。節點編號會出現跳號,這是正常的。不想合併請到「編號總表」關掉。`);
+  return winner.size;
+}
+
 function buildModel(st, errs, warns){
   const inc = Math.max(1, Math.round(num(st.numbering.inc)) || 1000);
   const prefix = st.groupPrefix || "G_";
@@ -1091,6 +1152,7 @@ function buildModel(st, errs, warns){
 
   const groups = order;
   addManualElems(groups, errs);      // 端點可能跨組,一定要等全部組都建完才解析得到
+  const welded = weldNodes(groups, warns, st.weld);
   const tot = {
     n:groups.reduce((a,r) => a + r.nodes.length, 0),
     e:groups.reduce((a,r) => a + r.elems.length, 0),
@@ -1105,18 +1167,20 @@ function buildModel(st, errs, warns){
   const clash = groups.filter(r => r.numClash);
   clash.forEach(r => errs.push(`「${r.g.name}」的節點或元素編號與其他組重複`));
 
-  // 座標重合的節點:在 midas 裡看起來連在一起,其實是兩個各自獨立的節點。
-  // 段互相參照(例如兩段終點都指到同一段的起點)最容易生出這種點,所以一定要講出來。
-  const seenP = new Map(), dupN = [];
-  groups.forEach(r => r.nodes.forEach(n => {
-    const key = [n.x, n.y, n.z].map(v => Math.round(v*1e6)).join(",");
-    if (seenP.has(key)) dupN.push([seenP.get(key), n.num]);
-    else seenP.set(key, n.num);
-  }));
-  if (dupN.length){
-    const shown = dupN.slice(0, 6).map(a => a[0] + "≡" + a[1]).join("、");
-    warns.push(`有 ${dupN.length} 對節點座標完全重合(${shown}${dupN.length > 6 ? "…" : ""})。` +
-      `midas 裡它們是各自獨立的節點,看起來相連其實沒有連 —— 需要接起來請用該組的「手動元素」點兩點連接。`);
+  // 沒開合併時,重合的節點還是要點名 —— 那在 midas 裡看起來相連、其實沒連。
+  if (st.weld && st.weld.on === false){
+    const seenP = new Map(), dupN = [];
+    groups.forEach(r => r.nodes.forEach(n => {
+      const key = [n.x, n.y, n.z].map(v => Math.round(v*1e6)).join(",");
+      if (seenP.has(key)) dupN.push([seenP.get(key), n.num]);
+      else seenP.set(key, n.num);
+    }));
+    if (dupN.length){
+      const shown = dupN.slice(0, 6).map(a => a[0] + "≡" + a[1]).join("、");
+      warns.push(`有 ${dupN.length} 對節點座標完全重合(${shown}${dupN.length > 6 ? "…" : ""})。` +
+        `midas 裡它們是各自獨立的節點,看起來相連其實沒有連 —— ` +
+        `到「編號總表」打開「合併重合節點」即可自動併掉。`);
+    }
   }
 
   assignGNames(groups, prefix);
@@ -1637,7 +1701,10 @@ function groupMembers(){
 function mctText(){
   const C = MCT_COMMENT, I = MCT_FMT.indent, u = state.units, L = [];
   const rule = C + "-".repeat(75);
-  const rng = (base, cnt) => cnt ? base + "-" + (base + cnt - 1) : "-";
+  const rng = arr => { if (!arr || !arr.length) return "-";
+    let lo = Infinity, hi = -Infinity;
+    arr.forEach(o => { if (o.num < lo) lo = o.num; if (o.num > hi) hi = o.num; });
+    return lo === hi ? String(lo) : lo + "-" + hi; };
   L.push(rule);
   L.push(`${C} Spatial Curve Generator  (spatial-curve-gen)`);
   L.push(`${C} Generated : ${localStampText()} ${tzOffset()}`);
@@ -1647,8 +1714,7 @@ function mctText(){
   L.push(`${C} Total elem length : ${mnum(MODEL.tot.len3d)}`);
   L.push(`${C}`);
   MODEL.groups.forEach(r => L.push(`${C}   ${r.gname} (${TYPES[r.g.type].en})` +
-    `  nodes ${rng(r.nodeBase, r.nodes.length)}` +
-    `  elements ${rng(r.elemBase, r.elems.length)}`));
+    `  nodes ${rng(r.nodes)}  elements ${rng(r.elems)}`));
   L.push(`${C}`);
   L.push(`${C} NOTE: importing an MCT containing *UNIT changes the model's active unit system.`);
   L.push(`${C} NOTE: element beta angle is always 0.`);
@@ -1764,6 +1830,7 @@ const DEF_STATE = () => ({
   groupPrefix:"G_",
   units:{ length:"M", force:"KGF", heat:"KJ", temper:"C" },
   lib:{ mat:{}, sect:{} },        // 從 midas .mct 匯入的材料 / 斷面名稱
+  weld:{ on:true, tol:0 },       // 合併座標重合的節點(只留編號最小的那個)
   view:{ az:90, el:90, zEx:1 }                          // 預設 = 俯視(北上、東右)
 });
 let state = DEF_STATE();
@@ -1777,6 +1844,7 @@ function normState(s){
   s.numbering = { ...d.numbering, ...(s.numbering || {}) };
   s.units     = { ...d.units, ...(s.units || {}) };
   s.lib       = { mat:{ ...(s.lib && s.lib.mat) }, sect:{ ...(s.lib && s.lib.sect) } };
+  s.weld      = { ...d.weld, ...(s.weld || {}) };
   delete s.mct;                                        // v3.8:纜索設定下放到各組
   const v0 = s.view || {};
   s.view      = { ...d.view, ...v0 };
@@ -2541,7 +2609,7 @@ function paneFor(g){
        fld(auto ? "節點起始(自動)" : "節點起始", "nodeBase", nb, { disabled:auto }) +
        fld(auto ? "元素起始(自動)" : "元素起始", "elemBase", eb, { disabled:auto })}</div>
      <div class="hint"><b>按下(主題色)= 自動編號</b>:全域起始 + 本組在清單中的順序 × 號段增量;彈起就自己填起始號。
-       ${r ? `目前:節點 <b>${r.nodes.length ? r.nodeBase + "–" + (r.nodeBase + r.nodes.length - 1) : "—"}</b> · 元素 <b>${r.elems.length ? r.elemBase + "–" + (r.elemBase + r.elems.length - 1) : "—"}</b>` : ""}</div>`);
+       ${r ? `目前:節點 <b>${numRange(r.nodes)}</b> · 元素 <b>${numRange(r.elems)}</b>` : ""}</div>`);
 
   let body = "";
   if (g.type === "CURVE"){
@@ -2619,8 +2687,8 @@ function paneFor(g){
 function paneNumbering(){
   const rows = MODEL.groups.map(r => `<tr>
     <td class="n">${esc(r.g.name)}</td><td class="n">${TYPES[r.g.type].name}</td>
-    <td>${r.nodes.length ? r.nodeBase + "–" + (r.nodeBase + r.nodes.length - 1) : "—"}</td>
-    <td>${r.elems.length ? r.elemBase + "–" + (r.elemBase + r.elems.length - 1) : "—"}</td>
+    <td>${numRange(r.nodes)}</td>
+    <td>${numRange(r.elems)}</td>
     <td>${r.nodes.length} / ${r.elems.length}</td>
     <td class="n">${esc(r.gname)}</td></tr>`).join("");
   return `<div class="ptitle"><span class="nm">編號總表</span><span class="fam geo">全域</span></div>` +
@@ -2630,6 +2698,17 @@ function paneNumbering(){
         fld("元素起始", "numbering.elemBase", state.numbering.elemBase) +
         fld("號段增量", "numbering.inc", state.numbering.inc) +
         fld("群組名前綴", "groupPrefix", state.groupPrefix, { text:true })}</div>`) +
+    SEC("合併重合節點", state.weld.on !== false ? "開啟" : `<span style="color:var(--warn)">關閉</span>`,
+      `<div class="btns" style="margin-bottom:10px">
+        <button class="tgl${state.weld.on !== false ? " on" : ""}" data-op="weldtog">
+          <span class="dot"></span>合併座標重合的節點</button></div>
+       <div class="fields g3">${
+        fld(`容差 (${UL()},0 = 完全相同才併)`, "weld.tol", state.weld.tol,
+          { disabled:state.weld.on === false })}</div>
+       <div class="hint">同一個位置<b>只留節點編號最小的那一個</b>,其餘刪掉,元素端點改指到它
+         —— 等同 midas 的 <b>Merge Nodes</b>。段互相參照、連接族接到既有節點時最容易產生重合節點,
+         不併的話在 midas 裡看起來相連、其實是兩個獨立的節點。<br>
+         合併後<b>節點編號會跳號</b>(這是正常的),兩端併成同一點的元素會退化成零長度,一併刪除並回報。</div>`) +
     SEC("各組", `${MODEL.groups.length} 組 · 節點 ${MODEL.tot.n} · 元素 ${MODEL.tot.e}`,
       `<div data-ro><table class="t"><thead><tr><th>組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>群組名</th></tr></thead>
        <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何組</td></tr>`}</tbody></table></div>`);
@@ -2880,6 +2959,8 @@ $("#pane").addEventListener("click", e => {
   if (op === "loadlib") { $("#file-in").click(); return; }
   if (op === "clearlib"){ snapshot("clearlib:" + Date.now()); state.lib = { mat:{}, sect:{} };
     recompute(true); return; }
+  // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
+  if (op === "weldtog"){ state.weld.on = (state.weld.on === false); recompute(true); return; }
   if (op === "xfdlg" && g){ openXfDlg(g); return; }
   if (!g) return;
   if (op === "del"){ state.groups.splice(gi, 1); SEL = state.groups.length ? state.groups[Math.max(0, gi-1)].id : null; }
@@ -3180,6 +3261,13 @@ function matField(g, key, label, val){
   if (cur && !lib[cur]) opts.unshift([String(cur), `${cur}(不在匯入的清單裡)`]);
   return fld(`${unit}`, key, cur, { select:opts });
 }
+// 合併重合節點之後編號會跳號,所以範圍要看實際的 min–max,不能用 base + 數量 - 1
+const numRange = arr => {
+  if (!arr || !arr.length) return "—";
+  let lo = Infinity, hi = -Infinity;
+  arr.forEach(o => { if (o.num < lo) lo = o.num; if (o.num > hi) hi = o.num; });
+  return lo === hi ? String(lo) : lo + "–" + hi;
+};
 const libTotal = () => libCount(state.lib && state.lib.mat) + libCount(state.lib && state.lib.sect);
 const libTail = () => libTotal()
   ? `材料 ${libCount(state.lib.mat)} · 斷面 ${libCount(state.lib.sect)}`
@@ -4644,7 +4732,8 @@ function runTests(){
   }
   {
     // 段 1 與段 2 的終點都指到段 3 的起點
-    const st2 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"T", pieces:[
+    // 先關掉合併,單純驗幾何有沒有拉到正確的位置
+    const st2 = normState({ ...DEF_STATE(), weld:{ on:false, tol:0 }, groups:[{ ...defaultGroup("CURVE"), name:"T", pieces:[
       { ...defaultPiece("LINE"), sRef:"", x1:0, y1:0, z1:0, eRef:"2:s", split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"", x1:0, y1:50, z1:0, eRef:"2:s", split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"", x1:100, y1:25, z1:0, x2:200, y2:25, z2:0,
@@ -4658,11 +4747,11 @@ function runTests(){
       `${endOf(0).x},${endOf(0).y} / ${endOf(1).x},${endOf(1).y}`, "100,25 / 100,25");
     yes("R3","相鄰的那一段共用接縫節點(不重複產生)",
       r2.nodes.filter(n => n.pi === 2).length === 2, r2.nodes.filter(n => n.pi === 2).length, 2);
-    yes("R3","座標重合會提出警告", W2.some(t => t.indexOf("重合") >= 0),
+    yes("R3","關掉合併時會點名重合的節點", W2.some(t => t.indexOf("重合") >= 0),
       W2.filter(t => t.indexOf("重合") >= 0).length + " 則", "有");
     yes("R3","沒有錯誤", !E2.length, E2.join("|") || "無", "無");
     // 中點參照
-    const st3 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"M", pieces:[
+    const st3 = normState({ ...DEF_STATE(), weld:{ on:false, tol:0 }, groups:[{ ...defaultGroup("CURVE"), name:"M", pieces:[
       { ...defaultPiece("LINE"), sRef:"", x1:0, y1:0, z1:0, x2:100, y2:0, z2:0, split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"0:m", x2:50, y2:80, z2:0, split:{ ...SPLIT_DEF, count:1 } }] }] });
     const r3 = buildModel(st3, [], []).groups[0];
@@ -4670,12 +4759,54 @@ function runTests(){
     yes("R3","起點可以指到別段的中點",
       Math.abs(p2n[0].x - 50) < 1e-9 && Math.abs(p2n[0].y) < 1e-9, `${p2n[0].x},${p2n[0].y}`, "50,0");
     // 循環參照要報錯而不是當掉
-    const st4 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), name:"C", pieces:[
+    const st4 = normState({ ...DEF_STATE(), weld:{ on:false, tol:0 }, groups:[{ ...defaultGroup("CURVE"), name:"C", pieces:[
       { ...defaultPiece("LINE"), sRef:"1:e", x2:10, y2:0, z2:0 },
       { ...defaultPiece("LINE"), sRef:"0:e", x2:20, y2:0, z2:0 }] }] });
     const E4 = [];
     buildModel(st4, E4, []);
     yes("R3","循環參照會報錯不當掉", E4.some(t => t.indexOf("循環") >= 0), E4.join("|") || "無", "有循環錯誤");
+  }
+  {
+    // 合併重合節點:同一位置只留編號最小的,元素端點改指到它
+    const mk = weld => normState({ ...DEF_STATE(), weld, groups:[{ ...defaultGroup("CURVE"), name:"W", pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0, y1:0, z1:0, eRef:"2:s", split:{ ...SPLIT_DEF, count:2 } },
+      { ...defaultPiece("LINE"), sRef:"", x1:0, y1:50, z1:0, eRef:"2:s", split:{ ...SPLIT_DEF, count:2 } },
+      { ...defaultPiece("LINE"), sRef:"", x1:100, y1:25, z1:0, x2:200, y2:25, z2:0,
+        split:{ ...SPLIT_DEF, count:2 } }] }] });
+    const Woff = [], Won = [];
+    const rOff = buildModel(mk({ on:false, tol:0 }), [], Woff).groups[0];
+    const rOn  = buildModel(mk({ on:true,  tol:0 }), [], Won).groups[0];
+    chk("R6","不合併時有 8 個節點", rOff.nodes.length, 8, 0, "");
+    chk("R6","合併後少一個節點", rOn.nodes.length, 7, 0, "");
+    const at = r0 => r0.nodes.filter(n => Math.abs(n.x-100) < 1e-9 && Math.abs(n.y-25) < 1e-9);
+    chk("R6","重合位置只剩一個節點", at(rOn).length, 1, 0, "");
+    const keep = at(rOn)[0], gone = at(rOff).map(n => n.num);
+    yes("R6","留下來的是編號最小的那個", keep.num === Math.min(...gone),
+      keep.num, Math.min(...gone));
+    yes("R6","元素端點都改指到留下來的節點",
+      rOn.elems.every(e => e.i !== Math.max(...gone) && e.j !== Math.max(...gone)),
+      "無殘留舊編號", "無殘留舊編號");
+    chk("R6","元素數量不變(沒有退化)", rOn.elems.length, rOff.elems.length, 0, "");
+    yes("R6","兩段的元素現在真的接在同一個節點上",
+      rOn.elems.filter(e => e.i === keep.num || e.j === keep.num).length >= 3,
+      rOn.elems.filter(e => e.i === keep.num || e.j === keep.num).length, "≥3");
+    yes("R6","合併會回報", Won.some(t => t.indexOf("已合併") >= 0), Won.join("|") || "無", "有");
+    // 退化元素:一根線的兩端被併成同一點
+    const dg = normState({ ...DEF_STATE(), weld:{ on:true, tol:0 }, groups:[
+      { ...defaultGroup("CURVE"), id:"d1", name:"A", pieces:[
+        { ...defaultPiece("POINT"), sRef:"", x2:0, y2:0, z2:0 }] },
+      { ...defaultGroup("CURVE"), id:"d2", name:"B", pieces:[
+        { ...defaultPiece("POINT"), sRef:"", x2:0, y2:0, z2:0 }] }] });
+    const Wd = [], md2 = buildModel(dg, [], Wd);
+    chk("R6","跨組的重合節點也會併", md2.tot.n, 1, 0, "");
+    // 容差
+    const tolSt = grp => normState({ ...DEF_STATE(), weld:grp, groups:[
+      { ...defaultGroup("CURVE"), id:"t1", name:"A", pieces:[
+        { ...defaultPiece("POINT"), sRef:"", x2:0, y2:0, z2:0 }] },
+      { ...defaultGroup("CURVE"), id:"t2", name:"B", pieces:[
+        { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
+    chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
+    chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
   }
   {
     yes("R4","長度單位用公制小寫", UNIT_LENGTH[0][1].indexOf("m(") === 0, UNIT_LENGTH[0][1], "m(…");
