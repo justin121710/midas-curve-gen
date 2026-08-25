@@ -259,7 +259,7 @@
 
 <header>
   <h1>空間線型產生器</h1>
-  <span class="stage">組式架構 v3.10</span>
+  <span class="stage">組式架構 v3.11</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -852,20 +852,6 @@ const PIECES = {
 };
 const GCOLORS = ["#1c5d99","#c1673d","#8a5fb5","#3f8f5f","#8a7a20","#0f7c8f","#b3406b","#6f4a9b","#a8710d","#1a7f4b"];
 // 編輯中的曲線組:各段分色(其他組維持自己的主題色)
-const PCOLORS = ["#1c5d99","#c1673d","#3f8f5f","#8a5fb5","#0f7c8f","#b3406b","#a8710d","#1a7f4b","#8a7a20","#6f4a9b"];
-const pieceColor = i => PCOLORS[((i % PCOLORS.length) + PCOLORS.length) % PCOLORS.length];
-// 段的顏色綁在「段自己」身上(pc._c),不是它在清單裡的位置 —— 拖曳排序只換編號,配色不動。
-// 舊檔沒有 _c,normState() 會照當時的順序補上,所以外觀與以前一致。
-const pcSlot = (g, pi) => {
-  const pc = g && g.pieces && g.pieces[pi];
-  return pc && Number.isFinite(+pc._c) ? +pc._c : pi;
-};
-// 在同一組裡找一個還沒被用掉的顏色槽
-function freeSlot(g){
-  const used = new Set((g.pieces || []).map(p => +p._c).filter(Number.isFinite));
-  let i = 0; while (used.has(i)) i++;
-  return i;
-}
 const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CABLE 纜索"]];
 // 只受拉元素(TENSTR)的設定,依實機樣本:
 //   sub  1=Truss(允許有限壓力,EXVAL=容許壓力,11 欄) 2=Hook(EXVAL=間隙,9 欄) 3=Cable(10 欄)
@@ -882,7 +868,8 @@ function defaultPiece(type){
   const b = { type, sRef:"prev", eRef:"", xf:XF_DEF(),
               split:{ ...sp }, ovr:false, etype:"BEAM", mat:1, sect:1,
               x1:0, y1:0, z1:0 };
-  if (type === "LINE")  return { ...b, endMode:"point", x2:dL(100), y2:0, z2:0, len:dL(50), az:90, el:0 };
+  if (type === "LINE")  return { ...b, endMode:"point", x2:dL(100), y2:0, z2:0, len:dL(50), az:90, el:0,
+    extS:0, extE:0 };            // 兩端各自可以再往外延長
   if (type === "ARC")   return { ...b, arcMode:"endpoints", plane:"H", dir:1, major:false,
     x2:dL(100), y2:0, z2:0, R:dL(80), cx:dL(50), cy:dL(-50), delta:90 };
   if (type === "SAG")   return { ...b, x2:dL(200), y2:0, z2:0, curve:"parabola",
@@ -1247,6 +1234,18 @@ function pieceCurve(pc, start, warns, tag, endAt){
       p.x2 = p.x1 + h*Math.sin(az*D2R);
       p.y2 = p.y1 + h*Math.cos(az*D2R);
       p.z2 = p.z1 + L*Math.sin(el*D2R);
+    }
+    /* 沿自己的方向往外延長。被別的段定義的那一端不延長 —— 那一端的意思是
+       「就在那個點上」,再往外推等於自我矛盾(UI 上也會把該欄位鎖起來)。 */
+    const eS = start ? 0 : (num(pc.extS) || 0);
+    const eE = endAt  ? 0 : (num(pc.extE) || 0);
+    if (eS || eE){
+      const dx = p.x2-p.x1, dy = p.y2-p.y1, dz = p.z2-p.z1, L0 = Math.hypot(dx, dy, dz);
+      if (L0 < 1e-12) return curveErr("兩端點重合,無法決定延長方向");
+      const ux = dx/L0, uy = dy/L0, uz = dz/L0;
+      if (eS){ p.x1 -= ux*eS; p.y1 -= uy*eS; p.z1 -= uz*eS; }
+      if (eE){ p.x2 += ux*eE; p.y2 += uy*eE; p.z2 += uz*eE; }
+      if (L0 + eS + eE <= 1e-9) return curveErr("延長後長度 ≤ 0");
     }
     return curveLINE(p);
   }
@@ -1931,8 +1930,7 @@ function normState(s){
         if (sp0.tol === undefined && Number.isFinite(+sp0.tolMm)) out.split.tol = (+sp0.tolMm)/1000;
         delete out.split.tolMm;
         out.xf = { ...XF_DEF(), ...(pc.xf || {}) };
-        if (!Number.isFinite(+out._c)) out._c = i;      // 舊檔:照當時順序固定下來
-        else out._c = +out._c;
+        delete out._c;                                  // v3.11:段不再各自分色
         // v3.8:cont / endCont 兩個布林改成可以指到任一段的 sRef / eRef。
         // 判斷要看「原始的 pc」有沒有帶舊欄位 —— out 已經合併過 defaultPiece,永遠有 sRef/eRef。
         if (pc.sRef === undefined)
@@ -2415,12 +2413,24 @@ function pieceCard(g, pc, pi, info){
         : P1())}</div>`;
 
   if (pc.type === "LINE"){
+    const sFixed = !!sv;                               // 起點由別的段決定
+    const info0 = info;
     body = startRow + `<div class="fields g4" style="margin-top:8px">${
       endSel + (ec ? "" :
         fld("終點定義", k + "endMode", pc.endMode, { select:[["point","終點座標"],["polar","長度 + 方位角 + 仰角"]] }) +
         (pc.endMode === "polar"
           ? fld(`長度 L (${UL()})`, k + "len", pc.len) + fld("方位角 (°)", k + "az", pc.az) + fld("仰角 (°)", k + "el", pc.el)
-          : P2()))}</div>` + endHint;
+          : P2()))}</div>` + endHint +
+      `<div class="fields g4" style="margin-top:8px">${
+        fld(`起點端延長 (${UL()})`, k + "extS", pc.extS, { disabled:sFixed }) +
+        fld(`終點端延長 (${UL()})`, k + "extE", pc.extE, { disabled:ec })}
+        <div class="f"><span>&nbsp;</span><button class="btn" data-op="extclr" data-p="${pi}"${
+          (num(pc.extS) || num(pc.extE)) ? "" : " disabled"}>清除延長</button></div></div>
+      <div class="hint">沿<b>這條線自己的方向</b>往外加長,方向與角度都不變 ——
+        已經畫好的線要再伸出去時不必回頭改座標。填負值就是縮短。
+        ${sFixed ? "<b>起點由別的段決定,不能延長</b>(要動請改那一段)。" : ""}
+        ${ec ? "<b>終點接到別的段,不能延長</b>。" : ""}
+        ${info0 && info0.len ? `目前實際長度 <b>${info0.len.toFixed(3)} ${UL()}</b>。` : ""}</div>`;
   }
   else if (pc.type === "ARC"){
     const modeF = fld("定義方式", k + "arcMode", pc.arcMode,
@@ -2506,7 +2516,7 @@ function pieceCard(g, pc, pi, info){
         旋轉中心預設是<b>本段起點</b>,所以單純轉方向不會把接縫扯開。</div></div></details>`;
 
   return `<details class="pc" data-pi="${pi}">
-    <summary><span class="idx" style="background:${pieceColor(pcSlot(g, pi))}">${pi+1}</span>
+    <summary><span class="idx" style="background:${TYPES[g.type].color}">${pi+1}</span>
       <select data-k="${k}type" onclick="event.stopPropagation()">${
         Object.entries(PIECES).map(([v,t]) => `<option value="${v}"${v===pc.type?" selected":""}>${t.name}</option>`).join("")}</select>
       <span class="st" data-ro>${stat}</span>
@@ -2975,7 +2985,7 @@ function applyField(root, k, el){
     const i = +mt[1], old = root.pieces[i];
     const keep = { sRef:old.sRef, eRef:old.eRef, split:old.split, ovr:old.ovr,
                    etype:old.etype, mat:old.mat, sect:old.sect,
-                   x1:old.x1, y1:old.y1, z1:old.z1, _i:old._i, _c:old._c };
+                   x1:old.x1, y1:old.y1, z1:old.z1, _i:old._i };
     root.pieces[i] = { ...defaultPiece(old.type), ...keep, type:old.type };
   }
 }
@@ -3091,6 +3101,11 @@ $("#pane").addEventListener("click", e => {
   if (op === "medel" && g){ g.addE.splice(+b.dataset.i, 1); recompute(true); return; }
   if (op === "nclrall" && g){ g.edits = {}; g.dels = []; SELNODE = null; recompute(true); return; }
   if (op === "xfrst"){ g.xf = XF_DEF(); recompute(true); return; }
+  if (op === "extclr" && g){
+    const pc0 = (g.pieces || [])[+b.dataset.p];
+    if (pc0){ pc0.extS = 0; pc0.extE = 0; }
+    recompute(true); return;
+  }
   if (op === "sagz" && g){
     const pc0 = (g.pieces || [])[+b.dataset.p];
     const rr = SELNODE && MODEL.byId.get(SELNODE.gid);
@@ -3114,7 +3129,6 @@ $("#pane").addEventListener("click", e => {
   if (op === "addpc"){
     g.pieces = g.pieces || [];
     const pc = defaultPiece(b.dataset.t);
-    pc._c = freeSlot(g);
     g.pieces.push(pc); fixFirstPiece(g);
     FORCE_OPEN = new Set(["pc:" + (g.pieces.length - 1)]);
   }
@@ -3469,13 +3483,12 @@ function renderChecks(){
     <div><span class="k">群組</span><b>${MODEL.names.length}</b></div>`;
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
-    ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」各段:</span>` +
-      (selR.g.pieces || []).map((pc, i) =>
-        `<span><i style="background:${pieceColor(pcSlot(selR.g, i))}"></i>${i+1} ${esc(PIECES[pc.type].name)}</span>`).join("")
+    ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${
+        (selR.g.pieces || []).length} 段,圖上的<b>圓形編號</b>標在各段中間</span>`
     : "";
   $("#legend").innerHTML = MODEL.groups.map(r =>
     `<span><i style="background:${r.color}"></i>${esc(r.g.name)}</span>`).join("") + segLeg +
-    `<span style="color:var(--ink-3)">粗線 = 實際元素 · 淡線 = 原始參數曲線</span>`;
+    `<span style="color:var(--ink-3)">粗線 = 編輯中的組 · 細線 = 其他組 · 淡線 = 原始參數曲線</span>`;
 }
 
 /* ==========================================================================
@@ -3533,9 +3546,12 @@ function curvePolys(r){
   });
   return out;
 }
-// 只有「正在編輯、而且不只一段」的曲線組才分色
+/* v3.11:段不再各自分色。
+   分色會跟別組的主題色撞在一起(尤其被選到的組第一段是藍色,跟其他藍色組分不出來),
+   而且顏色本來就有限。改成:**整組一個顏色**,段別靠「畫在段中間的編號徽章」分辨;
+   正在編輯的組用**加粗**表示,不換色。                                            */
 const pcOn = r => SEL === r.g.id && r.g.type === "CURVE" && (r.g.pieces || []).length > 1;
-const colOf = (r, pi) => (pcOn(r) && pi != null && pi >= 0) ? pieceColor(pcSlot(r.g, pi)) : r.color;
+const colOf = r => r.color;
 
 /* ---------- 相機 ---------- */
 function camUpdate(){
@@ -3690,6 +3706,55 @@ function drawTriad(W, H){
   ctx.beginPath(); ctx.arc(ox, oy, 1.6, 0, 7); ctx.fill();
 }
 
+/* 段的編號徽章:畫在該段「實際折線」的中點(沿長度取一半,不是取中間那個節點,
+   節點被刪過時才不會偏掉)。徽章用組色實心 + 白字,才不會跟線本身混在一起。 */
+function drawPieceTags(r){
+  const byPi = new Map();
+  elemPolysBy(r).forEach(pl => {
+    if (pl.pi == null || pl.pi < 0) return;
+    if (!byPi.has(pl.pi)) byPi.set(pl.pi, []);
+    byPi.get(pl.pi).push(pl.pts);
+  });
+  const placed = [];
+  byPi.forEach((runs, pi) => {
+    // 同一段可能被斷點切成好幾串,取最長的那一串
+    let best = null, bestL = -1;
+    runs.forEach(pts => {
+      let L = 0;
+      for (let i = 1; i < pts.length; i++) L += dist3(pts[i-1], pts[i]);
+      if (L > bestL){ bestL = L; best = pts; }
+    });
+    if (!best || best.length < 2) return;
+    let acc = 0, mid = best[0];
+    for (let i = 1; i < best.length; i++){
+      const d = dist3(best[i-1], best[i]);
+      if (acc + d >= bestL/2){
+        const t = d > 1e-12 ? (bestL/2 - acc)/d : 0;
+        mid = { x:best[i-1].x + (best[i].x-best[i-1].x)*t,
+                y:best[i-1].y + (best[i].y-best[i-1].y)*t,
+                z:best[i-1].z + (best[i].z-best[i-1].z)*t };
+        break;
+      }
+      acc += d;
+    }
+    const sc = toS(mid);
+    // 幾段擠在一起時稍微錯開,免得徽章互相蓋住
+    let sy = sc.y;
+    while (placed.some(q => Math.abs(q.x - sc.x) < 15 && Math.abs(q.y - sy) < 15)) sy -= 15;
+    placed.push({ x:sc.x, y:sy });
+    const txt = String(pi + 1), rad = txt.length > 1 ? 9.5 : 8;
+    ctx.save();
+    ctx.fillStyle = r.color;
+    ctx.beginPath(); ctx.arc(sc.x, sy, rad, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "700 10.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    ctx.fillText(txt, sc.x, sy + 0.5);
+    ctx.restore();
+  });
+}
+
 /* ---------- 主繪圖 ---------- */
 function draw(){
   const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
@@ -3714,17 +3779,17 @@ function draw(){
     } else {
       // 參考:原始參數曲線(淡)
       ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = colOf(r);
       curvePolys(r).forEach(pl => {
-        ctx.strokeStyle = colOf(r, pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
       });
       ctx.globalAlpha = 1;
-      // 實際元素(節點被移動或刪除後,線會跟著走);編輯中的組各段分色
-      ctx.lineWidth = on ? 3 : 1.9;
+      // 實際元素(節點被移動或刪除後,線會跟著走);編輯中的組只加粗,不換色
+      ctx.lineWidth = on ? 3.6 : 1.9;
+      ctx.strokeStyle = colOf(r);
       elemPolysBy(r).forEach(pl => {
-        ctx.strokeStyle = colOf(r, pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
@@ -3733,7 +3798,8 @@ function draw(){
     }
     if (showNodes && r.nodes.length){
       const rad = r.nodes.length > 400 ? 1.2 : (r.nodes.length > 150 ? 1.7 : 2.4);
-      r.nodes.forEach(n => { ctx.fillStyle = colOf(r, n.pi);
+      ctx.fillStyle = colOf(r);
+      r.nodes.forEach(n => {
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.fillStyle = "#fff"; ctx.strokeStyle = r.color; ctx.lineWidth = 1.6;
       [r.nodes[0], r.nodes[r.nodes.length-1]].forEach(n => {
@@ -3743,6 +3809,9 @@ function draw(){
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,3.6,0,7); ctx.fill(); });
     }
   });
+
+  // 段的編號徽章:畫在整個群組迴圈之後,才不會被後面畫的組蓋住(立面視角很容易重疊)
+  MODEL.groups.forEach(r => { if (pcOn(r)) drawPieceTags(r); });
 
   if (SELELEM){
     const rr = MODEL.byId.get(SELELEM.gid);
@@ -4637,7 +4706,7 @@ function runTests(){
   yes("S6","兩段 → 兩條分段折線", sp.length === 2, sp.length, 2);
   yes("S6","分段折線帶著段序號", sp.map(x => x.pi).join(",") === "0,1", sp.map(x => x.pi).join(","), "0,1");
   chk("S6","接縫兩邊共用同一個點", Math.hypot(sp[0].pts[sp[0].pts.length-1].x - sp[1].pts[0].x, 0, 0), 0, 1e-12, "m");
-  yes("S6","段色互不相同", pieceColor(0) !== pieceColor(1), pieceColor(0) + "/" + pieceColor(1), "不同");
+  yes("S6","段一律用組色(不再各段分色)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
 
   /* ---- 復原 / 重做 ---- */
   const savedHist = { past:HIST.past.slice(), future:HIST.future.slice(), key:HIST.key, t:HIST.t };
@@ -4827,14 +4896,19 @@ function runTests(){
     yes("R1","頭尾平分不改總長", Math.abs(half[half.length-1] - 100) < 1e-9, half[half.length-1], 100);
   }
   {
-    // 段色綁在段身上,拖曳排序只換編號
-    const g0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), pieces:[
-      { ...defaultPiece("LINE") }, { ...defaultPiece("SAG") }, { ...defaultPiece("ARC") }] }] }).groups[0];
-    const c0 = g0.pieces.map((_, i) => pieceColor(pcSlot(g0, i)));
-    g0.pieces.splice(0, 0, g0.pieces.splice(1, 1)[0]);   // 第 2 段拉到第 1 個
-    const c1 = g0.pieces.map((_, i) => pieceColor(pcSlot(g0, i)));
-    yes("R2","段排序後顏色跟著段走", c1[0] === c0[1] && c1[1] === c0[0] && c1[2] === c0[2],
-      c1.join(","), [c0[1],c0[0],c0[2]].join(","));
+    // v3.11:段不再分色,改成用「畫在段中間的編號」分辨;顏色一律跟組色
+    const st0 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"cc", name:"C", pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
+      { ...defaultPiece("LINE"), sRef:"prev", x2:200,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
+      { ...defaultPiece("LINE"), sRef:"prev", x2:300,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } }] }] });
+    const rC = buildModel(st0, [], []).groups[0];
+    yes("R2","整組同一個顏色", colOf(rC) === rC.color, colOf(rC), rC.color);
+    yes("R2","段的身分靠 pi 帶到折線上",
+      elemPolysBy(rC).map(x => x.pi).join(",") === "0,1,2",
+      elemPolysBy(rC).map(x => x.pi).join(","), "0,1,2");
+    yes("R2","舊檔的段配色欄位會被清掉",
+      st0.groups[0].pieces.every(pc => pc._c === undefined),
+      JSON.stringify(st0.groups[0].pieces.map(pc => pc._c)), "全部 undefined");
   }
   {
     // 段 1 與段 2 的終點都指到段 3 的起點
@@ -4913,6 +4987,47 @@ function runTests(){
         { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
     chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
     chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
+  }
+  {
+    // v3.11:直線的兩端延長
+    const ln = (extS, extE, extra) => {
+      const st2 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"ex", name:"X", pieces:[
+        { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:30,y2:40,z2:0,
+          extS, extE, split:{ ...SPLIT_DEF, count:1 }, ...(extra || {}) }] }] });
+      const r2 = buildModel(st2, [], []).groups[0];
+      return { a:r2.nodes[0], b:r2.nodes[r2.nodes.length-1], len:r2.stat.len3d };
+    };
+    chk("X1","不延長時長度 = 50", ln(0,0).len, 50, 1e-9, "");
+    const e1 = ln(0,10);                                // 3-4-5 → 單位向量 (0.6,0.8)
+    chk("X1","終點端延長 10 → 長度 60", e1.len, 60, 1e-9, "");
+    chk("X1","終點沿原方向移動 X", e1.b.x, 36, 1e-9, "");
+    chk("X1","終點沿原方向移動 Y", e1.b.y, 48, 1e-9, "");
+    const e2 = ln(5,10);
+    chk("X1","兩端都延長 → 長度 65", e2.len, 65, 1e-9, "");
+    chk("X1","起點往反方向退 X", e2.a.x, -3, 1e-9, "");
+    chk("X1","起點往反方向退 Y", e2.a.y, -4, 1e-9, "");
+    chk("X1","負值 = 縮短", ln(0,-10).len, 40, 1e-9, "");
+    // 方向不變
+    const dirOf = o => Math.atan2(o.b.y-o.a.y, o.b.x-o.a.x);
+    yes("X1","延長不改變方向", Math.abs(dirOf(ln(0,0)) - dirOf(ln(7,13))) < 1e-12,
+      dirOf(ln(7,13)).toFixed(12), dirOf(ln(0,0)).toFixed(12));
+    // 鉛直線也要對(單位向量算法不能只看平面)
+    const st3 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"ev", name:"V", pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:0,y2:0,z2:10,
+        extE:5, split:{ ...SPLIT_DEF, count:1 } }] }] });
+    const rv = buildModel(st3, [], []).groups[0];
+    chk("X1","鉛直線延長", rv.nodes[1].z, 15, 1e-9, "");
+    // 端點由別的段決定時,延長要被忽略(不能把接縫扯開)
+    const st4 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"eg", name:"G", pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } },
+      { ...defaultPiece("LINE"), sRef:"prev", eRef:"2:s", extS:50, extE:70, split:{ ...SPLIT_DEF, count:1 } },
+      { ...defaultPiece("LINE"), sRef:"", x1:300,y1:0,z1:0, x2:400,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } }
+    ] }] });
+    const rg = buildModel(st4, [], []).groups[0];
+    const seg2 = rg.nodes.filter(n => n.pi === 1);
+    yes("X1","兩端都被別段決定時,延長被忽略",
+      seg2.length === 1 && Math.abs(seg2[0].x - 300) < 1e-9,
+      seg2.map(n => n.x).join(","), "300(接縫沒被扯開)");
   }
   {
     // v3.10:懸垂的垂度基準
