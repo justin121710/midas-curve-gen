@@ -2335,19 +2335,31 @@ function pieceCard(g, pc, pi, info){
   const k = `pieces.${pi}.`;
   const first = pi === 0;
   const cont = contOn(pc, pi);
-  // 可以被指到的目標:同組任何「別的段」的 起點 / 中點 / 終點
-  const refOpts = (g.pieces || []).map((q, j) => j === pi ? null
-      : ["s","m","e"].map(a => [`${j}:${a}`, `段 ${j+1} ${PIECES[q.type].name} 的${REF_AT[a]}`]))
-    .filter(Boolean).reduce((acc, arr) => acc.concat(arr), []);
+  /* 段的參照分兩層下拉:先挑「哪一段」,挑完才出現「起點 / 中點 / 終點」。
+     一次把所有段 × 三個位置攤平成一列會爆炸(10 段就 30 個選項)。 */
+  const segOpts = (g.pieces || []).map((q, j) => j === pi ? null
+      : [String(j), `段 ${j+1}(${PIECES[q.type].name})`]).filter(Boolean);
+  const atOpts = [["s","起點"],["m","中點"],["e","終點"]];
+  const refName = v => {
+    const r = parseRef(v); if (!r) return "";
+    const q = (g.pieces || [])[r.pi];
+    return `段 ${r.pi+1}${q ? "(" + PIECES[q.type].name + ")" : ""}的${REF_AT[r.at]}`;
+  };
+  // 回傳「段」下拉 +(挑到段時才有的)「位置」下拉
+  const refPair = (label, key, val, opts0) => {
+    const r = parseRef(val);
+    const gv = r ? String(r.pi) : String(val || "");
+    return fld(label, k + key + "G", gv, { select:[...opts0, ...segOpts] }) +
+      (r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "");
+  };
   const ec = endRefOn(pc);
   const endSel = END_CONT_T[pc.type]
-    ? fld("終點", k + "eRef", eRefOf(pc),
-        { select:[["","自訂座標"], ...refOpts] })
+    ? refPair("終點", "eRef", eRefOf(pc), [["","自訂座標"]])
     : "";
   const endHint = ec
-    ? `<div class="hint">終點 = <b>${esc((refOpts.find(o => o[0] === eRefOf(pc)) || ["",""])[1] || "另一段")}</b>;
+    ? `<div class="hint">終點 = <b>${esc(refName(eRefOf(pc)) || "另一段")}</b>;
         對方一改,這一段就跟著拉過去。<b>接到「下一段的起點」時接縫節點共用不重複</b>,
-        接到其他段則只是座標重合、不併節點。</div>`
+        接到其他段則座標重合,再由「合併重合節點」併成同一個。</div>`
     : "";
   const P1 = () => fld("起點 X", k + "x1", pc.x1) + fld("起點 Y", k + "y1", pc.y1) + fld("起點 Z", k + "z1", pc.z1);
   const P2 = (l) => fld((l||"終點") + " X", k + "x2", pc.x2) + fld((l||"終點") + " Y", k + "y2", pc.y2) + fld((l||"終點") + " Z", k + "z2", pc.z2);
@@ -2355,12 +2367,12 @@ function pieceCard(g, pc, pi, info){
 
   // 第一段就算殘留 "prev" 也要當成自訂座標,否則下拉選不到值、座標欄位會被藏起來
   const sv = (first && sRefOf(pc) === "prev") ? "" : sRefOf(pc);
-  const sOpts = [["","自訂座標"], ...(first ? [] : [["prev","接續前段終點"]]), ...refOpts];
+  const sHead = [["","自訂座標"], ...(first ? [] : [["prev","接續前段終點"]])];
+  const svName = sv === "prev" ? "前一段的終點" : refName(sv);
   const startRow = `<div class="fields g4">${
-      fld("起點", k + "sRef", sv, { select:sOpts }) +
-      (sv ? `<div class="hint" style="grid-column:span 3;margin:14px 0 0">起點 = <b>${
-          esc((sOpts.find(o => o[0] === sv) || ["",""])[1])}</b>。${
-          cont ? "與前段<b>共用接縫節點</b>。" : "座標重合但<b>不共用節點</b>(需要相連請用「手動元素」接起來)。"}</div>`
+      refPair("起點", "sRef", sv, sHead) +
+      (sv ? `<div class="hint" style="grid-column:span 2;margin:14px 0 0">起點 = <b>${esc(svName)}</b>。${
+          cont ? "與前段<b>共用接縫節點</b>。" : "座標重合,再由「合併重合節點」併成同一個。"}</div>`
         : P1())}</div>`;
 
   if (pc.type === "LINE"){
@@ -2419,7 +2431,7 @@ function pieceCard(g, pc, pi, info){
   }
   else if (pc.type === "POINT"){
     body = `<div class="fields g4">${
-      fld("連接", k + "sRef", sv, { select:sOpts }) +
+      refPair("連接", "sRef", sv, sHead) +
       P2("座標")}</div>
       <div class="hint">${cont ? "會從前段終點拉一根直線元素到這個座標。" : "只加一個節點,不產生元素——適合錨碇點、支承點。"}</div>`;
   }
@@ -2812,6 +2824,9 @@ function setPath(root, key, v){
   const last = /^\d+$/.test(ps[ps.length-1]) ? +ps[ps.length-1] : ps[ps.length-1];
   o[last] = v;
 }
+function getPath(root, key){
+  return key.split(".").reduce((o, k) => (o == null ? o : o[/^\d+$/.test(k) ? +k : k]), root);
+}
 function assignFromEl(root, key, el){
   let v;
   if (el.type === "checkbox") v = el.checked;
@@ -2882,6 +2897,20 @@ function applyField(root, k, el){
     const cur = root.edits[SELNODE.ri] || { x:nd.x, y:nd.y, z:nd.z };
     cur[k.slice(1)] = el.value === "" ? NaN : Number(el.value);
     root.edits[SELNODE.ri] = cur;
+    return;
+  }
+  // 段的參照拆成兩個下拉:先選段(…RefG),再選那一段的哪一點(…RefA)。
+  // 存進 state 的仍然是單一個字串 "<段索引>:<s|m|e>",這裡只負責把兩半拼回去。
+  const mr = k.match(/^(pieces\.\d+\.)(sRef|eRef)(G|A)$/);
+  if (mr){
+    const base = mr[1] + mr[2];
+    const cur = parseRef(String(getPath(root, base) || ""));
+    if (mr[3] === "G"){
+      const v = el.value;                              // "" | "prev" | "<段索引>"
+      setPath(root, base, (v === "" || v === "prev") ? v : v + ":" + (cur ? cur.at : "s"));
+    } else if (cur){
+      setPath(root, base, cur.pi + ":" + el.value);    // 只換 起點/中點/終點
+    }
     return;
   }
   assignFromEl(root, k, el);
@@ -4817,6 +4846,29 @@ function runTests(){
         { ...defaultPiece("POINT"), sRef:"", x2:0.004, y2:0, z2:0 }] }] });
     chk("R6","容差 0:差 4 mm 不併", buildModel(tolSt({ on:true, tol:0 }), [], []).tot.n, 2, 0, "");
     chk("R6","容差 0.01:差 4 mm 會併", buildModel(tolSt({ on:true, tol:0.01 }), [], []).tot.n, 1, 0, "");
+  }
+  {
+    // 段參照的兩層下拉:先選段(…RefG)再選位置(…RefA),存回去仍是單一字串
+    const gR = { ...defaultGroup("CURVE"), id:"rr", name:"R" };
+    gR.pieces = [{ ...defaultPiece("LINE"), sRef:"" }, { ...defaultPiece("LINE"), sRef:"prev" },
+                 { ...defaultPiece("LINE"), sRef:"prev" }];
+    const fake = v => ({ value:v, tagName:"SELECT", type:"select-one" });
+    applyField(gR, "pieces.0.eRefG", fake("2"));
+    yes("R8","選了段之後預設指向它的起點", gR.pieces[0].eRef === "2:s", gR.pieces[0].eRef, "2:s");
+    applyField(gR, "pieces.0.eRefA", fake("m"));
+    yes("R8","位置可以單獨改", gR.pieces[0].eRef === "2:m", gR.pieces[0].eRef, "2:m");
+    applyField(gR, "pieces.0.eRefG", fake("1"));
+    yes("R8","換段時保留原本選的位置", gR.pieces[0].eRef === "1:m", gR.pieces[0].eRef, "1:m");
+    applyField(gR, "pieces.0.eRefG", fake(""));
+    yes("R8","退回自訂座標", gR.pieces[0].eRef === "", JSON.stringify(gR.pieces[0].eRef), '""');
+    applyField(gR, "pieces.0.eRefA", fake("e"));
+    yes("R8","沒選段時改位置不會憑空生出參照", gR.pieces[0].eRef === "",
+      JSON.stringify(gR.pieces[0].eRef), '""');
+    applyField(gR, "pieces.1.sRefG", fake("prev"));
+    yes("R8","起點可以選回「接續前段終點」", gR.pieces[1].sRef === "prev", gR.pieces[1].sRef, "prev");
+    applyField(gR, "pieces.1.sRefG", fake("2"));
+    applyField(gR, "pieces.1.sRefA", fake("e"));
+    yes("R8","起點也能指到別段的終點", gR.pieces[1].sRef === "2:e", gR.pieces[1].sRef, "2:e");
   }
   {
     // 第一段一定要能自己給起點座標 —— 新建的組不會經過 normState,所以 defaultGroup 本身就要對
