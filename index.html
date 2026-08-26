@@ -831,6 +831,36 @@ function finishRem(us, cv, rem, nominal, policy, tag, warns){
   return out;
 }
 
+/* 直線延長的分割:**基準段照原本的規則切,結果與沒延長時一模一樣**(節點座標、元素都不動),
+   延長段自己另外切,零頭照使用者選的「餘數處理」決定。
+   —— 延長的定義是「往外多接元素」,不是把整條線重新分割。                          */
+function splitLineExt(cv, sp, ex, tag, warns){
+  const { eS, eE, L, total } = ex;
+  const gu = s => clamp(s/total, 0, 1);                // 直線:弧長與 u 成正比
+  const sub = (s0, len, dir) => ({ len, uAtS:t => clamp(t/len, 0, 1),
+                                   pt:t => cv.pt(gu(s0 + dir*t*len)) });
+  // 基準段:同樣的長度、同樣的 split 參數 → 切出來的站點與沒延長時相同
+  const baseU = splitCurve(sub(eS, L, 1), sp, tag, warns);
+  const nEl = Math.max(1, baseU.length - 1);
+  // 延長段用的標稱間距:間距模式就用那個間距,其餘沿用基準段實際的元素長
+  const nominal = sp.mode === "spacing" ? (num(sp.spacing) > 0 ? num(sp.spacing) : L/nEl)
+                : sp.mode === "tol"     ? (num(sp.maxSpacing) > 0 ? num(sp.maxSpacing) : L/nEl)
+                : L/nEl;
+  const spExt = { ...sp, mode:"spacing", spacing:nominal };
+  const S = baseU.map(u => eS + u*L);
+  if (eE > 1e-12)
+    splitCurve(sub(eS + L, eE, 1), spExt, tag + "終點端延長:", warns)
+      .forEach(t => { if (t > 1e-12) S.push(eS + L + t*eE); });
+  // 起點端由基準段起點「往外」切,整距元素才會貼著基準段、零頭落在最外側
+  if (eS > 1e-12)
+    splitCurve(sub(eS, eS, -1), spExt, tag + "起點端延長:", warns)
+      .forEach(t => { if (t > 1e-12) S.push(eS - t*eS); });
+  S.sort((a, b) => a - b);
+  const out = [];
+  S.forEach(v => { if (!out.length || v - out[out.length-1] > 1e-9) out.push(v); });
+  return out.map(gu);
+}
+
 /* ==========================================================================
    6. 組模型
    ========================================================================== */
@@ -1219,7 +1249,7 @@ function buildModel(st, errs, warns){
 }
 
 // 依段的型別建立曲線;start 為繼承的起點(cont 時使用)
-function pieceCurve(pc, start, warns, tag, endAt){
+function pieceCurve(pc, start, warns, tag, endAt, noExtStart){
   const p = { ...pc, name:tag };
   if (start){ p.x1 = start.x; p.y1 = start.y; p.z1 = start.z; }
   if (endAt && END_CONT_T[pc.type] && !(pc.type === "ARC" && pc.arcMode === "center")){
@@ -1235,17 +1265,21 @@ function pieceCurve(pc, start, warns, tag, endAt){
       p.y2 = p.y1 + h*Math.cos(az*D2R);
       p.z2 = p.z1 + L*Math.sin(el*D2R);
     }
-    /* 沿自己的方向往外延長。被別的段定義的那一端不延長 —— 那一端的意思是
-       「就在那個點上」,再往外推等於自我矛盾(UI 上也會把該欄位鎖起來)。 */
-    const eS = start ? 0 : (num(pc.extS) || 0);
-    const eE = endAt  ? 0 : (num(pc.extE) || 0);
+    /* 沿自己的方向往外延長。延長是「往外多接一段」,**原本那段的節點與元素完全不動**
+       —— 幾何上先把線畫長,分割時再把基準段與延長段分開切(見 splitLineExt)。
+       被別的段定義的那一端不延長:那一端的意思是「就在那個點上」,再往外推會把接縫扯開。 */
+    const eS = (noExtStart || start) ? 0 : Math.max(0, num(pc.extS) || 0);
+    const eE = endAt ? 0 : Math.max(0, num(pc.extE) || 0);
     if (eS || eE){
       const dx = p.x2-p.x1, dy = p.y2-p.y1, dz = p.z2-p.z1, L0 = Math.hypot(dx, dy, dz);
       if (L0 < 1e-12) return curveErr("兩端點重合,無法決定延長方向");
       const ux = dx/L0, uy = dy/L0, uz = dz/L0;
-      if (eS){ p.x1 -= ux*eS; p.y1 -= uy*eS; p.z1 -= uz*eS; }
-      if (eE){ p.x2 += ux*eE; p.y2 += uy*eE; p.z2 += uz*eE; }
-      if (L0 + eS + eE <= 1e-9) return curveErr("延長後長度 ≤ 0");
+      const q = { ...p };
+      if (eS){ q.x1 = p.x1 - ux*eS; q.y1 = p.y1 - uy*eS; q.z1 = p.z1 - uz*eS; }
+      if (eE){ q.x2 = p.x2 + ux*eE; q.y2 = p.y2 + uy*eE; q.z2 = p.z2 + uz*eE; }
+      const cvx = curveLINE(q);
+      if (cvx.ok) cvx.meta.ext = { eS, eE, L:L0, total:L0 + eS + eE };
+      return cvx;
     }
     return curveLINE(p);
   }
@@ -1441,9 +1475,11 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
         infos.push(info); return;
       }
 
-      const cv0 = pieceCurve(pc, inherit ? startAt : null, warns, ptag, endAt);
+      const cv0 = pieceCurve(pc, inherit ? startAt : null, warns, ptag, endAt, cont);
       if (!cv0.ok){ errs.push(ptag + cv0.err); infos.push(info); return; }
-      const us = splitCurve(cv0, pc.split, ptag, warns);
+      const us = cv0.meta && cv0.meta.ext
+        ? splitLineExt(cv0, pc.split, cv0.meta.ext, ptag, warns)
+        : splitCurve(cv0, pc.split, ptag, warns);
       const fx = xfMake(pc.xf, us.map(u => cv0.pt(u)), true);
       const cv = fx ? xfCurve(cv0, fx) : cv0;           // 參考曲線一起轉,畫面才不會兩條分家
       info.curve = cv; info.meta = cv.meta; info.len = cv.len;
@@ -2223,7 +2259,7 @@ function fld(label, key, val, opt){
   } else if (opt.check){
     return `<label class="chk" style="margin-top:14px"><input type="checkbox" data-k="${key}"${val ? " checked" : ""}> ${esc(label)}</label>`;
   } else {
-    inner = `<input type="number" step="any" data-k="${key}" value="${Number.isFinite(+val) ? val : ""}"${opt.disabled ? " disabled" : ""}>`;
+    inner = `<input type="number" step="any"${opt.min !== undefined ? ` min="${opt.min}"` : ""} data-k="${key}" value="${Number.isFinite(+val) ? val : ""}"${opt.disabled ? " disabled" : ""}>`;
   }
   return `<label class="f"><span>${esc(label)}</span>${inner}</label>`;
 }
@@ -2422,15 +2458,16 @@ function pieceCard(g, pc, pi, info){
           ? fld(`長度 L (${UL()})`, k + "len", pc.len) + fld("方位角 (°)", k + "az", pc.az) + fld("仰角 (°)", k + "el", pc.el)
           : P2()))}</div>` + endHint +
       `<div class="fields g4" style="margin-top:8px">${
-        fld(`起點端延長 (${UL()})`, k + "extS", pc.extS, { disabled:sFixed }) +
-        fld(`終點端延長 (${UL()})`, k + "extE", pc.extE, { disabled:ec })}
+        fld(`起點端延長 (${UL()})`, k + "extS", pc.extS, { disabled:sFixed, min:0 }) +
+        fld(`終點端延長 (${UL()})`, k + "extE", pc.extE, { disabled:ec, min:0 })}
         <div class="f"><span>&nbsp;</span><button class="btn" data-op="extclr" data-p="${pi}"${
           (num(pc.extS) || num(pc.extE)) ? "" : " disabled"}>清除延長</button></div></div>
-      <div class="hint">沿<b>這條線自己的方向</b>往外加長,方向與角度都不變 ——
-        已經畫好的線要再伸出去時不必回頭改座標。填負值就是縮短。
+      <div class="hint">沿<b>這條線自己的方向</b>往外<b>多接一段元素</b>,方向與角度都不變。
+        <b>原本那段的節點與元素完全不動</b> —— 延長段自己再依上面「分割與元素覆寫」的規則切,
+        切不滿一格的零頭照你選的<b>餘數處理</b>決定。只能填 <b>0 或正值</b>(要縮短請改終點座標)。
         ${sFixed ? "<b>起點由別的段決定,不能延長</b>(要動請改那一段)。" : ""}
         ${ec ? "<b>終點接到別的段,不能延長</b>。" : ""}
-        ${info0 && info0.len ? `目前實際長度 <b>${info0.len.toFixed(3)} ${UL()}</b>。` : ""}</div>`;
+        ${info0 && info0.len ? `含延長後的總長 <b>${info0.len.toFixed(3)} ${UL()}</b>。` : ""}</div>`;
   }
   else if (pc.type === "ARC"){
     const modeF = fld("定義方式", k + "arcMode", pc.arcMode,
@@ -4999,14 +5036,14 @@ function runTests(){
     };
     chk("X1","不延長時長度 = 50", ln(0,0).len, 50, 1e-9, "");
     const e1 = ln(0,10);                                // 3-4-5 → 單位向量 (0.6,0.8)
-    chk("X1","終點端延長 10 → 長度 60", e1.len, 60, 1e-9, "");
-    chk("X1","終點沿原方向移動 X", e1.b.x, 36, 1e-9, "");
-    chk("X1","終點沿原方向移動 Y", e1.b.y, 48, 1e-9, "");
+    chk("X1","終點端延長 10 → 總長 60", e1.len, 60, 1e-9, "");
+    chk("X1","新的終點沿原方向", e1.b.x, 36, 1e-9, "");
+    chk("X1","新的終點沿原方向 Y", e1.b.y, 48, 1e-9, "");
     const e2 = ln(5,10);
-    chk("X1","兩端都延長 → 長度 65", e2.len, 65, 1e-9, "");
-    chk("X1","起點往反方向退 X", e2.a.x, -3, 1e-9, "");
-    chk("X1","起點往反方向退 Y", e2.a.y, -4, 1e-9, "");
-    chk("X1","負值 = 縮短", ln(0,-10).len, 40, 1e-9, "");
+    chk("X1","兩端都延長 → 總長 65", e2.len, 65, 1e-9, "");
+    chk("X1","新的起點往反方向 X", e2.a.x, -3, 1e-9, "");
+    chk("X1","新的起點往反方向 Y", e2.a.y, -4, 1e-9, "");
+    chk("X1","負值視同 0(延長只會增加元素)", ln(0,-10).len, 50, 1e-9, "");
     // 方向不變
     const dirOf = o => Math.atan2(o.b.y-o.a.y, o.b.x-o.a.x);
     yes("X1","延長不改變方向", Math.abs(dirOf(ln(0,0)) - dirOf(ln(7,13))) < 1e-12,
@@ -5016,7 +5053,9 @@ function runTests(){
       { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:0,y2:0,z2:10,
         extE:5, split:{ ...SPLIT_DEF, count:1 } }] }] });
     const rv = buildModel(st3, [], []).groups[0];
-    chk("X1","鉛直線延長", rv.nodes[1].z, 15, 1e-9, "");
+    yes("X1","鉛直線延長:基準端點保留",
+      rv.nodes.some(n => Math.abs(n.z - 10) < 1e-9), rv.nodes.map(n => n.z).join(","), "含 10");
+    chk("X1","鉛直線延長:最外端 = 15", rv.nodes[rv.nodes.length-1].z, 15, 1e-9, "");
     // 端點由別的段決定時,延長要被忽略(不能把接縫扯開)
     const st4 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"eg", name:"G", pieces:[
       { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 } },
@@ -5028,6 +5067,52 @@ function runTests(){
     yes("X1","兩端都被別段決定時,延長被忽略",
       seg2.length === 1 && Math.abs(seg2[0].x - 300) < 1e-9,
       seg2.map(n => n.x).join(","), "300(接縫沒被扯開)");
+
+    /* ---- 核心要求:延長只「多接元素」,原本的節點與元素完全不動 ---- */
+    const nodesOf = (extS, extE, sp) => {
+      const st5 = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"xn", name:"N", pieces:[
+        { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0,
+          extS, extE, split:sp }] }] });
+      const r5 = buildModel(st5, [], []).groups[0];
+      return r5.nodes.map(n => +n.x.toFixed(6));
+    };
+    const spC = { ...SPLIT_DEF, mode:"count", count:4 };            // 基準 4 段 × 25
+    const base = nodesOf(0, 0, spC);
+    yes("X2","基準:count=4 → 0,25,50,75,100", base.join(",") === "0,25,50,75,100", base.join(","), "0,25,50,75,100");
+    const extE = nodesOf(0, 50, spC);
+    yes("X2","終點端延長後,原本的節點原封不動",
+      extE.slice(0, 5).join(",") === base.join(","), extE.slice(0, 5).join(","), base.join(","));
+    yes("X2","延長段沿用基準段的元素長(25)再往外接",
+      extE.join(",") === "0,25,50,75,100,125,150", extE.join(","), "0,25,50,75,100,125,150");
+    const extS = nodesOf(50, 0, spC);
+    yes("X2","起點端延長後,原本的節點也原封不動",
+      extS.slice(-5).join(",") === base.join(","), extS.slice(-5).join(","), base.join(","));
+    yes("X2","起點端整距元素貼著基準段,零頭在最外側",
+      extS.join(",") === "-50,-25,0,25,50,75,100", extS.join(","), "-50,-25,0,25,50,75,100");
+    // 延長段除不盡 → 照「餘數處理」決定
+    const spS = { ...SPLIT_DEF, mode:"spacing", spacing:25, rem:"keep" };
+    const keep = nodesOf(0, 60, spS);
+    yes("X2","餘數處理=獨立留一段:延長段留一小段",
+      keep.join(",") === "0,25,50,75,100,125,150,160", keep.join(","), "0,25,50,75,100,125,150,160");
+    const merge = nodesOf(0, 60, { ...spS, rem:"merge" });
+    yes("X2","餘數處理=併入前一元素",
+      merge.join(",") === "0,25,50,75,100,125,160", merge.join(","), "0,25,50,75,100,125,160");
+    const trim = nodesOf(0, 60, { ...spS, rem:"trim" });
+    yes("X2","餘數處理=截短",
+      trim.join(",") === "0,25,50,75,100,125,150", trim.join(","), "0,25,50,75,100,125,150");
+    const even = nodesOf(0, 60, { ...spS, rem:"even" });
+    yes("X2","餘數處理=均分吸收:延長段等分,基準段仍不動",
+      even.slice(0, 5).join(",") === base.join(",") && even.length === 7,
+      even.join(","), "前 5 個 = 基準 + 均分 2 段");
+    // 元素也要一路串起來,不能斷
+    const stE = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"xe", name:"E", pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0,
+        extS:50, extE:50, split:spC }] }] });
+    const rE2 = buildModel(stE, [], []).groups[0];
+    yes("X2","延長段的元素與基準段連成一串",
+      rE2.elems.length === rE2.nodes.length - 1 &&
+      rE2.elems.every((e, i) => e.i === rE2.nodes[i].num && e.j === rE2.nodes[i+1].num),
+      `${rE2.elems.length} 元素 / ${rE2.nodes.length} 節點`, "n−1 且首尾相接");
   }
   {
     // v3.10:懸垂的垂度基準
