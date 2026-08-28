@@ -128,8 +128,6 @@
   textarea{resize:vertical}
   input:focus, select:focus, textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
   input.bad{border-color:var(--err); background:#fdf3f2}
-  /* 用不到的欄位要看得出來是用不到的(例如放置方式沒選到的那兩個) */
-  input:disabled, select:disabled, textarea:disabled{background:#f2f0ea; color:var(--ink-3); cursor:not-allowed}
   .chk{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-2); cursor:pointer}
   .cpick{display:flex; gap:5px; align-items:stretch; min-width:0}
   .cpick input[type=color]{flex:1 1 auto; min-width:0; height:27px; padding:1px 2px;
@@ -287,7 +285,7 @@
 
 <header>
   <h1>空間線型產生器</h1>
-  <span class="stage">群組架構 v3.16</span>
+  <span class="stage">群組架構 v3.15</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -2641,7 +2639,6 @@ function openGroupMenu(gid, box){
   d.innerHTML =
     `<button data-act="dup">原位複製</button>
      <button data-act="off">偏置複製…</button>
-     <button data-act="arr">沿線陣列…</button>
      <div class="sep"></div>
      <button data-act="tog">${g.on === false ? "啟用" : "停用"}</button>
      <div class="sep"></div>
@@ -2654,9 +2651,8 @@ function openGroupMenu(gid, box){
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const act = b.dataset.act;
     closeGroupMenu();
-    if (act === "dup"){ snapshot("dup:" + Date.now()); dupGroup(g, n => n + " 複本"); return; }
+    if (act === "dup"){ snapshot("dup:" + Date.now()); dupGroup(g, g.name + " 複本"); return; }
     if (act === "off"){ openOffsetDlg(g); return; }
-    if (act === "arr"){ openArrayDlg(g); return; }
     if (act === "tog"){ snapshot("tog:" + Date.now()); g.on = (g.on === false); recompute(true); return; }
     if (act === "del"){
       snapshot("del:" + Date.now());
@@ -2691,7 +2687,7 @@ function depChain(g, groups){
 const hasUpstream = g => depChain(g).length > 1;
 
 // mkName(原名) → 複本的名字。deep = true 時連上游一起複製並改指參照。
-function dupGroup(g, mkName, xfDelta, deep, quiet, afterG){
+function dupGroup(g, mkName, xfDelta, deep){
   const nameOf = typeof mkName === "function" ? mkName : (() => mkName);
   const src = deep ? depChain(g) : [g];
   const map = new Map();
@@ -2714,165 +2710,14 @@ function dupGroup(g, mkName, xfDelta, deep, quiet, afterG){
     if (Math.abs(num(xfDelta.rot) || 0) > 1e-12){
       xf.rot = (num(xf.rot) || 0) + (num(xfDelta.rot) || 0);
       xf.axis = xfDelta.axis || "Z";
-      // 沿線陣列要繞「基準點」轉,不是繞群組自己的中心
-      if (xfDelta.pivot){ xf.cmode = "custom";
-        xf.cx = xfDelta.pivot.x; xf.cy = xfDelta.pivot.y; xf.cz = xfDelta.pivot.z; }
     }
     if (xfDelta.mir){ xf.mir = xfDelta.mir; xf.mirAt = num(xfDelta.mirAt) || 0; }  // 鏡射是設定,不疊加
     c.xf = xf;
   });
-  // 一般插在原群組後面;連續複製多份時由呼叫端指定插入點,順序才不會反過來
-  const anchor = afterG && state.groups.includes(afterG) ? afterG : g;
-  state.groups.splice(state.groups.indexOf(anchor) + 1, 0, ...copies);
+  state.groups.splice(state.groups.indexOf(g) + 1, 0, ...copies);
   const main = map.get(g.id);
-  SEL = main;
-  if (!quiet) recompute(true);              // 一次做很多份時交給呼叫端最後統一重算
+  SEL = main; recompute(true);
   return copies.find(c => c.id === main);
-}
-
-/* ---- 沿線陣列 ----
-   把一個群組(可連同上游)沿另一條線複製 N 份。位置三種給法:
-     node    路徑上每個節點放一份(可每 n 個)
-     count   沿弧長等分 N 份(含頭尾)
-     spacing 每隔固定距離一份
-   每一站同時給切線方位角,「跟著線轉向」時繞基準點轉 —— 第一份維持原朝向。      */
-function pathStations(nodes, mode, opt){
-  const N = nodes.length;
-  if (N < 2) return [];
-  const cum = [0];
-  for (let i = 1; i < N; i++) cum.push(cum[i-1] + dist3(nodes[i-1], nodes[i]));
-  const L = cum[N-1];
-  if (!(L > 1e-9)) return [];
-  const azAt = i => {                        // 用相鄰兩點決定切線方位角
-    const a = nodes[Math.max(0, i-1)], b = nodes[Math.min(N-1, i+1)];
-    return azOf(b.x - a.x, b.y - a.y);
-  };
-  const at = t => {
-    const q = clamp(t, 0, L);
-    let i = 1; while (i < N-1 && cum[i] < q) i++;
-    const d = cum[i] - cum[i-1], u = d > 1e-12 ? (q - cum[i-1])/d : 0;
-    const a = nodes[i-1], b = nodes[i];
-    return { x:a.x + (b.x-a.x)*u, y:a.y + (b.y-a.y)*u, z:a.z + (b.z-a.z)*u,
-             az:azOf(b.x-a.x, b.y-a.y) };
-  };
-  const CAP = 200;
-  if (mode === "node"){
-    const ev = Math.max(1, Math.round(num(opt.every)) || 1);
-    const out = [];
-    for (let i = 0; i < N && out.length < CAP; i += ev)
-      out.push({ x:nodes[i].x, y:nodes[i].y, z:nodes[i].z, az:azAt(i) });
-    return out;
-  }
-  if (mode === "spacing"){
-    const d = Math.abs(num(opt.spacing)) || 0;
-    if (!(d > 1e-9)) return [];
-    const out = [];
-    for (let t = 0; t <= L + 1e-9 && out.length < CAP; t += d) out.push(at(t));
-    return out;
-  }
-  const n = clamp(Math.round(num(opt.count)) || 2, 1, CAP);
-  if (n === 1) return [at(0)];
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(at(L*i/(n-1)));
-  return out;
-}
-
-/* ---------- 沿線陣列對話框 ---------- */
-function openArrayDlg(g){
-  const m = document.createElement("div");
-  m.className = "mask";
-  const F = (lab, id, v, step) => `<label class="f"><span>${lab}</span>
-    <input type="number" step="${step || "any"}" id="${id}" value="${v}"></label>`;
-  const opts = refOptions(g.id).map(o => `<optgroup label="${esc(o.group)}">` +
-    o.items.map(([v,t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("") + `</optgroup>`).join("");
-  const up = depChain(g).filter(o => o.id !== g.id).map(o => o.name);
-  const deepRow = up.length ? `<div class="fields g3" style="margin-top:8px">
-      <label class="f" style="grid-column:span 3"><span>複製方式</span><select id="ar-deep">
-        <option value="1">獨立 —— 連 ${esc(up.join("、"))} 一起複製</option>
-        <option value="0">連動 —— 只複製這一個群組,仍掛在原來源</option>
-      </select></label></div>` : "";
-  m.innerHTML = `<div class="dlg" style="width:min(560px, calc(100vw - 32px))">
-      <h3>沿線陣列「${esc(g.name)}」</h3>
-      <div class="sub">把這個群組沿<b>另一條線</b>複製好幾份,每一份落在線上的一個位置。
-        橫隔板、橫繫、等距的墩柱都是這樣鋪出來的。</div>
-      <div class="fields g3">
-        <label class="f" style="grid-column:span 2"><span>沿哪一條線</span>
-          <select id="ar-path"><option value="">(未選)</option>${opts}</select></label>
-        <label class="f"><span>放置方式</span><select id="ar-mode">
-          <option value="node">每個節點一份</option>
-          <option value="count">等分 N 份</option>
-          <option value="spacing">每隔固定距離</option>
-        </select></label></div>
-      <div class="fields g3" style="margin-top:8px">
-        ${F("每 n 個節點", "ar-every", 1, "1") + F("份數 N", "ar-count", 5, "1") +
-          F(`間距 (${UL()})`, "ar-sp", dL(20))}</div>
-      <div class="fields g3" style="margin-top:8px">
-        <label class="f" style="grid-column:span 2"><span>基準點(對齊到線上的那一點)</span>
-          <select id="ar-base">
-            <option value="center">群組的範圍中心</option>
-            <option value="first">群組的第一個節點</option>
-          </select></label>
-        <label class="chk" style="margin-top:14px"><input type="checkbox" id="ar-turn" checked> 跟著線轉向</label></div>
-      ${deepRow}
-      <div class="hint" style="margin-top:9px">「跟著線轉向」會繞基準點轉,角度是各站切線方位角<b>減掉第一站的</b>
-        —— 所以第一份維持原本的朝向,後面才跟著彎。最多 200 份。</div>
-      <div class="btns">
-        <button class="btn" id="ar-cancel">取消</button>
-        <button class="btn p" id="ar-ok">建立</button></div>
-    </div>`;
-  document.body.appendChild(m);
-  const close = () => m.remove();
-  m.addEventListener("click", e => { if (e.target === m) close(); });
-  m.querySelector("#ar-cancel").onclick = close;
-  const esckey = e => { if (e.key === "Escape"){ close(); window.removeEventListener("keydown", esckey); } };
-  window.addEventListener("keydown", esckey);
-  const sync = () => {
-    const md = m.querySelector("#ar-mode").value;
-    m.querySelector("#ar-every").disabled = md !== "node";
-    m.querySelector("#ar-count").disabled = md !== "count";
-    m.querySelector("#ar-sp").disabled    = md !== "spacing";
-  };
-  m.querySelector("#ar-mode").onchange = sync; sync();
-  setTimeout(() => { const f = m.querySelector("#ar-path"); if (f) f.focus(); }, 0);
-
-  m.querySelector("#ar-ok").onclick = () => {
-    const gv = id => num(m.querySelector("#" + id).value) || 0;
-    const pathId = m.querySelector("#ar-path").value;
-    if (!pathId){ alert("請先選一條線當路徑。"); return; }
-    const pr = MODEL.byId.get(pathId);
-    const pn = pr ? chainOf(pr) : null;
-    if (!pn || pn.length < 2){ alert("這條線的節點不夠(至少要兩個)。"); return; }
-    const mode = m.querySelector("#ar-mode").value;
-    const stations = pathStations(pn, mode,
-      { every:gv("ar-every"), count:gv("ar-count"), spacing:gv("ar-sp") });
-    if (!stations.length){ alert("算不出任何放置位置,請檢查份數或間距。"); return; }
-    const src = MODEL.byId.get(g.id);
-    const own = src ? src.nodes.filter(n => n.gid === g.id) : [];
-    if (!own.length){ alert("這個群組目前沒有自己的節點,沒辦法決定基準點。"); return; }
-    const B = m.querySelector("#ar-base").value === "first"
-      ? { x:own[0].x, y:own[0].y, z:own[0].z }
-      : xfCenter({ cmode:"center" }, own);
-    const turn = m.querySelector("#ar-turn").checked;
-    const dsel = m.querySelector("#ar-deep");
-    const deep = dsel ? dsel.value === "1" : false;
-    const set = deep ? depChain(g) : [g];
-    if (turn && set.some(o => Math.abs(num((o.xf || {}).rot) || 0) > 1e-12)){
-      alert("要複製的群組裡已經有自己的旋轉設定,沒辦法再自動轉向。請取消「跟著線轉向」,或先把那個旋轉併進幾何。");
-      return;
-    }
-    close();
-    snapshot("array:" + Date.now());
-    const az0 = stations[0].az;
-    let anchor = g;
-    stations.forEach((st, i) => {
-      // 方位角自 +Y 順時針,xf 的 rot 是逆時針 —— 所以要取負號
-      const dA = ((st.az - az0 + 540) % 360) - 180;
-      anchor = dupGroup(g, n => `${n} 陣列${i+1}`,
-        { dx:st.x - B.x, dy:st.y - B.y, dz:st.z - B.z,
-          rot:turn ? -dA : 0, axis:"Z", pivot:turn ? B : null }, deep, true, anchor) || anchor;
-    });
-    recompute(true);
-  };
 }
 
 /* ---------- 偏置複製對話框 ---------- */
@@ -3553,32 +3398,23 @@ function manualSec(g, r){
 }
 
 /* ---- 被選取的元素 ---- */
-// 在圖面上點到任何群組的元素,都會切到那個群組並在這裡顯示它 —— 包含連接族。
-// 連接族的節點是從來源推導出來的,不能直接搬,所以只顯示資料、不給移動。
 function elemPickSec(g, r){
-  if (!r || !SELELEM || SELELEM.gid !== g.id) return "";
+  if (!r || g.type !== "CURVE" || !SELELEM || SELELEM.gid !== g.id) return "";
   const e = r.elems.find(x => x.num === SELELEM.num);
   if (!e) return "";
-  const movable = g.type === "CURVE";
-  const ok = movable && Number.isFinite(e.a.ri) && Number.isFinite(e.b.ri);
-  const info = `<div class="out" data-ro>
+  const ok = Number.isFinite(e.a.ri) && Number.isFinite(e.b.ri);
+  return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
+    `<div class="out" data-ro>
       <div><span class="k">元素編號</span> <b>${e.num}</b></div>
       <div><span class="k">節點 i–j</span> <b>${e.i} – ${e.j}</b></div>
       <div><span class="k">長度</span> <b>${e.len3d.toFixed(4)} ${UL()}</b></div>
-      <div><span class="k">類型 / 材料 / 斷面</span> <b>${esc(e.type)} / ${e.mat} / ${e.sect}</b></div></div>`;
-  if (!movable)
-    return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
-      info + `<div class="btns" style="margin-top:9px">
-         <button class="btn" data-op="eclr">取消選取</button></div>
-       <div class="hint">這是<b>${esc(TYPES[g.type].name)}</b>算出來的元素,兩端由來源群組決定,不能直接搬。
-         要改就改上面的連接設定,或改來源群組。</div>`, "hot");
-  return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
-    info + `${xfFields("$", XFT, "elem")}
+      <div><span class="k">類型 / 材料 / 斷面</span> <b>${esc(e.type)} / ${e.mat} / ${e.sect}</b></div></div>
+     ${xfFields("$", XFT, "elem")}
      <div class="btns" style="margin-top:9px">
        <button class="btn p" data-op="xfelem"${ok ? "" : " disabled"}>套用到此元素(兩端節點)</button>
        <button class="btn" data-op="eclr">取消選取</button></div>
      <div class="hint">移動元素 = 同時移動<b>兩端節點</b>,寫成座標覆寫;與它們相連的其他元素會跟著變形。
-       ${ok ? "" : "<b>此元素的端點不屬於本群組,無法移動。</b>"}</div>`, "hot");
+       ${ok ? "" : "<b>此元素的端點不屬於本組,無法移動。</b>"}</div>`, "hot");
 }
 
 function paneFor(g){
@@ -3589,7 +3425,6 @@ function paneFor(g){
       <label class="chk"><input type="checkbox" data-k="on"${g.on !== false ? " checked" : ""}> 啟用</label>
       <button class="btn" data-op="dup">複製</button>
       <button class="btn" data-op="offdup">偏置複製…</button>
-      <button class="btn" data-op="arrdlg">沿線陣列…</button>
       <button class="btn${xfActive(g.xf) ? " p" : ""}" data-op="xfdlg">平移旋轉…${
         xfActive(g.xf) ? " ●" : ""}</button>
       <button class="btn d" data-op="del">刪除</button></div>`;
@@ -3813,13 +3648,12 @@ function renderPane(){
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
     el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
-      SEC("目前沒有選取任何群組", "", `<div class="hint" style="margin:0;font-size:12.5px;line-height:1.8">
-        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。<br><br>
-        <b>一個群組 = 一串節點 + 連接它們的元素。</b>群組之間預設互不相干,不共用節點、不繼承方向、不共用編號。
-        每個群組自己決定起終點(全域座標直接給)、形狀、切幾個節點、元素種類與編號。<br><br>
-        要讓兩個群組產生關係,加一個<b>連接族</b>的群組 —— 那是唯一的耦合方式。</div>
-        <div class="btns" style="margin-top:12px">
-          <button class="btn p" data-op="demo">載入範例看看</button></div>`);
+      SEC("開始", "", `<div class="hint" style="margin:0;font-size:12.5px;line-height:1.8">
+        左側「<b>+ 新增組…</b>」加入一組。<br><br>
+        <b>一組 = 一串節點 + 連接它們的元素。</b>組與組預設互不相干,不共用節點、不繼承方向、不共用編號。
+        每一組自己決定起終點(全域座標直接給)、形狀、切幾個節點、元素種類與編號。<br><br>
+        要讓兩組產生關係,加一個<b>連接族</b>的組——那是唯一的耦合方式。</div>
+        <div class="btns" style="margin-top:12px"><button class="btn p" data-op="demo">載入範例看看</button></div>`);
     return;
   }
   const openKeys = FORCE_OPEN || captureOpen(el);
@@ -4045,7 +3879,6 @@ $("#pane").addEventListener("click", e => {
   if (op === "colauto" && g){ delete g.color; recompute(true); return; }
   if (op === "dup"){ dupGroup(g, n => n + " 複本"); return; }
   if (op === "offdup"){ openOffsetDlg(g); return; }
-  if (op === "arrdlg" && g){ openArrayDlg(g); return; }
   if (op === "ndel" && g && SELNODE && SELNODE.gid === g.id && nodeEditable(g, SELNODE)){
     g.dels = g.dels || []; if (!g.dels.includes(SELNODE.ri)) g.dels.push(SELNODE.ri);
     if (g.edits) delete g.edits[SELNODE.ri];
@@ -4798,7 +4631,9 @@ function draw(){
       r.nodes.forEach(n => {
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.globalAlpha = 1;
-      // v3.16:起點 / 終點不再特別標記 —— 同一個群組的節點一律長一樣
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = on ? 2 : 1.4;
+      [r.nodes[0], r.nodes[r.nodes.length-1]].forEach(n => {
+        const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+(on ? 2.2 : 1.2),0,7); ctx.fill(); ctx.stroke(); });
       ctx.fillStyle = "#a8710d";
       r.nodes.filter(n => n.edited).forEach(n => {
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+1.4,0,7); ctx.fill(); });
@@ -4986,10 +4821,9 @@ cv.addEventListener("click", e => {
   if (hit){
     SEL = hit.r.g.id; SELNODE = { gid:hit.r.g.id, ri:hit.n.ri, num:hit.n.num }; SELELEM = null;
   } else {
-    const pe = pickElemAt(e.offsetX, e.offsetY, 12);
+    const pe = pickElemAt(e.offsetX, e.offsetY, 9);
     if (pe){ SEL = pe.r.g.id; SELELEM = { gid:pe.r.g.id, num:pe.e.num }; SELNODE = null; }
-    // 點空白處 = 什麼都不選:清單不高亮,圖面上每個群組都回到自己的顏色
-    else { SEL = null; SELNODE = null; SELELEM = null; }
+    else { SELNODE = null; SELELEM = null; }
   }
   recompute(true); focusHot();
 });
@@ -5418,39 +5252,6 @@ function runTests(){
     chk("T4","垂落取自另一群組:X 仍照來源節點", lastE.b.x, 100, 1e-9, "m");
     yes("T4","垂落取自另一群組:下端就是那條線的既有節點",
       RF.nodes.length === 0, `自有節點 ${RF.nodes.length}`, "自有節點 0(已合併)");
-  }
-  {
-    // v3.16:沿線陣列的取站 —— 三種放置方式與切線方位角
-    const lineN = (n, dx, dy) => {
-      const out = [];
-      for (let i = 0; i <= n; i++) out.push({ x:i*dx, y:i*dy, z:0 });
-      return out;
-    };
-    const P = lineN(10, 10, 0);                       // 0 → 100,沿 +X(方位角 90°)
-    const c5 = pathStations(P, "count", { count:5 });
-    chk("A1","沿線陣列:等分 5 份 → 5 站", c5.length, 5, 0, "");
-    chk("A1","等分:第一站在起點", c5[0].x, 0, 1e-9, "m");
-    chk("A1","等分:最後一站在終點", c5[4].x, 100, 1e-9, "m");
-    chk("A1","等分:中間那站在一半", c5[2].x, 50, 1e-9, "m");
-    chk("A1","等分:切線方位角 = 90°(朝東)", c5[0].az, 90, 1e-9, "°");
-    const sp = pathStations(P, "spacing", { spacing:30 });
-    chk("A1","每隔 30 → 4 站(0/30/60/90)", sp.length, 4, 0, "");
-    chk("A1","每隔 30:第三站", sp[2].x, 60, 1e-9, "m");
-    const nd = pathStations(P, "node", { every:2 });
-    chk("A1","每 2 個節點 → 6 站", nd.length, 6, 0, "");
-    chk("A1","每 2 個節點:第二站", nd[1].x, 20, 1e-9, "m");
-    const nd1 = pathStations(P, "node", { every:1 });
-    chk("A1","每個節點一份 → 11 站", nd1.length, 11, 0, "");
-    // 轉 90° 的折線:頭尾切線方位角差 90°
-    const T = [{ x:0,y:0,z:0 },{ x:50,y:0,z:0 },{ x:100,y:0,z:0 },
-               { x:100,y:-50,z:0 },{ x:100,y:-100,z:0 }];
-    const t5 = pathStations(T, "node", { every:1 });
-    chk("A1","折線:起點方位角朝東", t5[0].az, 90, 1e-9, "°");
-    chk("A1","折線:終點方位角朝南", t5[4].az, 180, 1e-9, "°");
-    yes("A1","節點不足兩個時回空陣列",
-      pathStations([{ x:0,y:0,z:0 }], "count", { count:5 }).length === 0, 0, 0);
-    yes("A1","零長度路徑回空陣列",
-      pathStations([{ x:1,y:1,z:1 },{ x:1,y:1,z:1 }], "count", { count:5 }).length === 0, 0, 0);
   }
   {
     // 扇出:起點取自某群組的第 k 個節點
