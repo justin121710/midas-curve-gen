@@ -259,7 +259,7 @@
 
 <header>
   <h1>空間線型產生器</h1>
-  <span class="stage">組式架構 v3.12</span>
+  <span class="stage">組式架構 v3.11</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -741,21 +741,7 @@ function curveHELIX(g){
 /* ==========================================================================
    5. 分割
    ========================================================================== */
-/* 四種分割方式「量的是什麼」——弧長 / 弦線 / 座標差,不是同一件事,一定要寫清楚:
-     count   等分「曲線參數 u」。u 的意義由段型別決定:
-               直線 = 等長;圓弧 = 等圓心角(弧長與弦長都相等);
-               懸垂 = 等「弦線的水平投影」(x、y 隨 u 線性),**不是**等弧長;
-               螺旋 = 等圓心角(起訖半徑不同時弧長不等);
-               線形鏈 = **每個子段各自**切 N 根,子段內等弧長。
-     spacing 沿曲線量 **3D 弧長**(makeCurve 以 400 段折線累積)。節點之間的元素是**弦線**,
-               所以實際元素長度會**略短於**設定的間距(直線例外,兩者相同)。
-     axis    量的是 **X / Y / Z 軸的座標差**,既不是弧長也不是弦長:用一組垂直於該軸、
-               間隔 d 的平面去截曲線,交點放節點。斜的段元素長 = d / 方向餘弦 > d。
-     tol     量的是「曲線離弦線的最大垂距 ≤ 容差」,在容差內盡量放長;步長本身仍是弧長。 */
-const SPLIT_DEF = { mode:"count", count:20, spacing:5, tol:0.02, maxSpacing:20, rem:"even",
-                    axis:"x", axisSpacing:5, axisBase:"start", axisAt:0 };
-const AXIS_KEYS = [["x","X"],["y","Y"],["z","Z"]];
-const axisOf = sp => (sp && (sp.axis === "y" || sp.axis === "z")) ? sp.axis : "x";
+const SPLIT_DEF = { mode:"count", count:20, spacing:5, tol:0.02, maxSpacing:20, rem:"even" };
 
 // 弦線偏差:曲線在 [u0,u1] 之間離弦線最遠的垂距
 function maxDevOn(cv, u0, u1){
@@ -793,7 +779,6 @@ function splitCurve(cv, sp, tag, warns){
     for (let i = 0; i <= n; i++) us.push(cv.uAtS(d*i));
     return finishRem(us, cv, rem, d, sp.rem, tag, warns);
   }
-  if (sp.mode === "axis") return splitAxis(cv, sp, tag, warns);
   // 弦線偏差容差:逐步推進,二分找最大可用步長
   const tol = Math.max(cv.len*1e-9, num(sp.tol) || 0);   // 容差與座標同單位
   const dmax = (num(sp.maxSpacing) > 0) ? num(sp.maxSpacing) : cv.len;
@@ -816,97 +801,6 @@ function splitCurve(cv, sp, tag, warns){
   const rem = cv.len - cv_sOf(cv, us[us.length-1]);
   return finishRem(us, cv, rem, last, sp.rem, tag, warns);
 }
-/* ---- 軸向間距分割 ----
-   用一組垂直於 X / Y / Z 軸、間隔 d 的平面去截曲線,每個交點放一個節點。
-   **量的是該軸的座標差**,不是弧長也不是弦長:斜的段元素長度 = d / |方向餘弦| > d。
-   格線基準可選「本段起點」(起點一定落在格線上)或「指定座標」(對齊全域格網,
-   同一個基準值可讓不同段的節點對齊在同一組平面上)。
-   曲線在該軸上來回(非單調)時,**每一次穿越都會放節點**,折返點附近會出現短元素,另外警告。 */
-const AXIS_MAX_EL = 20000;                             // 保險上限,免得間距打太小把頁面卡死
-function splitAxis(cv, sp, tag, warns){
-  const ax = axisOf(sp), AX = ax.toUpperCase();
-  const d = num(sp.axisSpacing);
-  if (!(d > 0)){ warns.push(tag + `沿 ${AX} 的間距必須 > 0,已改為整段一個元素`); return [0,1]; }
-  const aOf = u => cv.pt(u)[ax];
-  // 沿弧長等距取樣(u 不一定與長度成正比),再逐格找出跨過的平面
-  let N = 400, uu, aa;
-  const scan = n => {
-    uu = new Float64Array(n+1); aa = new Float64Array(n+1);
-    for (let i = 0; i <= n; i++){ const u = cv.uAtS(cv.len*i/n); uu[i] = u; aa[i] = cv.pt(u)[ax]; }
-  };
-  scan(N);
-  let mn = aa[0], mx = aa[0];
-  for (let i = 1; i <= N; i++){ if (aa[i] < mn) mn = aa[i]; if (aa[i] > mx) mx = aa[i]; }
-  const span = mx - mn;
-  if (!Number.isFinite(span)){ warns.push(tag + `沿 ${AX} 的座標無效,已改為整段一個元素`); return [0,1]; }
-  if (span/d > AXIS_MAX_EL){
-    warns.push(tag + `沿 ${AX} 的間距 ${d} ${UL()} 會切出超過 ${AXIS_MAX_EL} 個元素,已改為整段一個元素`);
-    return [0,1];
-  }
-  const need = Math.ceil(span/d)*6;                    // 每一格至少 6 個取樣,才抓得到折返
-  if (need > N){ N = Math.min(120000, need); scan(N); }
-  // 格線基準:本段起點 / 指定座標(留白視為 0,即對齊全域格網)
-  const base = sp.axisBase === "value" ? (Number.isFinite(num(sp.axisAt)) ? num(sp.axisAt) : 0) : aa[0];
-  const gOf = u => (aOf(u) - base)/d;
-  const hit = [];
-  for (let i = 0; i < N; i++){
-    const ga = (aa[i] - base)/d, gb = (aa[i+1] - base)/d;
-    let lo, hi;
-    if (gb > ga){ lo = Math.floor(ga) + 1; hi = Math.floor(gb); }      // 半開區間 (ga, gb]
-    else if (gb < ga){ lo = Math.ceil(gb); hi = Math.ceil(ga) - 1; }   // 半開區間 [gb, ga)
-    else continue;
-    for (let k = lo; k <= hi; k++){
-      let p = uu[i], q = uu[i+1], fp = ga - k;
-      if (fp === 0){ hit.push(p); continue; }
-      for (let it = 0; it < 34; it++){                 // 區間內二分求交點
-        const m = (p + q)/2, fm = gOf(m) - k;
-        if (fm === 0){ p = q = m; break; }
-        if ((fm < 0) === (fp < 0)){ p = m; fp = fm; } else q = m;
-      }
-      hit.push((p + q)/2);
-    }
-  }
-  /* 只用 u 的間距去重不夠:端點剛好落在格線上、而且曲線在那裡與格線相切時
-     (例如 1/4 圓弧的終點沿 Y 分割),交點會收斂到 u 略小於 1 的地方,
-     座標卻與終點相同 → 產生零長度元素。改用**幾何距離**去重才擋得住。 */
-  hit.sort((p, q) => p - q);
-  const pEnd = cv.pt(1), tol3 = Math.max(cv.len*1e-6, 1e-12);
-  const us = [0];
-  let lastP = cv.pt(0);
-  hit.forEach(u => {
-    if (!(u > 0) || !(u < 1)) return;
-    const p = cv.pt(u);
-    if (dist3(p, lastP) <= tol3 || dist3(p, pEnd) <= tol3) return;   // 與前一個交點或終點重合
-    us.push(u); lastP = p;
-  });
-  if (us.length === 1)
-    warns.push(tag + `沿 ${AX} 的變化量 ${span.toFixed(3)} ${UL()} 內沒有間距 ${d} ${UL()} 的格線,僅產生 1 個元素`);
-  // 餘數:端點的零頭「獨立留一段」(預設)或「併入相鄰元素」(拿掉最靠端點的那個交點)。
-  // 均分 / 頭尾各半會把格線整組挪走,失去對齊的意義,所以軸向間距不提供。
-  if (sp.rem === "merge" && us.length > 1){
-    if (Math.abs(aOf(us[1]) - aa[0]) < d - 1e-9) us.splice(1, 1);
-    if (us.length > 1 && Math.abs(aOf(1) - aOf(us[us.length-1])) < d - 1e-9) us.pop();
-  }
-  us.push(1);
-  // 折返:同一個平面會被穿越兩次以上,折返點附近必然有短元素
-  const eps = Math.max(span*1e-9, 1e-12);
-  let turns = 0;
-  for (let i = 1; i < N; i++){
-    const p = aa[i] - aa[i-1], q = aa[i+1] - aa[i];
-    if (Math.abs(p) > eps && Math.abs(q) > eps && p*q < 0) turns++;
-  }
-  if (turns) warns.push(tag + `曲線沿 ${AX} 有 ${turns} 處折返,同一個平面會被穿越多次,折返點附近會出現極短元素`);
-  return us;
-}
-
-// 軸向間距換算成「沿弧長的標稱間距」:直線的方向餘弦固定,元素長度就是 d / |cos|
-function axisNominal(cv, sp, fallback){
-  const ax = axisOf(sp), d = num(sp.axisSpacing);
-  if (!(d > 0) || !(cv.len > 0)) return fallback;
-  const c = Math.abs(cv.pt(1)[ax] - cv.pt(0)[ax]) / cv.len;
-  return c > 1e-9 ? d/c : fallback;
-}
-
 const cv_sOf = (cv, u) => {                            // u → 弧長(以取樣表反查)
   let lo = 0, hi = 1;
   for (let k = 0; k < 40; k++){ const m = (lo+hi)/2; if (cv.uAtS(m*cv.len) < u) lo = m; else hi = m; }
@@ -951,7 +845,6 @@ function splitLineExt(cv, sp, ex, tag, warns){
   // 延長段用的標稱間距:間距模式就用那個間距,其餘沿用基準段實際的元素長
   const nominal = sp.mode === "spacing" ? (num(sp.spacing) > 0 ? num(sp.spacing) : L/nEl)
                 : sp.mode === "tol"     ? (num(sp.maxSpacing) > 0 ? num(sp.maxSpacing) : L/nEl)
-                : sp.mode === "axis"    ? axisNominal(cv, sp, L/nEl)   // d / 方向餘弦 = 元素長
                 : L/nEl;
   const spExt = { ...sp, mode:"spacing", spacing:nominal };
   const S = baseU.map(u => eS + u*L);
@@ -1001,7 +894,7 @@ const newId = () => "g" + (SEQ++);
 
 function defaultPiece(type){
   const sp = { ...SPLIT_DEF, spacing:dL(SPLIT_DEF.spacing), maxSpacing:dL(SPLIT_DEF.maxSpacing),
-               tol:dL(SPLIT_DEF.tol), axisSpacing:dL(SPLIT_DEF.axisSpacing) };
+               tol:dL(SPLIT_DEF.tol) };
   const b = { type, sRef:"prev", eRef:"", xf:XF_DEF(),
               split:{ ...sp }, ovr:false, etype:"BEAM", mat:1, sect:1,
               x1:0, y1:0, z1:0 };
@@ -2115,7 +2008,7 @@ function scaleModel(st, k){
       S(pc, SC_PC);
       if (pc.fMode === "abs") S(pc, ["f"]);
       S(pc.xf, SC_XF);
-      S(pc.split, ["spacing","maxSpacing","tol","axisSpacing","axisAt"]);
+      S(pc.split, ["spacing","maxSpacing","tol"]);
       (pc.segments || []).forEach(sg => S(sg, SC_SEG));
       (pc.profile || []).forEach(v => S(v, ["sta","z","L"]));
       if (pc.forced) pc.forced = String(pc.forced).split(/[\s,;]+/).filter(Boolean)
@@ -2446,66 +2339,19 @@ function openXfDlg(g){
   m.querySelector("#xfd-ok").onclick = close;
 }
 
-/* 「這個模式量的到底是什麼」—— 弧長 / 弦線 / 座標差,依段型別給一句話,不要讓使用者用猜的 */
-function splitMeasure(type, mode){
-  if (type === "POINT") return "節點段只有一個節點,不做分割。";
-  if (mode === "count"){
-    const per = {
-      LINE: "沿直線<b>等長</b>切,每根元素長度相同(弧長 = 弦長)。",
-      ARC:  "<b>等圓心角</b>切;圓弧上弧長與弦長都會相等。",
-      SAG:  "等分的是<b>弦線的水平投影</b>(x、y 隨參數線性變化),<b>不是等弧長</b> —— 靠近支承、坡度大的地方弧長較長。",
-      HELIX:"<b>等圓心角</b>切;等半徑時同時等弧長,起訖半徑不同時弧長不相等。",
-      CHAIN:"<b>每一個子段各自</b>切成 N 根(不是整條線切成 N 根),子段內沿弧長等分。"
-    };
-    return "元素數:" + (per[type] || "等分曲線參數。");
-  }
-  if (mode === "spacing")
-    return "間距量的是<b>沿曲線的 3D 弧長</b>(以 400 段折線累積)。節點之間的元素是<b>弦線</b>,所以" +
-      (type === "LINE" ? "直線段兩者相同,元素長度就等於間距。"
-                       : "每根元素的<b>直線長度會略短於</b>設定的間距,曲率越大差越多。") +
-      (type === "CHAIN" ? "線形鏈是<b>逐子段</b>各自從子段起點起算。" : "");
-  if (mode === "axis")
-    return "軸向間距量的是<b>該軸的座標差</b>,既不是弧長也不是弦長 —— 用一組垂直於該軸、間隔 d 的" +
-      "平面去截曲線,交點放節點。因此斜的段元素長度 = <b>d ÷ 方向餘弦 &gt; d</b>;" +
-      "與該軸<b>垂直</b>的段(座標不變)切不出節點。曲線在該軸上來回時,<b>每一次穿越都會放一個節點</b>。" +
-      (type === "CHAIN" ? "線形鏈是<b>逐子段</b>各自截切。" : "");
-  return "容差量的是<b>曲線離弦線的最大垂距</b>(3D 垂距),在容差內把每一步放到最長;" +
-    "步長本身量的仍是<b>弧長</b>,曲率大的地方元素短。";
-}
-
-function splitSec(pc, k, extraNote){
+function splitSec(pc, k, unitNote){
   const sp = pc.split || SPLIT_DEF;
-  const modes = [["count","指定元素數"],["spacing","指定間距(沿弧長)"],
-                 ["axis","軸向間距(X / Y / Z)"],["tol","弦線偏差容差"]];
+  const modes = [["count","指定元素數"],["spacing","指定間距"],["tol","弦線偏差容差"]];
   let f = fld("分割方式", k + "split.mode", sp.mode, { select:modes });
   if (sp.mode === "count")   f += fld("元素數 N", k + "split.count", sp.count);
-  if (sp.mode === "spacing") f += fld(`間距 d (${UL()},沿弧長)`, k + "split.spacing", sp.spacing);
-  if (sp.mode === "axis")
-    f += fld("軸", k + "split.axis", axisOf(sp), { select:AXIS_KEYS }) +
-      fld(`間距 d (${UL()},沿 ${axisOf(sp).toUpperCase()} 軸)`, k + "split.axisSpacing", sp.axisSpacing) +
-      fld("格線基準", k + "split.axisBase", sp.axisBase === "value" ? "value" : "start",
-        { select:[["start","本段起點"],["value","指定座標"]] }) +
-      (sp.axisBase === "value"
-        ? fld(`基準座標 ${axisOf(sp).toUpperCase()} (${UL()})`, k + "split.axisAt", sp.axisAt) : "");
+  if (sp.mode === "spacing") f += fld(`間距 d (${UL()})`, k + "split.spacing", sp.spacing);
   if (sp.mode === "tol") f += fld(`容差 (${UL()})`, k + "split.tol", sp.tol) +
     fld(`最大間距 (${UL()})`, k + "split.maxSpacing", sp.maxSpacing);
-  if (sp.mode === "axis")
-    // 均分 / 頭尾各半會把整組格線挪開,軸向間距就失去「對齊平面」的意義,所以只給這兩種
-    f += fld("餘數處理", k + "split.rem", sp.rem === "merge" ? "merge" : "keep",
-      { select:[["keep","獨立留一段"],["merge","併入相鄰元素"]] });
-  else if (sp.mode !== "count")
+  if (sp.mode !== "count")
     f += fld("餘數處理", k + "split.rem", sp.rem,
       { select:[["even","均分吸收"],["half","頭尾各分一半"],["keep","獨立留一段"],
                 ["merge","併入前一元素"],["trim","截短"]] });
-  const note = splitMeasure(pc.type, sp.mode) +
-    (sp.mode === "axis" && sp.axisBase !== "value"
-      ? "<br>格線基準<b>本段起點</b>:第一個節點一定在起點上;想讓不同段的節點<b>對齊同一組平面</b>,請改成「指定座標」。"
-      : "") +
-    (sp.mode === "axis" && sp.axisBase === "value"
-      ? `<br>格線通過 ${axisOf(sp).toUpperCase()} = 基準座標,並以 d 為間隔往兩側延伸;` +
-        "段起點不一定落在格線上,頭尾會各留一段零頭。" : "");
-  return `<div class="fields g4">${f}</div>` +
-    `<div class="hint">${note}${extraNote ? "<br>" + extraNote : ""}</div>`;
+  return `<div class="fields g4">${f}</div>` + (unitNote ? `<div class="hint">${unitNote}</div>` : "");
 }
 /* ---- 線形鏈段的子表 ---- */
 function chainTables(pc, k, info){
@@ -2558,7 +2404,7 @@ function chainTables(pc, k, info){
 }
 
 /* ---- 單一段的卡片 ---- */
-function pieceCard(g, pc, pi, info, r){
+function pieceCard(g, pc, pi, info){
   const k = `pieces.${pi}.`;
   const first = pi === 0;
   const cont = contOn(pc, pi);
@@ -2691,17 +2537,9 @@ function pieceCard(g, pc, pi, info, r){
 
   const stat = info ? `${(info.n1 - info.n0)} 節點 · ${(info.e1 - info.e0)} 元素` +
     (info.len ? ` · ${info.len.toFixed(3)} ${UL()}` : (info.total ? ` · ${info.total.toFixed(3)} ${UL()}` : "")) : "—";
-  // 「弧長還是弦長」最直接的答案:把兩個數字同時擺出來
-  const elens = (r && info && info.e1 > info.e0)
-    ? r.elems.slice(info.e0, info.e1).map(e => e.len3d).filter(Number.isFinite) : [];
-  const arcLen = info ? (info.len || info.total || 0) : 0;
-  const resNote = elens.length
-    ? `實際結果:曲線長(<b>弧長</b>)<b>${arcLen.toFixed(3)} ${UL()}</b> ·
-       元素<b>弦長</b> <b>${Math.min(...elens).toFixed(3)}</b> – <b>${Math.max(...elens).toFixed(3)} ${UL()}</b> ·
-       共 <b>${elens.length}</b> 根(弦長總和 ${elens.reduce((a,b) => a+b, 0).toFixed(3)} ${UL()})`
-    : "";
   const adv = `<details class="adv" data-dk="adv:${pi}"><summary>分割與元素覆寫</summary><div>
-      ${splitSec(pc, k, resNote)}
+      ${splitSec(pc, k, pc.type === "SAG" ? "「指定元素數」= 沿弦線等分;「指定間距」= 沿 3D 曲線等弧長。"
+        : pc.type === "HELIX" ? "「指定元素數」= 等圓心角。" : "")}
       <div class="fields g4" style="margin-top:9px">${
         fld("覆寫元素屬性", k + "ovr", !!pc.ovr, { check:true }) +
         fld("類型", k + "etype", pc.etype, { select:ELEM_TYPES, disabled:!pc.ovr }) +
@@ -2893,7 +2731,7 @@ function paneFor(g){
   if (g.type === "CURVE"){
     const pcs = g.pieces || [];
     pcs.forEach((pc, i) => pc._i = i);
-    const cards = pcs.map((pc, i) => pieceCard(g, pc, i, r ? r.pieces.find(p => p.pi === i) : null, r)).join("");
+    const cards = pcs.map((pc, i) => pieceCard(g, pc, i, r ? r.pieces.find(p => p.pi === i) : null)).join("");
     body = SEC("段", `${pcs.length} 段`, (cards || `<div class="hint" style="margin:0">尚無任何段。</div>`) +
       `<div class="btns" style="margin-top:9px">` +
       Object.entries(PIECES).map(([v,t]) => `<button class="btn${v==="LINE"?" p":""}" data-op="addpc" data-t="${v}">+ ${t.name}</button>`).join("") +
@@ -4555,97 +4393,6 @@ function runTests(){
   chk("M2","舊檔 tolMm 20 mm → tol 0.02 m", OLDTOL.groups[0].pieces[0].split.tol, 0.02, 1e-12, "m");
   yes("M2","tolMm 已移除", OLDTOL.groups[0].pieces[0].split.tolMm === undefined, "已移除", "已移除");
   chk("M2","容許弦長 √(8Rm) = 4.000", Math.sqrt(8*100*0.02), 4, 1e-12, "m");
-
-  /* ---- v3.12:軸向間距(X / Y / Z)分割 ---- */
-  const AXa = build([{ type:"LINE", name:"L", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:25, axisBase:"start", rem:"keep" } }]).md.groups[0];
-  chk("W1","沿 X 每 25 切長 100 的直線 → 4 元素", AXa.elems.length, 4, 0, "");
-  chk("W1","節點落在 X = 25 的格線上", AXa.nodes[1].x, 25, 1e-6, "m");
-  // 斜線:量的是 X 的座標差,元素長度 = d / 方向餘弦,不等於 d
-  const AXb = build([{ type:"LINE", name:"S", x1:0,y1:0,z1:0, x2:60,y2:80,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:30, axisBase:"start", rem:"keep" } }]).md.groups[0];
-  chk("W1","斜線沿 X 每 30 → 2 元素", AXb.elems.length, 2, 0, "");
-  chk("W1","節點的 X 差 = 30", AXb.nodes[1].x - AXb.nodes[0].x, 30, 1e-6, "m");
-  chk("W1","元素長 = 30 / 0.6 = 50(不是 30)", AXb.elems[0].len3d, 50, 1e-6, "m");
-  const AXy = build([{ type:"LINE", name:"S2", x1:0,y1:0,z1:0, x2:60,y2:80,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"y", axisSpacing:20, axisBase:"start", rem:"keep" } }]).md.groups[0];
-  chk("W1","換成 Y 軸每 20 → 4 元素", AXy.elems.length, 4, 0, "");
-  chk("W1","節點的 Y 差 = 20", AXy.nodes[1].y - AXy.nodes[0].y, 20, 1e-6, "m");
-  // 與該軸垂直的段:座標不變,切不出任何格線
-  const AXc = build([{ type:"LINE", name:"V", x1:0,y1:0,z1:0, x2:0,y2:100,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:10, axisBase:"start", rem:"keep" } }]);
-  chk("W1","垂直於 X 的線 → 1 元素", AXc.md.groups[0].elems.length, 1, 0, "");
-  yes("W1","並且提出警告", AXc.warns.some(w => w.indexOf("沒有間距") >= 0), AXc.warns.length + " 則警告", "有警告");
-  const AX0 = build([{ type:"LINE", name:"Z", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:0, axisBase:"start", rem:"keep" } }]);
-  chk("W1","間距 0 不當機,退回 1 元素", AX0.md.groups[0].elems.length, 1, 0, "");
-
-  // 格線基準:指定座標 → 對齊全域格網,頭尾各留零頭
-  const AXd = build([{ type:"LINE", name:"O", x1:7,y1:0,z1:0, x2:107,y2:0,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:25, axisBase:"value", axisAt:0, rem:"keep" } }]).md.groups[0];
-  chk("W2","基準 X=0:格線 25/50/75/100 → 5 元素", AXd.elems.length, 5, 0, "");
-  chk("W2","第一個內部節點在 X = 25", AXd.nodes[1].x, 25, 1e-6, "m");
-  chk("W2","頭段零頭 = 25 − 7 = 18", AXd.elems[0].len3d, 18, 1e-6, "m");
-  chk("W2","尾段零頭 = 107 − 100 = 7", AXd.elems[4].len3d, 7, 1e-6, "m");
-  const AXe = build([{ type:"LINE", name:"O2", x1:7,y1:0,z1:0, x2:107,y2:0,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:25, axisBase:"value", axisAt:0, rem:"merge" } }]).md.groups[0];
-  chk("W2","零頭併入相鄰元素 → 3 元素", AXe.elems.length, 3, 0, "");
-  chk("W2","頭段 = 18 + 25 = 43", AXe.elems[0].len3d, 43, 1e-6, "m");
-  chk("W2","尾段 = 25 + 7 = 32", AXe.elems[2].len3d, 32, 1e-6, "m");
-  // 基準 = 本段起點時,起點本身就在格線上,頭段沒有零頭
-  const AXs = build([{ type:"LINE", name:"O3", x1:7,y1:0,z1:0, x2:107,y2:0,z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:25, axisBase:"start", rem:"keep" } }]).md.groups[0];
-  chk("W2","基準 = 起點:4 元素", AXs.elems.length, 4, 0, "");
-  chk("W2","基準 = 起點:第一個內部節點在 X = 32", AXs.nodes[1].x, 32, 1e-6, "m");
-
-  // 非單調:懸垂沿 Z 來回,每一次穿越都要放節點
-  const AXf = build([{ type:"SAG", name:"G", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0,
-    curve:"parabola", fMode:"abs", f:10,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"z", axisSpacing:2, axisBase:"start", rem:"keep" } }]);
-  const AXg = AXf.md.groups[0];
-  yes("W3","懸垂沿 Z 來回:−2…−8 各穿越兩次 → 9 元素", AXg.elems.length === 9, AXg.elems.length, 9);
-  yes("W3","內部節點的 Z 都落在 2 的倍數上",
-    AXg.nodes.slice(1, -1).every(n => Math.abs(n.z/2 - Math.round(n.z/2)) < 1e-6),
-    AXg.nodes.slice(1, -1).map(n => n.z.toFixed(3)).join(","), "全為 2 的倍數");
-  yes("W3","折返有警告", AXf.warns.some(w => w.indexOf("折返") >= 0), AXf.warns.length + " 則警告", "有警告");
-  // 曲線:軸向間距量的是座標差,弦長一定 ≥ 間距
-  const AXh = build([{ type:"ARC", name:"A", arcMode:"center", x1:100,y1:0,z1:0, cx:0,cy:0,
-    delta:90, dir:1, z2:0,
-    split:{ ...SPLIT_DEF, mode:"axis", axis:"y", axisSpacing:10, axisBase:"start", rem:"keep" } }]).md.groups[0];
-  yes("W3","1/4 圓沿 Y 每 10 → 10 元素(終點剛好在格線上,不重複)", AXh.elems.length === 10,
-    AXh.elems.length, 10);
-  yes("W3","1/4 圓沿 Y:相鄰節點的 Y 差都是 10",
-    AXh.nodes.slice(0, -1).every((n, i) => Math.abs(Math.abs(AXh.nodes[i+1].y - n.y) - 10) < 1e-5),
-    AXh.nodes.map(n => n.y.toFixed(2)).join(","), "等 Y 間距");
-  yes("W3","弦長都 ≥ 軸向間距", AXh.elems.every(e => e.len3d >= 10 - 1e-6),
-    Math.min(...AXh.elems.map(e => e.len3d)).toFixed(4), "≥ 10");
-
-  // 舊檔沒有 axis 欄位 → normState 補上預設,不會壞
-  const AXold = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), pieces:[
-    { ...defaultPiece("LINE"), split:{ mode:"count", count:20, spacing:5, tol:0.02, maxSpacing:20, rem:"even" } }] }] });
-  yes("W4","舊檔補上 axis 預設", AXold.groups[0].pieces[0].split.axis === "x" &&
-    AXold.groups[0].pieces[0].split.axisBase === "start",
-    AXold.groups[0].pieces[0].split.axis + "/" + AXold.groups[0].pieces[0].split.axisBase, "x/start");
-  // 換單位時軸向間距與基準座標要一起換算
-  {
-    const su = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), pieces:[
-      { ...defaultPiece("LINE"), split:{ ...SPLIT_DEF, mode:"axis", axisSpacing:5, axisAt:12 } }] }] });
-    scaleModel(su, 1000);                              // m → mm
-    chk("W4","換單位:軸向間距 ×1000", su.groups[0].pieces[0].split.axisSpacing, 5000, 1e-9, "mm");
-    chk("W4","換單位:基準座標 ×1000", su.groups[0].pieces[0].split.axisAt, 12000, 1e-9, "mm");
-  }
-  // 直線兩端延長:延長段的元素長度沿用「d / 方向餘弦」
-  {
-    const EX = buildPieces([{ ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, x2:60,y2:80,z2:0,
-      extE:100, split:{ ...SPLIT_DEF, mode:"axis", axis:"x", axisSpacing:30, axisBase:"start", rem:"keep" } }]);
-    const R = EX.md.groups[0];
-    yes("W4","軸向間距 + 終點端延長:基準段的節點沒被動到",
-      R.nodes.some(n => Math.abs(n.x - 30) < 1e-6) && Math.abs(R.nodes[0].x) < 1e-9,
-      R.nodes.map(n => n.x.toFixed(1)).join(","), "含 0 與 30");
-    yes("W4","延長段元素長 = 50(= 30 / 0.6)",
-      R.elems.slice(2, -1).every(e => Math.abs(e.len3d - 50) < 1e-6),
-      R.elems.map(e => e.len3d.toFixed(2)).join(","), "50…");
-  }
 
   /* ---- 強制節點 ---- */
   const FC = build([{ type:"CHAIN", name:"主", x1:0,y1:0,z1:0, az:90, sta:0,
