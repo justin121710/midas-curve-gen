@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>線形建模器 — 線形表轉 midas Civil 幾何</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%20-7%2044%2044'%3E%3Cpath%20d='M4%205C11%205%2013%2025%2022%2025s11%20-20%2018%20-20'%20fill='none'%20stroke='%230f62fe'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%20-7%2044%2044'%3E%3Cpath%20d='M4%205C11%205%2013%2025%2022%2025s11%20-20%2018%20-20'%20fill='none'%20stroke='%231c5d99'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root{
-    --paper:#f4f5f7; --ink:#161a20; --ink-2:#525a66; --ink-3:#868e9a;
-    --line:#d5d9e0; --line-2:#e6e9ee; --panel:#fff;
-    --accent:#0f62fe; --accent-soft:#e7f0ff;
-    --ok:#198038; --warn:#8a6116; --err:#da1e28;
+    --paper:#f7f6f2; --ink:#1e2430; --ink-2:#5a6472; --ink-3:#8b95a3;
+    --line:#d6d2c8; --line-2:#e6e3db; --panel:#fff;
+    --accent:#1c5d99; --accent-soft:#e8f0f8;
+    --ok:#1a7f4b; --warn:#a8710d; --err:#b3261e;
     --mono:"Cascadia Mono","Consolas","SF Mono",ui-monospace,monospace;
   }
   *{box-sizing:border-box}
@@ -19,7 +19,7 @@
   body{display:flex; flex-direction:column}
   header{flex:0 0 auto}
   body{background:var(--paper); color:var(--ink);
-    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif; font-size:13px; line-height:1.55}
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; font-size:13px; line-height:1.55}
   .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
 
   header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
@@ -28,11 +28,11 @@
   /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
   /* 標誌:只有那條線,排在標題文字裡當一個字,對齊就交給行內排版 */
   header h1 .logo{color:var(--accent); vertical-align:-3px; margin-right:5px}
-  header .stage{font-size:11px; padding:2px 8px; border-radius:6px;
+  header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
     background:var(--accent-soft); color:var(--accent); font-weight:600}
   header .note{font-size:11px; color:var(--ink-3)}
   header .sp{flex:1}
-  header button{font:inherit; font-size:11.5px; padding:4px 10px; border-radius:2px;
+  header button{font:inherit; font-size:11.5px; padding:4px 10px; border-radius:4px;
     border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer}
   header button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
   header button:disabled{opacity:.4; cursor:default}
@@ -41,12 +41,12 @@
   header button.gset{border-color:var(--accent); color:var(--accent); font-weight:650}
   header button.gset:hover{background:var(--accent-soft)}
   header button.gset.on{background:var(--accent); border-color:var(--accent); color:#fff}
-  header button.warn{border-color:#f5c2c0; color:var(--err); font-weight:600}
-  header button.warn:hover:not(:disabled){border-color:var(--err); background:#fff1f1; color:var(--err)}
+  header button.warn{border-color:#e6c9c5; color:var(--err); font-weight:600}
+  header button.warn:hover:not(:disabled){border-color:var(--err); background:#fdf0ef; color:var(--err)}
   header .units{display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-3);
-    padding:2px 8px 2px 9px; border:1px solid var(--line); border-radius:3px; background:#f9fafb}
+    padding:2px 8px 2px 9px; border:1px solid var(--line); border-radius:5px; background:#fbfaf7}
   header .units select{font:inherit; font-size:11.5px; font-weight:650; width:auto; padding:1px 4px;
-    border:1px solid var(--line); border-radius:2px; background:#fff; color:var(--accent); cursor:pointer}
+    border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--accent); cursor:pointer}
 
   #app{display:grid; grid-template-columns:var(--tw,150px) 7px minmax(0,1fr) 7px var(--rw,330px);
     flex:1 1 auto; min-height:0}
@@ -58,7 +58,7 @@
   #app.nosel{grid-template-columns:var(--tw,150px) 7px 0 0 minmax(0,1fr)}
   #app.nosel #pane, #app.nosel #resizer{display:none}
   #app.nosel #right, #app.nosel.swap #right{grid-column:5; border-left:1px solid var(--line)}
-  #resizer, #tresizer{position:relative; background:#eef0f3; border-left:1px solid var(--line);
+  #resizer, #tresizer{position:relative; background:#f2f0ea; border-left:1px solid var(--line);
     border-right:1px solid var(--line); cursor:col-resize; user-select:none}
   #resizer:hover, #resizer.on, #tresizer:hover, #tresizer.on{background:var(--accent-soft)}
   #resizer::after, #tresizer::after{content:"⋮"; position:absolute; top:50%; left:50%;
@@ -88,12 +88,12 @@
     #tree{border-right:0; border-bottom:1px solid var(--line); max-height:230px} }
 
   /* ---- 樹 ---- */
-  #tree{background:#fafbfc; border-right:1px solid var(--line); overflow:hidden; font-size:12px;
+  #tree{background:#fafaf7; border-right:1px solid var(--line); overflow:hidden; font-size:12px;
     display:flex; flex-direction:column; min-height:0}
   #treelist{flex:1 1 auto; overflow:auto; padding:6px 0; min-height:0}
   /* 統計數字釘在左欄底下:只是「大概看一下」的東西,不值得佔畫布上方一整條 */
   #tree .kpi{flex:0 0 auto; border:0; border-top:1px solid var(--line); border-radius:0;
-    background:#f4f5f7; padding:5px 10px 7px; font-size:10px; gap:0;
+    background:#f4f2ec; padding:5px 10px 7px; font-size:10px; gap:0;
     grid-template-columns:minmax(0,1fr)}
   #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between;
     min-width:0; line-height:1.5}
@@ -103,16 +103,14 @@
   #tree .grp{font-size:10px; letter-spacing:.06em; color:var(--ink-3); font-weight:700;
     padding:9px 10px 4px; text-transform:uppercase}
   #tree .it{display:flex; align-items:center; gap:6px; padding:5px 8px 5px 11px; cursor:pointer; color:var(--ink-2)}
-  #tree .it:hover{background:#eef1f5}
+  #tree .it:hover{background:#f0eee8}
   #tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
-  /* 多選:一起被選到、但不是「主要」那一個 */
-  #tree .it.msel{background:#eef4ff; color:var(--accent); box-shadow:inset 2px 0 0 #8ab0ff}
   #tree .it.err{color:var(--err)}
   #tree .it .sw{width:8px; height:8px; border-radius:2px; flex:0 0 auto}
-  #tree .it .sw.off{background:#c9cfd8 !important}
+  #tree .it .sw.off{background:#dcd8cf !important}
   /* 型別欄改成圖示:產品線用組的主題色(currentColor),背景線固定淺灰 */
   #tree .it .ic{display:flex; flex:0 0 auto; line-height:0}
-  #tree .it .ic.off{color:#aeb6c2 !important; opacity:.6}
+  #tree .it .ic.off{color:#c9c4ba !important; opacity:.6}
   #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
     flex:0 0 auto; display:none; letter-spacing:-.04em; font-variant-numeric:tabular-nums}
@@ -126,7 +124,7 @@
   .addmenu .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 8px 3px}
   .addmenu .mcards{display:grid; gap:6px; padding:2px 3px 4px}
   .addmenu .mcards button{display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 5px;
-    border:1px solid var(--line); border-radius:3px; background:#fff; text-align:center; color:var(--ink-2)}
+    border:1px solid var(--line); border-radius:5px; background:#fff; text-align:center; color:var(--ink-2)}
   .addmenu .mcards button:hover{border-color:var(--accent); background:#fff; color:var(--accent)}
   .addmenu .mcards .mn{font-size:12.5px; font-weight:600}
   .addmenu .mcards .mh2{font-size:10px; color:var(--ink-3); line-height:1.35}
@@ -136,19 +134,17 @@
   #pane{padding:13px 15px 40px; overflow:auto; min-width:0}
   .ptitle{display:flex; align-items:center; gap:8px; margin-bottom:11px; flex-wrap:wrap}
   .ptitle .nm{font-size:15px; font-weight:650}
-  .fam{font-size:9.5px; padding:1px 7px; border-radius:3px; font-weight:600}
+  .fam{font-size:9.5px; padding:1px 7px; border-radius:9px; font-weight:600}
   .fam.geo{background:var(--accent-soft); color:var(--accent)}
-  .fam.con{background:#eee9f7; color:#6f4a9b}
+  .fam.con{background:#f0eaf6; color:#6f4a9b}
   .ptitle .sp{flex:1}
-  .sec{border:1px solid var(--line); border-radius:3px; margin-bottom:9px; background:var(--panel)}
-  .sec > .h{padding:6px 12px; background:#fafbfc; border-bottom:1px solid var(--line-2);
+  .sec{border:1px solid var(--line); border-radius:6px; margin-bottom:9px; background:var(--panel)}
+  .sec > .h{padding:6px 12px; background:#fafaf7; border-bottom:1px solid var(--line-2);
     font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); font-weight:700;
     display:flex; align-items:center; gap:8px}
   .sec > .h .tail{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0; text-transform:none}
   .sec > .b{padding:10px 12px}
   .fields{display:grid; gap:8px 10px}
-  /* 起點那一排和終點那一排之間畫一條淡線,兩顆「圖上點」才不會分不出來 */
-  .fields.rowsep{border-top:1px dashed var(--line-2); margin-top:9px; padding-top:9px}
   /* 座標一律排成 X / Y / Z 三欄,起點與終點上下對齊 —— 不讓 Z 被擠到下一行 */
   .xyz{display:grid; grid-template-columns:56px repeat(3,minmax(0,1fr)); gap:4px 8px; align-items:center}
   .xyz > .h{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; text-align:center}
@@ -158,32 +154,32 @@
   .xyz.t5{grid-template-columns:56px repeat(3,minmax(0,1fr)) auto}
   .meList{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px}
   .mepair{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:11.5px;
-    color:var(--ink-2); border:1px solid var(--line-2); border-radius:2px; padding:2px 4px 2px 8px; background:#ffffff}
+    color:var(--ink-2); border:1px solid var(--line-2); border-radius:4px; padding:2px 4px 2px 8px; background:#fdfdfb}
   .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
   label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2); min-width:0}
   label.f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   input[type=text], input[type=number], select, textarea{
     font:inherit; font-family:var(--mono); font-size:12.5px; padding:4px 6px;
-    border:1px solid var(--line); border-radius:2px; background:#fff; color:var(--ink); width:100%; min-width:0}
+    border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); width:100%; min-width:0}
   select{font-family:inherit}
   textarea{resize:vertical}
   input:focus, select:focus, textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
-  input.bad{border-color:var(--err); background:#fff1f1}
+  input.bad{border-color:var(--err); background:#fdf3f2}
   /* 用不到的欄位要看得出來是用不到的(例如放置方式沒選到的那兩個) */
-  input:disabled, select:disabled, textarea:disabled{background:#eef0f3; color:var(--ink-3); cursor:not-allowed}
+  input:disabled, select:disabled, textarea:disabled{background:#f2f0ea; color:var(--ink-3); cursor:not-allowed}
   .chk{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-2); cursor:pointer}
   .cpick{display:flex; gap:5px; align-items:stretch; min-width:0}
   .cpick input[type=color]{flex:1 1 auto; min-width:0; height:27px; padding:1px 2px;
-    border:1px solid var(--line); border-radius:2px; background:#fff; cursor:pointer}
-  .cpick button{flex:0 0 auto; font:inherit; font-size:11px; padding:0 8px; border-radius:2px;
+    border:1px solid var(--line); border-radius:4px; background:#fff; cursor:pointer}
+  .cpick button{flex:0 0 auto; font:inherit; font-size:11px; padding:0 8px; border-radius:4px;
     border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer}
   .cpick button:hover{border-color:var(--accent); color:var(--accent)}
   .cpick button.on{color:var(--ink-3)}
   .lbl2{font-size:11px; color:var(--ink-2); margin:9px 0 4px}
   .pcards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px}
   .pcards button{display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 4px;
-    border:1px solid var(--line); border-radius:3px; background:#fff; cursor:pointer;
+    border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer;
     font:inherit; color:var(--ink-2); text-align:center; line-height:1.3}
   .pcards button:hover{border-color:var(--accent)}
   .pcards button.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
@@ -194,11 +190,11 @@
   .out{font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
     display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:3px 14px}
   .out b{color:var(--ink); font-weight:650}
-  .out .k{color:var(--ink-3); font-family:inherit}
+  .out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
   .hint{font-size:11px; color:var(--ink-3); margin-top:7px}
   /* 一定要看到的說明(不進 i 收合) */
-  .note{font-size:10.5px; color:var(--ink-2); margin-top:6px; background:#f9fafb;
-    border:1px solid var(--line-2); border-radius:2px; padding:5px 8px}
+  .note{font-size:10.5px; color:var(--ink-2); margin-top:6px; background:#fbfaf7;
+    border:1px solid var(--line-2); border-radius:4px; padding:5px 8px}
   .note b{color:var(--ink)}
   /* 提示預設收起,每個區塊只留一顆 i */
   .ibtn{flex:0 0 auto; width:17px; height:17px; border-radius:50%; border:1px solid var(--line);
@@ -212,28 +208,21 @@
   .hint:empty{display:none}   /* 唯讀的即時結果行沒內容時不佔位(syncRO 只換 innerHTML,不能靠 style 切換) */
   .hint b{color:var(--ink-2)}
 
-  .btn{font:inherit; font-size:12px; padding:5px 11px; border-radius:2px; border:1px solid var(--line);
+  .btn{font:inherit; font-size:12px; padding:5px 11px; border-radius:4px; border:1px solid var(--line);
     background:#fff; color:var(--ink); cursor:pointer}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
   .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
-  .btn.p:hover{background:#0043ce; color:#fff}
+  .btn.p:hover{background:#17517f; color:#fff}
   .btn.d:hover{border-color:var(--err); color:var(--err)}
-  /* 啟用 / 停用:狀態直接寫在按鈕上,不用再去看小方框 */
-  .btn.tog{padding-left:22px; position:relative}
-  .btn.tog::before{content:""; position:absolute; left:9px; top:50%; width:7px; height:7px;
-    border-radius:50%; transform:translateY(-50%); background:var(--ink-3)}
-  .btn.tog.on{border-color:var(--ok); color:var(--ok)}
-  .btn.tog.on::before{background:var(--ok)}
-  .btn.tog:not(.on){color:var(--ink-3); background:#f4f5f7}
   .btns{display:flex; gap:6px; flex-wrap:wrap}
   /* 切換鈕:按下顯示主題色,未按下維持系統色 */
-  .tgl{font:inherit; font-size:13px; font-weight:650; padding:8px 16px; border-radius:3px;
+  .tgl{font:inherit; font-size:13px; font-weight:650; padding:8px 16px; border-radius:6px;
     border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer;
     display:inline-flex; align-items:center; gap:7px; line-height:1.2}
   .tgl:hover{border-color:var(--accent); color:var(--accent)}
   .tgl .dot{width:9px; height:9px; border-radius:50%; border:1.5px solid currentColor; flex:0 0 auto}
   .tgl.on{background:var(--accent); border-color:var(--accent); color:#fff}
-  .tgl.on:hover{background:#0043ce; color:#fff}
+  .tgl.on:hover{background:#17517f; color:#fff}
   .tgl.on .dot{background:#fff; border-color:#fff}
   /* 目前選取的節點/元素:整個區塊高亮,才看得出要在哪裡編輯 */
   .sec.hot{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
@@ -247,13 +236,13 @@
   table.t tr:last-child td{border-bottom:none}
   table.t td.hot{color:var(--warn); font-weight:600}
   table.t select, table.t input{padding:2px 4px; font-size:11.5px}
-  .iconbtn{border:1px solid var(--line); background:#fff; border-radius:2px; cursor:pointer;
+  .iconbtn{border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;
     width:21px; height:21px; padding:0; color:var(--ink-2); font-size:11px; line-height:1}
   .iconbtn:hover{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
-  .iconbtn.danger:hover{background:#fff1f1; color:var(--err); border-color:var(--err)}
+  .iconbtn.danger:hover{background:#fdf0ef; color:var(--err); border-color:var(--err)}
 
   /* ---- 右欄 ---- */
-  #right{background:#f9fafb; border-left:1px solid var(--line); display:flex; flex-direction:column;
+  #right{background:#fbfaf7; border-left:1px solid var(--line); display:flex; flex-direction:column;
     overflow:hidden; min-height:0; padding:10px 12px 11px; gap:8px}
   #right > #msgs{flex:0 0 auto; max-height:24%; overflow:auto}
   #right > .lbl, #right > .legend, #right > .kpi{flex:0 0 auto}
@@ -263,16 +252,16 @@
   .lbl{font-size:10.5px; letter-spacing:.09em; color:var(--ink-3); font-weight:700}
   .cvwrap{position:relative}
   canvas{width:100%; height:100%; display:block; background:#fff; border:1px solid var(--line);
-    border-radius:3px; cursor:crosshair}
+    border-radius:6px; cursor:crosshair}
   .cvwrap{min-height:0}
   #cv{height:100%; cursor:crosshair}
   /* midas 風格的九宮格視角鈕:中間俯視、四邊立面、四角 45° 斜視 */
   .viewcube{position:absolute; top:6px; right:6px; display:grid; gap:3px; padding:4px;
     grid-template-columns:repeat(3,29px); grid-template-rows:repeat(3,29px);
-    background:rgba(255,255,255,.78); border:1px solid var(--line); border-radius:4px}
+    background:rgba(255,255,255,.78); border:1px solid var(--line); border-radius:7px}
   .viewcube button{font:inherit; font-size:11.5px; line-height:1; padding:0; cursor:pointer;
     border:1px solid var(--line-2); background:rgba(255,255,255,.92); color:var(--ink-2);
-    border-radius:2px; display:flex; align-items:center; justify-content:center}
+    border-radius:4px; display:flex; align-items:center; justify-content:center}
   .viewcube button:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
   .viewcube button.on{background:var(--accent); border-color:var(--accent); color:#fff}
   .viewcube button.cor{font-size:14px; color:var(--ink-3)}
@@ -284,7 +273,7 @@
     align-items:center; max-width:calc(100% - 122px)}
   /* 每一顆都同高、同框:按鈕和「方位 / 仰角」那種輸入框看起來才是一排 */
   .cvtools > button, .cvtools > .tag, .cvtools > select{font:inherit; font-size:10.5px;
-    height:23px; padding:0 7px; border-radius:2px; width:auto; display:inline-flex;
+    height:23px; padding:0 7px; border-radius:4px; width:auto; display:inline-flex;
     align-items:center; gap:5px; box-sizing:border-box;
     border:1px solid var(--line); background:rgba(255,255,255,.93); color:var(--ink-2); cursor:pointer}
   .cvtools > button:hover{border-color:var(--accent); color:var(--accent)}
@@ -293,21 +282,21 @@
   .cvtools .tag input{font:inherit; font-size:10.5px; font-family:var(--mono); width:46px;
     height:19px; padding:0 2px; text-align:right; cursor:text;
     border:0; background:transparent; color:var(--ink-2)}
-  .cvtools .tag input:focus{outline:1px solid var(--accent-soft); border-radius:2px}
+  .cvtools .tag input:focus{outline:1px solid var(--accent-soft); border-radius:3px}
   .cvtools button svg{flex:0 0 auto}
   .cvtools button.off{color:var(--ink-3)}
   .readout{position:absolute; left:6px; bottom:6px; background:rgba(255,255,255,.94);
-    border:1px solid var(--line); border-radius:2px; padding:3px 7px; font-family:var(--mono);
+    border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-family:var(--mono);
     font-size:10.5px; color:var(--ink-2); pointer-events:none; white-space:pre}
   .kpi{display:grid; grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:4px 12px;
     font-family:var(--mono); font-size:12px; background:var(--panel);
-    border:1px solid var(--line); border-radius:3px; padding:8px 10px}
-  .kpi .k{font-family:inherit; font-size:9.5px; color:var(--ink-3); display:block}
+    border:1px solid var(--line); border-radius:6px; padding:8px 10px}
+  .kpi .k{font-family:"Noto Sans TC",sans-serif; font-size:9.5px; color:var(--ink-3); display:block}
   .kpi b{font-size:12.5px; font-weight:650}
   .kpi b.hot{color:var(--warn)}
-  .msg{display:flex; gap:6px; padding:5px 9px; border-radius:2px; margin-bottom:4px; font-size:11.5px; align-items:flex-start}
-  .msg.err{background:#fff1f1; color:var(--err); border:1px solid #f5c2c0}
-  .msg.warn{background:#fdf6e3; color:var(--warn); border:1px solid #ecdcaf}
+  .msg{display:flex; gap:6px; padding:5px 9px; border-radius:4px; margin-bottom:4px; font-size:11.5px; align-items:flex-start}
+  .msg.err{background:#fdf0ef; color:var(--err); border:1px solid #f2d3d0}
+  .msg.warn{background:#fdf7e8; color:var(--warn); border:1px solid #f0e2bd}
   #msgs:empty{display:none}
   .legend{display:flex; gap:9px; flex-wrap:wrap; font-size:10.5px; color:var(--ink-2)}
   .legend i{display:inline-block; width:11px; height:3px; border-radius:2px; margin-right:4px; vertical-align:middle}
@@ -317,20 +306,20 @@
   details.adv > summary::-webkit-details-marker{display:none}
   details.adv > summary::before{content:"▸ "; font-size:9px}
   details.adv.elem > summary{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-2)}
-  details.adv.elem > summary .tag{font-size:10px; font-weight:600; padding:1px 7px; border-radius:3px}
-  details.adv.elem > summary .tag.ok{background:#e6f4ea; color:var(--ok); font-family:var(--mono)}
-  details.adv.elem > summary .tag.todo{background:#fdf6e3; color:var(--warn)}
+  details.adv.elem > summary .tag{font-size:10px; font-weight:600; padding:1px 7px; border-radius:9px}
+  details.adv.elem > summary .tag.ok{background:#eef3ee; color:var(--ok); font-family:var(--mono)}
+  details.adv.elem > summary .tag.todo{background:#fdf7e8; color:var(--warn)}
   details.adv[open] > summary::before{content:"▾ "}
   details.adv > div{margin-top:8px}
 
-  details.pc{border:1px solid var(--line); border-radius:3px; margin-bottom:7px; background:#ffffff; overflow:hidden}
+  details.pc{border:1px solid var(--line); border-radius:6px; margin-bottom:7px; background:#fdfdfb; overflow:hidden}
   details.pc > summary{list-style:none; cursor:pointer; padding:6px 9px; display:flex; align-items:center; gap:7px;
-    background:#fafbfc; font-size:12px}
+    background:#fafaf7; font-size:12px}
   details.pc > summary::-webkit-details-marker{display:none}
   details.pc > summary::before{content:"▸"; color:var(--ink-3); font-size:9px}
   details.pc[open] > summary::before{content:"▾"}
   details.pc[open] > summary{border-bottom:1px solid var(--line-2); background:#fff}
-  details.pc .idx{width:18px; height:18px; border-radius:2px; background:var(--accent); color:#fff;
+  details.pc .idx{width:18px; height:18px; border-radius:3px; background:var(--accent); color:#fff;
     font-family:var(--mono); font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
   details.pc > summary select{width:auto; padding:2px 5px; font-size:11.5px}
   details.pc .st{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
@@ -343,11 +332,11 @@
   #tree .it.over{box-shadow:inset 0 2px 0 var(--accent)}
   .zbox{display:flex; align-items:center; gap:4px}
   .zbox input{width:52px; font-family:var(--mono); font-size:10.5px; padding:1px 4px;
-    border:1px solid var(--line); border-radius:2px; text-align:right}
+    border:1px solid var(--line); border-radius:3px; text-align:right}
   .nodepick{position:absolute; pointer-events:none}
 
   #tests table.tt{width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono)}
-  #tests th{text-align:left; font-family:inherit; font-size:10px; color:var(--ink-3);
+  #tests th{text-align:left; font-family:"Noto Sans TC",sans-serif; font-size:10px; color:var(--ink-3);
     font-weight:600; padding:3px 6px; border-bottom:1px solid var(--line)}
   #tests td{padding:2px 6px; border-bottom:1px solid var(--line-2)}
   .pass{color:var(--ok); font-weight:700} .fail{color:var(--err); font-weight:700}
@@ -355,22 +344,22 @@
   /* 組的右鍵 / ⋯ 選單 */
   .subh{font-size:10.5px; font-weight:700; color:var(--ink-3); letter-spacing:.04em;
     margin:14px 0 7px; padding-top:9px; border-top:1px solid var(--line-2)}
-  .ctx{position:fixed; z-index:60; background:#fff; border:1px solid var(--line); border-radius:4px;
+  .ctx{position:fixed; z-index:60; background:#fff; border:1px solid var(--line); border-radius:7px;
     box-shadow:0 8px 24px rgba(0,0,0,.14); padding:4px; min-width:160px}
   .ctx button{display:block; width:100%; text-align:left; background:none; border:0; cursor:pointer;
-    font:inherit; font-size:12px; padding:6px 10px; border-radius:3px; color:var(--ink)}
+    font:inherit; font-size:12px; padding:6px 10px; border-radius:5px; color:var(--ink)}
   .ctx button:hover{background:var(--bg-2)}
   .ctx button.d{color:var(--err)}
   .ctx .sep{height:1px; background:var(--line-2); margin:4px 2px}
   #tree .it .kebab{margin-left:4px; opacity:0; border:0; background:none; cursor:pointer;
-    color:var(--ink-3); font-size:13px; line-height:1; padding:0 3px; border-radius:2px}
+    color:var(--ink-3); font-size:13px; line-height:1; padding:0 3px; border-radius:4px}
   #tree .it:hover .kebab, #tree .it.on .kebab{opacity:1}
   #tree .it .kebab:hover{background:var(--line-2); color:var(--ink)}
 
   /* 位移複製 / 陣列對話框 */
   .mask{position:fixed; inset:0; z-index:70; background:rgba(20,22,26,.34);
     display:flex; align-items:center; justify-content:center}
-  .dlg{background:#fff; border-radius:6px; box-shadow:0 18px 50px rgba(0,0,0,.28);
+  .dlg{background:#fff; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.28);
     width:min(430px, calc(100vw - 32px)); padding:16px 18px 14px}
   .dlg h3{margin:0 0 3px; font-size:14px}
   .dlg .sub{color:var(--ink-3); font-size:11.5px; margin-bottom:11px}
@@ -381,7 +370,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.22</span>
+  <span class="stage">群組架構 v3.21</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -452,8 +441,6 @@
    ========================================================================== */
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const norm360 = a => { a %= 360; return a < 0 ? a + 360 : a; };
-// 仰角用 (-180, 180]:轉過 ±90 的極點時 cos 變號,上方向自然翻面,不會卡住
-const norm180 = a => { const v = ((a + 180) % 360 + 360) % 360 - 180; return v === -180 ? 180 : v; };
 const clamp = (v, lo, hi) => v < lo ? lo : (v > hi ? hi : v);
 const num = v => Number.isFinite(+v) ? +v : NaN;
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -1297,7 +1284,7 @@ const TYPES = {
    只是用來說明位置的既有幾何 = ICON_CTX 的細線。所以「垂落」凸顯的是吊下來那幾根,
    來源曲線與目標高程都退成灰;「對接」凸顯橫向連桿,兩排既有節點退成灰。
    兩個尺寸:big 給新增選單(看得出幾何),sm 給清單列(12px 的列上只留產品線)。 */
-const ICON_CTX = "#b9bfc9";
+const ICON_CTX = "#bdb8ad";
 const ICONS = {
   CURVE:{
     big:`<svg width="44" height="30" viewBox="0 0 44 30" fill="none" stroke-linecap="round"><path d="M4 25C11 25 13 5 22 5s11 20 18 20" stroke="currentColor" stroke-width="2.6"/><circle cx="4" cy="25" r="2.2" fill="currentColor"/><circle cx="22" cy="5" r="2.2" fill="currentColor"/><circle cx="40" cy="25" r="2.2" fill="currentColor"/></svg>`,
@@ -1315,29 +1302,7 @@ const ICONS = {
     big:`<svg width="44" height="30" viewBox="0 0 44 30" fill="none" stroke-linecap="round"><path d="M36 4v22" stroke="${ICON_CTX}" stroke-width="1.2"/><circle cx="36" cy="10" r="1.7" fill="${ICON_CTX}"/><circle cx="36" cy="17" r="1.7" fill="${ICON_CTX}"/><circle cx="36" cy="25" r="1.7" fill="${ICON_CTX}"/><path d="M9 7 35 10M9 7.3 35 17M8.8 7.6 35 25" stroke="currentColor" stroke-width="2.4"/><circle cx="8" cy="6.6" r="3" fill="currentColor"/></svg>`,
     sm:`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M13 2.6v10.8" stroke="${ICON_CTX}" stroke-width="1"/><path d="M3.4 3.4 12.6 5M3.4 3.6 12.6 9M3.3 3.8 12.6 13" stroke="currentColor" stroke-width="1.7"/><circle cx="3" cy="3.2" r="2" fill="currentColor"/></svg>` }
 };
-/* 段型別各自的小圖示。線群組裡如果只有一種段,清單就直接畫那一種 ——
-   一眼看得出「這條是螺旋」還是「這條是直線」,比一律畫成拱形好讀。 */
-const PIECE_ICONS = {
-  LINE:  `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M1.8 12.6 14.2 3.4" stroke="currentColor" stroke-width="1.9"/></svg>`,
-  ARC:   `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M1.8 12.4A7.4 7.4 0 0 1 14.2 12.4" stroke="currentColor" stroke-width="1.9"/></svg>`,
-  SAG:   `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M2 3.4c2.6 5.6 9.4 5.6 12 0" stroke="currentColor" stroke-width="1.9"/></svg>`,
-  HELIX: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M3.4 3.2c6.6 0 6.6 3.2 0 3.2s6.6 3.2 0 3.2 6.6 3.2 0 3.2" stroke="currentColor" stroke-width="1.6"/></svg>`,
-  CHAIN: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round"><path d="M1.6 12.4h4.2A6 6 0 0 1 11 4.6h3.4" stroke="currentColor" stroke-width="1.9"/></svg>`,
-  POINT: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>`,
-  POLY:  `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 12.6 5.6 6.4 9.4 9.6 14.2 3.4" stroke="currentColor" stroke-width="1.7"/></svg>`
-};
-// 這個線群組是不是「只有一種段」;是的話回傳那個段型別
-function soloPiece(g){
-  if (!g || g.type !== "CURVE") return null;
-  const ts = [...new Set((g.pieces || []).map(pc => pc && pc.type).filter(Boolean))];
-  return ts.length === 1 && PIECE_ICONS[ts[0]] ? ts[0] : null;
-}
 const icon = (type, sz) => ((ICONS[type] || ICONS.CURVE)[sz === "big" ? "big" : "sm"]);
-// 清單用:線群組只有一種段就畫那一種段的圖示
-const iconFor = g => {
-  const t = soloPiece(g);
-  return (t && PIECE_ICONS[t]) || icon(g.type);
-};
 // 段:一個曲線組由一串段組成,段與段共用接縫節點、編號連續
 const PIECES = {
   LINE: { name:"直線",   hint:"起點 → 終點(或 長度 + 方位角 + 仰角)" },
@@ -1680,37 +1645,21 @@ function assignGNames(groups, prefix){
 // 手動元素:使用者在圖面上點兩個節點決定 i–j,存的是「節點編號」。
 // 端點可以落在任何一組(這正是它的用處:把兩組接起來),所以要等所有組都建完才能解析,
 // 也因此元素編號排在該組自動產生的元素之後。
-/* 手動元素的兩端存的是「哪一個群組的第幾個節點」(`@<群組 id>:<序號>`),
-   不是節點編號 —— 上游一改分割,編號整串就跑掉了,序號不會。
-   舊檔存的是編號,兩種都認得。 */
 function addManualElems(groups, errs){
   const byNum = new Map();
   groups.forEach(r => r.nodes.forEach(n => { if (!byNum.has(n.num)) byNum.set(n.num, n); }));
-  const byGid = new Map(groups.map(r => [r.g.id, r]));
-  const resolve = (ref, numv) => {
-    const gr = parseGRef(ref);
-    if (gr){
-      const rr = byGid.get(gr.gid);
-      if (!rr) return null;
-      const ch = chainOf(rr);
-      if (!ch.length) return null;
-      return ch[clamp(Math.round(gr.idx), 1, ch.length) - 1] || null;
-    }
-    const k = Math.round(num(numv));
-    return Number.isFinite(k) ? (byNum.get(k) || null) : null;
-  };
   groups.forEach(r => {
     const g = r.g, list = Array.isArray(g.addE) ? g.addE : [];
     if (!list.length) return;
     const attr = { type:g.etype || "BEAM", mat:Math.round(num(g.mat)) || 1,
                    sect:Math.round(num(g.sect)) || 1 };
     list.forEach(pair => {
-      if (!pair) return;
-      const a = resolve(pair.ai, pair.i), b = resolve(pair.bi, pair.j);
-      const lab = `${pair.ai || pair.i}–${pair.bi || pair.j}`;
-      if (!a || !b){ errs.push(`「${g.name}」手動元素 ${lab}:找不到節點`); return; }
-      if (a.num === b.num){ errs.push(`「${g.name}」手動元素的兩端是同一個節點 ${a.num}`); return; }
-      r.elems.push({ num:r.elemBase + r.elems.length, i:a.num, j:b.num, a, b,
+      const i = Math.round(num(pair && pair.i)), j = Math.round(num(pair && pair.j));
+      if (!Number.isFinite(i) || !Number.isFinite(j)) return;
+      const a = byNum.get(i), b = byNum.get(j);
+      if (!a || !b){ errs.push(`「${g.name}」手動元素 ${i}–${j}:找不到節點`); return; }
+      if (i === j){ errs.push(`「${g.name}」手動元素的兩端是同一個節點 ${i}`); return; }
+      r.elems.push({ num:r.elemBase + r.elems.length, i, j, a, b,
         chord:distXY(a, b), len3d:dist3(a, b), gid:g.id, group:r.gname,
         ...attr, cable:{ ...CABLE_DEF(), ...(g.cable || {}) }, dev:0, pi:-1, manual:true });
     });
@@ -1770,11 +1719,6 @@ function weldNodes(groups, warns, opt){
       e.chord = distXY(e.a, e.b); e.len3d = dist3(e.a, e.b);
       return true;
     });
-    // 記下「這一組有哪些節點被併到別人身上」——畫布上標記、面板上講清楚,
-    // 不然節點看起來就是憑空不見了,使用者不知道到底有沒有接到
-    r.weldAway = r.nodes.filter(n => winner.has(n.num))
-      .map(n => { const w = winner.get(n.num);
-        return { x:w.x, y:w.y, z:w.z, from:n.num, into:w.num, other:w.gid !== r.g.id }; });
     r.nodes = r.nodes.filter(n => !winner.has(n.num));
     finishStat(r);
   });
@@ -2600,11 +2544,6 @@ const DEF_STATE = () => ({
 let state = DEF_STATE();
 let MODEL = { groups:[], byId:new Map(), tot:{ n:0, e:0, len3d:0 }, names:[], prefix:"G_", inc:1000 };
 let ERRS = [], WARNS = [], SEL = null, SELNODE = null, SELELEM = null;
-/* 多選:和檔案總管一樣 —— 直接點 = 只選這個,Ctrl / Cmd 點 = 加選或取消,
-   Shift 點 = 從上一個選到這個。SEL 仍然是「主要選取」(面板跟著它走)。 */
-let SELSET = new Set();
-const selOnly = id => { SEL = id; SELSET = id ? new Set([id]) : new Set(); };
-const selGroups = () => state.groups.filter(g => SELSET.has(g.id));
 // 節點 / 元素的一次性平移旋轉輸入(不進 state,不進復原堆疊)
 let XFT = XF_DEF();
 
@@ -2622,7 +2561,6 @@ function normState(s){
   ["profMode","zScale","zAuto"].forEach(k => delete s.view[k]);
   if (!(+s.view.zEx > 0)) s.view.zEx = 1;
   if (!Number.isFinite(+s.view.el)) s.view.el = 90;
-  s.view.el = norm180(+s.view.el);
   s.groupPrefix = s.groupPrefix || "G_";
   if (!Array.isArray(s.groups)) s.groups = [];
   s.groups.forEach(g => {
@@ -2639,15 +2577,9 @@ function normState(s){
       .map(q => ({ x:num(q && q.x) || 0, y:num(q && q.y) || 0, z:num(q && q.z) || 0 }));
     g.cable = { ...CABLE_DEF(), ...(g.cable || {}) };
     delete g.autoNum; delete g.nodeBase; delete g.elemBase;   // v3.9:編號一律自動
-    // 手動元素:「群組 + 第幾個節點」的參照要留著,不能只留節點編號 —— 編號會隨上游分割改變
     g.addE = (Array.isArray(g.addE) ? g.addE : [])
-      .map(q => {
-        const o = { i:Math.round(num(q && q.i)) || 0, j:Math.round(num(q && q.j)) || 0 };
-        if (parseGRef(q && q.ai)) o.ai = q.ai;
-        if (parseGRef(q && q.bi)) o.bi = q.bi;
-        return o;
-      })
-      .filter(q => (q.ai || q.i) && (q.bi || q.j) && !(q.i && q.j && q.i === q.j));
+      .map(q => ({ i:Math.round(num(q && q.i)) || 0, j:Math.round(num(q && q.j)) || 0 }))
+      .filter(q => q.i && q.j && q.i !== q.j);
     if (g.type === "CURVE"){
       if (!g.edits || typeof g.edits !== "object") g.edits = {};
       if (!Array.isArray(g.dels)) g.dels = [];
@@ -2785,10 +2717,8 @@ function renderTree(){
   const rows = state.groups.map((g, i) => {
     const T = TYPES[g.type], r = MODEL.byId ? MODEL.byId.get(g.id) : null;
     const bad = (r && r.stat.err) || (r && r.numClash);
-    return `<div class="it${SEL === g.id ? " on" : ""}${
-      SELSET.has(g.id) && SEL !== g.id ? " msel" : ""}${bad ? " err" : ""}" data-id="${g.id}" draggable="true">
-      <span class="ic${g.on === false ? " off" : ""}" style="color:${colorOfGroup(g)}" title="${
-        esc(T.name + (soloPiece(g) ? "(" + PIECES[soloPiece(g)].name + ")" : ""))}">${iconFor(g)}</span>
+    return `<div class="it${SEL === g.id ? " on" : ""}${bad ? " err" : ""}" data-id="${g.id}" draggable="true">
+      <span class="ic${g.on === false ? " off" : ""}" style="color:${colorOfGroup(g)}" title="${esc(T.name)}">${icon(g.type)}</span>
       <span class="nm">${esc(g.name)}</span>
       <span class="meta">${esc(groupSummary(g))}</span>
       <button class="kebab" data-menu="${g.id}" title="更多(也可以直接右鍵)">⋯</button></div>`;
@@ -2849,26 +2779,7 @@ $("#tree").addEventListener("click", e => {
   const kb = e.target.closest("[data-menu]");
   if (kb){ e.stopPropagation(); openGroupMenu(kb.dataset.menu, kb.getBoundingClientRect()); return; }
   const it = e.target.closest(".it");
-  if (!it) return;
-  const id = it.dataset.id;
-  if (id[0] === "_"){ selOnly(id); render(); return; }   // 全域頁面不進多選
-  const ids = state.groups.map(x => x.id);
-  if (e.shiftKey && SEL && ids.includes(SEL)){
-    const a = ids.indexOf(SEL), b = ids.indexOf(id);
-    if (a >= 0 && b >= 0){
-      SELSET = new Set(ids.slice(Math.min(a,b), Math.max(a,b) + 1));
-      SEL = id; render(); return;
-    }
-  }
-  if (e.ctrlKey || e.metaKey){
-    if (!ids.includes(SEL)) SELSET = new Set();
-    if (SELSET.has(id) && SELSET.size > 1){
-      SELSET.delete(id);
-      if (SEL === id) SEL = [...SELSET][SELSET.size - 1];
-    } else { SELSET.add(id); SEL = id; }
-    render(); return;
-  }
-  selOnly(id); render();
+  if (it){ SEL = it.dataset.id; render(); }
 });
 // 右鍵組 = 同一個選單
 $("#tree").addEventListener("contextmenu", e => {
@@ -2883,8 +2794,7 @@ function closeGroupMenu(){ const m = $("#ctx-menu"); if (m) m.remove(); }
 function openGroupMenu(gid, box){
   closeGroupMenu();
   const g = state.groups.find(x => x.id === gid); if (!g) return;
-  if (!SELSET.has(gid)) selOnly(gid);                  // 右鍵到多選以外的群組 = 只選它
-  SEL = gid; render();                                 // 樹與屬性面板一起跟著選到的群組走
+  SEL = gid; render();                                 // 樹與屬性面板一起跟著選到的組走
   const d = document.createElement("div");
   d.className = "ctx"; d.id = "ctx-menu";
   d.innerHTML =
@@ -2937,16 +2847,9 @@ function depChain(g, groups){
 const hasUpstream = g => depChain(g).length > 1;
 
 // mkName(原名) → 複本的名字。deep = true 時連上游一起複製並改指參照。
-const dupGroup = (g, mkName, xfDelta, deep, quiet, afterG) =>
-  dupGroups([g], mkName, xfDelta, deep, quiet, afterG);
-// 一次複製好幾個群組:被選到的群組之間互相的參照也會改指到複本(整套一起搬)
-function dupGroups(seeds, mkName, xfDelta, deep, quiet, afterG){
+function dupGroup(g, mkName, xfDelta, deep, quiet, afterG){
   const nameOf = typeof mkName === "function" ? mkName : (() => mkName);
-  const want = new Set();
-  seeds.forEach(g => (deep ? depChain(g) : [g]).forEach(o => want.add(o.id)));
-  const src = state.groups.filter(x => want.has(x.id));
-  if (!src.length) return null;
-  const g = seeds[0];
+  const src = deep ? depChain(g) : [g];
   const map = new Map();
   const copies = src.map(o => {
     const c = clone(o);
@@ -2978,7 +2881,7 @@ function dupGroups(seeds, mkName, xfDelta, deep, quiet, afterG){
   const anchor = afterG && state.groups.includes(afterG) ? afterG : g;
   state.groups.splice(state.groups.indexOf(anchor) + 1, 0, ...copies);
   const main = map.get(g.id);
-  SEL = main; SELSET = new Set(copies.map(c => c.id));
+  SEL = main;
   if (!quiet) recompute(true);              // 一次做很多份時交給呼叫端最後統一重算
   return copies.find(c => c.id === main);
 }
@@ -3161,19 +3064,13 @@ function openPasteDlg(){
 }
 
 /* ---------- 位移複製對話框 ---------- */
-function openOffsetDlg(gsOrG){
-  const gs = Array.isArray(gsOrG) ? gsOrG.slice() : [gsOrG];
-  if (!gs.length) return;
-  const g = gs[0];
-  const many = gs.length > 1;
+function openOffsetDlg(g){
   const m = document.createElement("div");
   m.className = "mask";
   const F = (lab, id, v) => `<label class="f"><span>${lab}</span>
     <input type="number" step="any" id="${id}" value="${v}"></label>`;
-  // 上游 = 這些群組參照到、但自己不在選取裡的那些
-  const inSel = new Set(gs.map(o => o.id));
-  const upNames = [...new Set(gs.flatMap(o => depChain(o))
-    .filter(o => !inSel.has(o.id)).map(o => o.name))];
+  const up = depChain(g);                       // 含自己;長度 > 1 表示它掛在別的組上
+  const upNames = up.filter(o => o.id !== g.id).map(o => o.name);
   const deepRow = upNames.length ? `<div class="fields g3" style="margin-top:8px">
       <label class="f" style="grid-column:span 3"><span>複製方式</span><select id="od-deep">
         <option value="1">獨立 —— 連 ${esc(upNames.join("、"))} 一起複製,複本自成一套</option>
@@ -3182,10 +3079,8 @@ function openOffsetDlg(gsOrG){
     <div class="hint" style="margin-top:7px">這個群組的節點是<b>從上游算出來的</b>。選<b>連動</b>時複本仍由原來的
       ${esc(upNames.join("、"))} 決定形狀,只有偏移量能調;要各走各的請選<b>獨立</b>。</div>` : "";
   m.innerHTML = `<div class="dlg">
-      <h3>位移複製${many ? `這 ${gs.length} 個群組` : `「${esc(g.name)}」`}</h3>
-      <div class="sub">${many
-        ? `<b>${esc(gs.map(o => o.name).join("、"))}</b> 會被當成一套一起複製 —— 它們之間互相的參照會改指到複本。`
-        : `產生一個<b>同型別、內容完全相同</b>的新群組(${esc(TYPES[g.type].name)}),`}
+      <h3>位移複製「${esc(g.name)}」</h3>
+      <div class="sub">產生一個<b>同型別、內容完全相同</b>的新群組(${esc(TYPES[g.type].name)}),
         再整個群組平移 / 旋轉。之後仍可在新群組的「平移與旋轉」裡隨時微調。</div>
       <div class="fields g3">${F(`dX (${UL()})`, "od-x", 0) + F(`dY (${UL()})`, "od-y", 0) + F(`dZ (${UL()})`, "od-z", 0)}</div>
       <div class="fields g3" style="margin-top:8px">${F("旋轉角 (°)", "od-r", 0)}
@@ -3233,9 +3128,8 @@ function openOffsetDlg(gsOrG){
     snapshot("offdup:" + Date.now());
     // 每一份都從「原組」複製,偏置量乘上份序 —— 不用前一份接力,名字才不會越疊越長
     for (let k = 1; k <= cnt; k++)
-      dupGroups(gs, n => `${n} ${mir ? "鏡射" : "位移"}${cnt > 1 ? k : ""}`,
-        { dx:dx*k, dy:dy*k, dz:dz*k, rot:rot*k, axis, mir, mirAt }, deep, k < cnt);
-    recompute(true);
+      dupGroup(g, n => `${n} ${mir ? "鏡射" : "位移"}${cnt > 1 ? k : ""}`,
+        { dx:dx*k, dy:dy*k, dz:dz*k, rot:rot*k, axis, mir, mirAt }, deep);
   };
 }
 
@@ -3547,8 +3441,8 @@ function pieceCard(g, pc, pi, info, r){
       (gr ? fld("第幾個節點", k + key + "I", gr.idx, { min:1 })
           : r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "") +
       `<div class="f"><span>&nbsp;</span><button class="btn${picking ? " d" : ""}" data-op="${
-        picking ? "mecancel" : "refpick"}" data-k="${k + key}" title="在 3D 視圖上點一個節點,當作這一段的${esc(label)}">${
-        picking ? `點${esc(label)}…` : `圖上點${esc(label)}`}</button></div>`;
+        picking ? "mecancel" : "refpick"}" data-k="${k + key}">${
+        picking ? "點一個節點…" : "在圖上點"}</button></div>`;
   };
   const ec = endRefOn(pc);
   const endSel = END_CONT_T[pc.type]
@@ -3583,8 +3477,7 @@ function pieceCard(g, pc, pi, info, r){
     const rows = [];
     if (!sv) rows.push(rowS());
     if (!ec && !polar) rows.push(rowE());
-    body = `<div class="fields g4">${startSel}</div>` +
-      `<div class="fields g4 rowsep">${endSel +
+    body = `<div class="fields g4">${startSel + endSel +
         (ec ? "" : fld("終點定義", k + "endMode", pc.endMode,
           { select:[["point","終點座標"],["polar","長度 + 方位角 + 仰角"]] }))}</div>` +
       (rows.length ? xyzTable(rows) : "") + startHint +
@@ -3616,8 +3509,7 @@ function pieceCard(g, pc, pi, info, r){
         fld("偏向", k + "dir", pc.dir, { select:[["1","右轉"],["-1","左轉"]] })}</div>
         <div class="hint">半徑由起點到圓心的距離決定;<b>僅水平面</b>,高程沿弧線線性內插。</div>`;
     } else if (pc.arcMode === "three"){
-      body = `<div class="fields g4">${startSel + modeF}</div>` +
-        `<div class="fields g4 rowsep">${endSel}</div>` +
+      body = `<div class="fields g4">${startSel + modeF + endSel}</div>` +
         xyzTable([...(sv ? [] : [rowS()]),
           { label:"通過點", kx:k+"mx", vx:pc.mx, ky:k+"my", vy:pc.my, kz:k+"mz", vz:pc.mz },
           ...(ec ? [] : [rowE()])]) + startHint +
@@ -3627,8 +3519,7 @@ function pieceCard(g, pc, pi, info, r){
           ${info && info.meta && Number.isFinite(info.meta.R)
             ? `目前半徑 <b>${info.meta.R.toFixed(3)} ${UL()}</b>,轉角 <b>${(info.meta.delta || 0).toFixed(2)}°</b>。` : ""}</div>`;
     } else {
-      body = `<div class="fields g4">${startSel + modeF}</div>` +
-        `<div class="fields g4 rowsep">${endSel}</div>` +
+      body = `<div class="fields g4">${startSel + modeF + endSel}</div>` +
         xyzTable([...(sv ? [] : [rowS()]), ...(ec ? [] : [rowE()])]) + startHint +
         `${endHint}
         <div class="fields g4" style="margin-top:8px">${
@@ -3644,8 +3535,7 @@ function pieceCard(g, pc, pi, info, r){
     const fb = pc.fBase || "chord";
     const selNode = (SELNODE && MODEL.byId.get(SELNODE.gid))
       ? MODEL.byId.get(SELNODE.gid).nodes.find(n => n.num === SELNODE.num) : null;
-    body = `<div class="fields g4">${startSel}</div>` +
-      `<div class="fields g4 rowsep">${endSel}</div>` +
+    body = `<div class="fields g4">${startSel + endSel}</div>` +
       xyzTable([...(sv ? [] : [rowS()]), ...(ec ? [] : [rowE()])]) + startHint +
       `${endHint}
       <div class="fields g3" style="margin-top:8px">${
@@ -3848,14 +3738,8 @@ function manualSec(g, r){
       label:`#${i+1}`, kx:`addN.${i}.x`, vx:q.x, ky:`addN.${i}.y`, vy:q.y, kz:`addN.${i}.z`, vz:q.z,
       tail:`<button class="iconbtn danger" data-op="mndel" data-i="${i}" title="刪除">✕</button>`
     })), "margin:0") : "";
-  const gname = ref => { const r = parseGRef(ref); if (!r) return null;
-    const og = state.groups.find(x => x.id === r.gid);
-    return og ? `${og.name} #${r.idx}` : null; };
-  const eList = es.map((q, i) => {
-    const t = (gname(q.ai) && gname(q.bi)) ? `${gname(q.ai)} – ${gname(q.bi)}` : `${q.i} – ${q.j}`;
-    return `<span class="mepair">${esc(t)}` +
-      `<button class="iconbtn danger" data-op="medel" data-i="${i}" title="刪除">✕</button></span>`;
-  }).join("");
+  const eList = es.map((q, i) => `<span class="mepair">${q.i} – ${q.j}` +
+      `<button class="iconbtn danger" data-op="medel" data-i="${i}" title="刪除">✕</button></span>`).join("");
   return SEC("手動節點與元素",
     `${ns.length} 節點 · ${es.length} 元素`,
     `${nTable}
@@ -3904,9 +3788,7 @@ function paneFor(g){
   const st = r ? r.stat : {};
   const head = `<div class="ptitle">
       <span class="nm">${esc(g.name)}</span><span class="fam ${T.fam}">${T.name}</span><span class="sp"></span>
-      <button class="btn tog${g.on !== false ? " on" : ""}" data-op="ontog"
-        title="${g.on !== false ? "點一下停用這個群組" : "點一下啟用這個群組"}">${
-        g.on !== false ? "已啟用" : "已停用"}</button>
+      <label class="chk"><input type="checkbox" data-k="on"${g.on !== false ? " checked" : ""}> 啟用</label>
       <button class="btn" data-op="offdup">位移複製…</button>
       <button class="btn" data-op="arrdlg">沿線陣列…</button>
       <button class="btn${xfActive(g.xf) ? " p" : ""}" data-op="xfdlg">平移旋轉…${
@@ -4039,11 +3921,6 @@ function paneFor(g){
   const rows = [];
   if (r && !r.stat.err){
     rows.push(["節點", st.n], ["元素", st.e]);
-    if (r.weldAway && r.weldAway.length){
-      const other = r.weldAway.filter(w => w.other).length;
-      rows.push(["重合已合併",
-        `<span style="color:var(--warn)">${r.weldAway.length} 個${other ? `(${other} 個接到別的群組)` : ""}</span>`]);
-    }
     if (st.e){
       rows.push(["元素長", `${st.minL.toFixed(3)} – ${st.maxL.toFixed(3)} ${UL()}`]);
       rows.push(["3D 總長", st.len3d.toFixed(4) + " " + UL()]);
@@ -4104,33 +3981,6 @@ function paneImport(){
         讀進來(檔案或直接貼上文字都可以),各群組的「材料 / 斷面」欄位就會顯示<b>實際的名稱</b>,
         不用再對編號。只讀 <code>*MATERIAL</code> 與 <code>*SECTION</code> 的編號與名稱,不會動到你的幾何。</div>
       ${libTable()}`);
-}
-
-function paneMulti(){
-  const gs = selGroups();
-  const nOn = gs.filter(g => g.on !== false).length;
-  const rows = gs.map(g => {
-    const r = MODEL.byId ? MODEL.byId.get(g.id) : null;
-    return `<div style="display:flex; align-items:center; gap:7px; padding:3px 0; font-size:12px; color:var(--ink-2)">
-      <span style="display:flex; color:${colorOfGroup(g)}">${iconFor(g)}</span>
-      <span>${esc(g.name)}</span>
-      <span style="color:var(--ink-3); font-size:10.5px">${esc(TYPES[g.type].name)}</span>
-      <span style="margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)">${
-        r ? `${r.nodes.length} 節點 · ${r.elems.length} 元素` : "—"}</span></div>`;
-  }).join("");
-  return `<div class="ptitle"><span class="nm">已選 ${gs.length} 個群組</span>
-      <span class="fam geo">多選</span><span class="sp"></span>
-      <button class="btn" data-op="mclr">只留主要那一個</button></div>` +
-    SEC("這些群組", `${nOn} 個啟用中`, rows) +
-    SEC("一起做", "", `<div class="btns">
-        <button class="btn p" data-op="moffdup">位移複製…</button>
-        <button class="btn" data-op="mon">全部啟用</button>
-        <button class="btn" data-op="moff">全部停用</button>
-        <button class="btn d" data-op="mdel">全部刪除</button></div>
-      <div class="hint">位移複製會把<b>這幾個群組當成一套</b>一起複製 ——
-        它們之間互相的參照(例如對接指到的那兩排)會改指到複本,不會還黏在原來的群組上。
-        選「獨立」時連它們共同的上游也一起複製。<br>
-        沿線陣列仍然是<b>一次一個群組</b>(每一份要各自的基準點)。</div>`);
 }
 
 function paneOutput(){
@@ -4240,7 +4090,6 @@ function renderPane(){
   if (SEL === "_num"){ el.innerHTML = paneNumbering(); foldHints(el, "_num"); keepScroll(); return; }
   if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); foldHints(el, "_out"); keepScroll(); return; }
   if (SEL === "_imp"){ el.innerHTML = paneImport(); foldHints(el, "_imp"); keepScroll(); return; }
-  if (SELSET.size > 1){ el.innerHTML = paneMulti(); foldHints(el, "_multi"); keepScroll(); return; }
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
     // 這一頁通常是看不到的(沒選群組時整個編輯區會收起來),留一份給極窄版面用
@@ -4314,9 +4163,6 @@ function applySnap(json){
   camFromState();
   if (SEL && SEL[0] !== "_" && !state.groups.some(g => g.id === SEL))
     SEL = state.groups.length ? state.groups[0].id : null;
-  SELSET = new Set([...SELSET].filter(id => state.groups.some(g => g.id === id)));
-  if (SEL && SEL[0] !== "_" && !state.groups.some(g => g.id === SEL)) SEL = [...SELSET][0] || null;
-  if (SEL && SEL[0] !== "_" && !SELSET.has(SEL)) SELSET.add(SEL);
   if (SELNODE && !state.groups.some(g => g.id === SELNODE.gid)) SELNODE = null;
   if (SELELEM && !state.groups.some(g => g.id === SELELEM.gid)) SELELEM = null;
   HIST.key = ""; HIST.t = 0;
@@ -4477,30 +4323,10 @@ $("#pane").addEventListener("click", e => {
     recompute(true); return; }
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
   if (op === "weldtog"){ state.weld.on = (state.weld.on === false); recompute(true); return; }
-  // ---- 多選的批次動作 ----
-  if (op === "mclr"){ selOnly(SEL); render(); return; }
-  if (op === "mon" || op === "moff"){
-    snapshot(op + ":" + Date.now());
-    selGroups().forEach(x => { x.on = (op === "mon"); });
-    recompute(true); return;
-  }
-  if (op === "mdel"){
-    const gs = selGroups();
-    if (!confirm(`刪除這 ${gs.length} 個群組?`)) return;
-    snapshot("mdel:" + Date.now());
-    const first = state.groups.indexOf(gs[0]);
-    state.groups = state.groups.filter(x => !SELSET.has(x.id));
-    SELSET = new Set();
-    SEL = state.groups.length ? state.groups[clamp(first - 1, 0, state.groups.length - 1)].id : null;
-    if (SEL) SELSET.add(SEL);
-    recompute(true); return;
-  }
-  if (op === "moffdup"){ openOffsetDlg(selGroups()); return; }
   if (op === "xfdlg" && g){ openXfDlg(g); return; }
   if (!g) return;
   if (op === "del"){ state.groups.splice(gi, 1); SEL = state.groups.length ? state.groups[Math.max(0, gi-1)].id : null; }
   if (op === "colauto" && g){ delete g.color; recompute(true); return; }
-  if (op === "ontog" && g){ g.on = (g.on === false); recompute(true); return; }
   if (op === "pair" && g){ g.pair = b.dataset.v; recompute(true); return; }
   if (op === "offdup"){ openOffsetDlg(g); return; }
   if (op === "arrdlg" && g){ openArrayDlg(g); return; }
@@ -5010,14 +4836,14 @@ function curvePolys(r){
    正在編輯的組用**加粗**表示,不換色。                                            */
 const pcOn = r => SEL === r.g.id && r.g.type === "CURVE" && (r.g.pieces || []).length > 1;
 const colOf = r => r.color;
-const IDLE_COL = "#161a20";                 // 沒在編輯的群組:黑
+const IDLE_COL = "#1e2430";                 // 沒在編輯的群組:黑
 // 節點半徑:編輯中的群組畫大一點(線也同時收細),節點才不會被線蓋掉
 const nodeRad = (n, on) => on ? (n > 400 ? 2.4 : n > 150 ? 3.2 : 4.2)
                               : (n > 400 ? 1.0 : n > 150 ? 1.4 : 1.9);
 
 /* ---------- 相機 ---------- */
 function camUpdate(){
-  const A = norm360(num(view.az) || 0)*D2R, E = norm180(num(view.el) || 0)*D2R;
+  const A = norm360(num(view.az) || 0)*D2R, E = clamp(num(view.el) || 0, -90, 90)*D2R;
   const sa = Math.sin(A), ca = Math.cos(A), se = Math.sin(E), ce = Math.cos(E);
   CAM.r = { x:sa,      y:ca,      z:0  };
   CAM.u = { x:-ca*se,  y:sa*se,   z:ce };
@@ -5026,7 +4852,7 @@ function camUpdate(){
 function camFromState(){
   const v = state.view || {};
   if (Number.isFinite(num(v.az))) view.az = norm360(num(v.az));
-  if (Number.isFinite(num(v.el))) view.el = norm180(num(v.el));
+  if (Number.isFinite(num(v.el))) view.el = clamp(num(v.el), -90, 90);
   if (num(v.zEx) > 0) view.zEx = num(v.zEx);
   camUpdate();
 }
@@ -5089,7 +4915,7 @@ const fmtN = v => Math.abs(v) < 1e-9 ? "0" : (Math.abs(v) >= 1000 ? v.toFixed(0)
 /* ---------- 格線:斜看時畫地面格網,接近立面時退回高程格線 ---------- */
 function drawGrid(W, H){
   const P = allPts(); if (!P.length) return;
-  const se = Math.abs(Math.sin(norm180(num(view.el) || 0)*D2R));
+  const se = Math.abs(Math.sin(clamp(num(view.el) || 0, -90, 90)*D2R));
   ctx.lineWidth = 1; ctx.fillStyle = "#b8c0cb";
   if (se > 0.12){
     let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity;
@@ -5275,16 +5101,9 @@ function draw(){
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.globalAlpha = 1;
       // v3.16:起點 / 終點不再特別標記 —— 同一個群組的節點一律長一樣
-      ctx.fillStyle = "#8a6116";
+      ctx.fillStyle = "#a8710d";
       r.nodes.filter(n => n.edited).forEach(n => {
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+1.4,0,7); ctx.fill(); });
-      // 被合併掉的節點:位置還在(只是換成別人的節點),畫一個空心方框標出來
-      if (on && r.weldAway && r.weldAway.length){
-        ctx.strokeStyle = "#8a6116"; ctx.lineWidth = 1.6;
-        const h = rad + 3;
-        r.weldAway.forEach(w => { const s = toS(w);
-          ctx.strokeRect(s.x - h, s.y - h, h*2, h*2); });
-      }
     }
   });
 
@@ -5334,7 +5153,7 @@ const VIEWS = [
 const viewHit = () => VIEWS.find(v =>
   Math.abs(((view.az - v.az + 540) % 360) - 180) < 0.5 && Math.abs(view.el - v.el) < 0.5);
 function camTo(az, el){
-  view.az = norm360(az); view.el = norm180(el);
+  view.az = norm360(az); view.el = clamp(el, -90, 90);
   camUpdate(); camPush();
   if (!view.locked) fitView();
   syncViewUI(); draw();
@@ -5419,7 +5238,7 @@ cv.addEventListener("mousemove", e => {
     if (Math.hypot(dx, dy) > 3) dragMoved = true;
     if (drag.mode === "rot"){                         // 模型跟著手走
       view.az = norm360(drag.az + dx*0.4);
-      view.el = norm180(drag.el + dy*0.4);   // 轉過極點會翻到另一邊,不再卡住
+      view.el = clamp(drag.el + dy*0.4, -90, 90);
       camUpdate(); camPush(); syncViewUI();
     } else if (drag.mode === "zoom"){
       view.scale = Math.max(1e-9, drag.scale*Math.exp(-dy*0.006));
@@ -5472,11 +5291,7 @@ cv.addEventListener("click", e => {
     }
     snapshot("meadd:" + Date.now());
     g0.addE = Array.isArray(g0.addE) ? g0.addE : [];
-    // 記「群組 + 第幾個節點」,上游重新分割也不會跑掉;找不到就退回存編號
-    const pa = locateNode(PICK.i), pb = locateNode(hit.n.num);
-    g0.addE.push({ i:PICK.i, j:hit.n.num,
-      ...(pa ? { ai:"@" + pa.gid + ":" + (pa.idx + 1) } : {}),
-      ...(pb ? { bi:"@" + pb.gid + ":" + (pb.idx + 1) } : {}) });
+    g0.addE.push({ i:PICK.i, j:hit.n.num });
     PICK = null; SEL = g0.id;
     recompute(true); focusHot(); return;
   }
@@ -5532,7 +5347,7 @@ $("#vaz").addEventListener("input", e => {
 });
 $("#vel").addEventListener("input", e => {
   const a = num(e.target.value); if (!Number.isFinite(a)) return;
-  view.el = norm180(a); camUpdate(); camPush(); syncViewUI(); draw();
+  view.el = clamp(a, -90, 90); camUpdate(); camPush(); syncViewUI(); draw();
 });
 $("#zsc").addEventListener("input", e => {
   const z = num(e.target.value);
@@ -5931,55 +5746,6 @@ function runTests(){
     chk("T4","垂落取自另一群組:X 仍照來源節點", lastE.b.x, 100, 1e-9, "m");
     yes("T4","垂落取自另一群組:下端就是那條線的既有節點",
       RF.nodes.length === 0, `自有節點 ${RF.nodes.length}`, "自有節點 0(已合併)");
-  }
-  {
-    // v3.22:仰角循環 —— 轉過極點要翻到另一邊,不是卡住
-    chk("V4","仰角 200° → -160°", norm180(200), -160, 0, "°");
-    chk("V4","仰角 -190° → 170°", norm180(-190), 170, 0, "°");
-    chk("V4","仰角 90° 不動", norm180(90), 90, 0, "°");
-    chk("V4","仰角 -180° → 180°", norm180(-180), 180, 0, "°");
-    chk("V4","仰角 540° → 180°", norm180(540), 180, 0, "°");
-    chk("V4","方位角 400° → 40°", norm360(400), 40, 0, "°");
-    chk("V4","方位角 -30° → 330°", norm360(-30), 330, 0, "°");
-  }
-  {
-    // v3.22:手動元素存「群組 + 第幾個節點」,上游重新分割也不會跑掉
-    const mk = cnt => build([
-      { id:"ma", type:"LINE", name:"A", x1:0, y1:0, z1:0, x2:100, y2:0, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:cnt } },
-      { id:"mb", type:"LINE", name:"B", x1:0, y1:30, z1:0, x2:100, y2:30, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:1 },
-        addE:[{ ai:"@ma:2", bi:"@ma:4" }] }
-    ]);
-    const r4 = mk(4).md.byId.get("mb");
-    const man4 = r4.elems.filter(e => e.manual)[0] || { a:{ x:NaN }, b:{ x:NaN } };
-    chk("V5","手動元素:A 的第 2 個節點 X", man4.a.x, 25, 1e-9, "m");
-    chk("V5","手動元素:A 的第 4 個節點 X", man4.b.x, 75, 1e-9, "m");
-    // 上游改成 8 等分:編號整串變了,但「第 2 個 / 第 4 個」還是要對得到
-    const r8 = mk(8).md.byId.get("mb");
-    const man8 = r8.elems.filter(e => e.manual)[0] || { a:{ x:NaN }, b:{ x:NaN } };
-    chk("V5","改分割後仍指到第 2 個節點", man8.a.x, 12.5, 1e-9, "m");
-    chk("V5","改分割後仍指到第 4 個節點", man8.b.x, 37.5, 1e-9, "m");
-    // 舊檔存節點編號的寫法也要照樣運作
-    const old = build([
-      { id:"oa", type:"LINE", name:"A", x1:0, y1:0, z1:0, x2:100, y2:0, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:4 } },
-      { id:"ob", type:"LINE", name:"B", x1:0, y1:30, z1:0, x2:100, y2:30, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:1 }, addE:[{ i:1002, j:1004 }] }
-    ]);
-    const mo = old.md.byId.get("ob").elems.filter(e => e.manual)[0];
-    yes("V5","舊檔的節點編號寫法仍然可用", !!mo,
-      mo ? `${mo.i}–${mo.j}` : `無(errs: ${old.errs.join("|") || "無"})`, "1002–1004");
-    chk("V5","舊檔寫法接到的位置正確", (mo || { a:{ x:NaN } }).a.x, 25, 1e-9, "m");
-  }
-  {
-    // v3.22:線群組只有一種段時,清單改畫那一種段的圖示
-    const one = { type:"CURVE", pieces:[{ type:"HELIX" }, { type:"HELIX" }] };
-    const mix = { type:"CURVE", pieces:[{ type:"LINE" }, { type:"ARC" }] };
-    const none = { type:"LINK2" };
-    yes("V6","只有螺旋 → 螺旋圖示", soloPiece(one) === "HELIX", String(soloPiece(one)), "HELIX");
-    yes("V6","段型別混合 → 用通用線圖示", soloPiece(mix) === null, String(soloPiece(mix)), "null");
-    yes("V6","連接族沒有段 → null", soloPiece(none) === null, String(soloPiece(none)), "null");
   }
   {
     // v3.17:段的起點 / 終點指到「別的群組的第 k 個節點」
