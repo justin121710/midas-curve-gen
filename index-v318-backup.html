@@ -21,8 +21,6 @@
   header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
   header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
-  /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
-  header .logo{display:inline-flex; color:var(--accent); line-height:0; margin-right:-3px}
   header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
     background:var(--accent-soft); color:var(--accent); font-weight:600}
   header .note{font-size:11px; color:var(--ink-3)}
@@ -43,14 +41,14 @@
   header .units select{font:inherit; font-size:11.5px; font-weight:650; width:auto; padding:1px 4px;
     border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--accent); cursor:pointer}
 
-  #app{display:grid; grid-template-columns:var(--tw,150px) 7px minmax(0,1fr) 7px var(--rw,330px);
+  #app{display:grid; grid-template-columns:var(--tw,238px) 7px minmax(0,1fr) 7px var(--rw,330px);
     height:calc(100% - 41px)}
   #tree, #tresizer, #pane, #resizer, #right{grid-row:1}   /* 釘在同一列,否則對調後會被擠到下一列 */
   #tree{grid-column:1} #tresizer{grid-column:2} #pane{grid-column:3}
   #resizer{grid-column:4} #right{grid-column:5}
   #app.swap #right{grid-column:3; border-left:0} #app.swap #pane{grid-column:5}
   /* 沒選任何群組時,編輯區沒東西可編,整塊收掉把空間讓給畫布 */
-  #app.nosel{grid-template-columns:var(--tw,150px) 7px 0 0 minmax(0,1fr)}
+  #app.nosel{grid-template-columns:var(--tw,238px) 7px 0 0 minmax(0,1fr)}
   #app.nosel #pane, #app.nosel #resizer{display:none}
   #app.nosel #right, #app.nosel.swap #right{grid-column:5; border-left:1px solid var(--line)}
   #resizer, #tresizer{position:relative; background:#f2f0ea; border-left:1px solid var(--line);
@@ -60,10 +58,10 @@
     transform:translate(-50%,-50%); color:var(--ink-3); font-size:12px; line-height:1}
   @media(max-width:1180px){
     /* 窄版本來是上下堆疊;沒選群組時讓畫布直接補到第一列,不留空白 */
-    #app.nosel{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
+    #app.nosel{grid-template-columns:var(--tw,210px) 7px minmax(0,1fr)}
     #app.nosel #right, #app.nosel.swap #right{grid-column:3; grid-row:1;
       border-top:0; border-left:1px solid var(--line)}
-    #app{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
+    #app{grid-template-columns:var(--tw,210px) 7px minmax(0,1fr)}
     #resizer{display:none}
     #tree{grid-column:1; grid-row:1} #tresizer{grid-column:2; grid-row:1}
     #pane, #app.swap #pane{grid-column:3; grid-row:1}
@@ -82,16 +80,15 @@
   #treelist{flex:1 1 auto; overflow:auto; padding:6px 0; min-height:0}
   /* 統計數字釘在左欄底下:只是「大概看一下」的東西,不值得佔畫布上方一整條 */
   #tree .kpi{flex:0 0 auto; border:0; border-top:1px solid var(--line); border-radius:0;
-    background:#f4f2ec; padding:5px 10px 7px; font-size:10px; gap:0;
-    grid-template-columns:minmax(0,1fr)}
-  #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between;
-    min-width:0; line-height:1.5}
-  #tree .kpi .k{display:inline; font-size:9.5px; flex:0 1 auto;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  #tree .kpi b{font-size:10.5px; white-space:nowrap; flex:0 0 auto}
-  #tree .grp{font-size:10px; letter-spacing:.06em; color:var(--ink-3); font-weight:700;
-    padding:9px 10px 4px; text-transform:uppercase}
-  #tree .it{display:flex; align-items:center; gap:6px; padding:5px 8px 5px 11px; cursor:pointer; color:var(--ink-2)}
+    background:#f4f2ec; padding:6px 12px 8px; font-size:11px; gap:1px 10px;
+    grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between; min-width:0}
+  #tree .kpi .k{display:inline; font-size:9.5px; flex:0 0 auto}
+  #tree .kpi b{font-size:11.5px; white-space:nowrap}
+  #tree .kpi .k{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+    padding:10px 12px 4px; text-transform:uppercase}
+  #tree .it{display:flex; align-items:center; gap:7px; padding:5px 10px 5px 14px; cursor:pointer; color:var(--ink-2)}
   #tree .it:hover{background:#f0eee8}
   #tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
   #tree .it.err{color:var(--err)}
@@ -101,11 +98,9 @@
   #tree .it .ic{display:flex; flex:0 0 auto; line-height:0}
   #tree .it .ic.off{color:#c9c4ba !important; opacity:.6}
   #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
-    flex:0 0 auto; display:none}
-  #tree .it:hover .meta, #tree .it.on .meta{display:inline}
+  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); flex:0 0 auto}
   #tree .it.on .meta{color:var(--accent)}
-  #tree .addwrap{padding:7px 8px 7px 11px; position:relative}
+  #tree .addwrap{padding:7px 10px 7px 14px; position:relative}
   #tree .addbtn{font:inherit; font-size:11.5px; color:var(--accent); background:none; border:0;
     cursor:pointer; padding:0; font-weight:600}
   /* 新增群組的選單掛在 body 上(和右鍵選單一樣),左欄再窄也不會被裁掉 */
@@ -343,9 +338,8 @@
 <body>
 
 <header>
-  <span class="logo" title="空間線型產生器"><svg width="21" height="21" viewBox="0 0 44 30" fill="none" stroke-linecap="round" style="vertical-align:-4px"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="2.8"/><circle cx="4" cy="5" r="2.6" fill="currentColor"/><circle cx="22" cy="25" r="2.6" fill="currentColor"/><circle cx="40" cy="5" r="2.6" fill="currentColor"/></svg></span>
   <h1>空間線型產生器</h1>
-  <span class="stage">群組架構 v3.19</span>
+  <span class="stage">群組架構 v3.18</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -4495,19 +4489,18 @@ function setSwap(on){
   app.style.setProperty("--rw", clamp(w, 240, 900) + "px");
   app.classList.toggle("swap", sw);
 })();
-// v3.19 左欄改成單行極簡、預設 150px。換一個 key,舊使用者存的 238 才不會蓋掉新預設。
-const LAY_TW = "scg.treeW2";
+const LAY_TW = "scg.treeW";
 function setTreeW(px){
-  const w = clamp(Math.round(px), 130, Math.max(200, window.innerWidth - 420));
+  const w = clamp(Math.round(px), 150, Math.max(200, window.innerWidth - 420));
   app.style.setProperty("--tw", w + "px");
   try { localStorage.setItem(LAY_TW, String(w)); } catch (err){}
   if (!view.locked) fitView();
   draw();
 }
 (function initTreeW(){
-  let w = 150;                                         // 讀不到 localStorage 時也要是新的預設
-  try { w = +localStorage.getItem(LAY_TW) || 150; } catch (err){}
-  app.style.setProperty("--tw", clamp(w, 130, 900) + "px");
+  let w = 238;
+  try { w = +localStorage.getItem(LAY_TW) || 238; } catch (err){}
+  app.style.setProperty("--tw", clamp(w, 150, 900) + "px");
 })();
 
 let RSZ = null;                                        // "right" = 預覽區、"tree" = 左側清單
@@ -4734,11 +4727,11 @@ function renderChecks(){
     <div><span class="k">群組</span><b>${MODEL.groups.length}</b></div>
     <div><span class="k">節點</span><b>${MODEL.tot.n}</b></div>
     <div><span class="k">元素</span><b>${MODEL.tot.e}</b></div>
-    <div><span class="k">弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
+    <div><span class="k">最大弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
     <div><span class="k">最短元素</span><b${hot(lens.length && Math.min(...lens) < inU(0.3))}>${lens.length ? Math.min(...lens).toFixed(3) : "0.000"} ${UL()}</b></div>
-    <div><span class="k">總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
-    <div><span class="k">衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
-    <div><span class="k">匯出群組名</span><b>${MODEL.names.length}</b></div>`;
+    <div><span class="k">元素總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
+    <div><span class="k">編號衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
+    <div><span class="k">匯出群組</span><b>${MODEL.names.length}</b></div>`;
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
     ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${

@@ -21,8 +21,6 @@
   header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
   header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
-  /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
-  header .logo{display:inline-flex; color:var(--accent); line-height:0; margin-right:-3px}
   header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
     background:var(--accent-soft); color:var(--accent); font-weight:600}
   header .note{font-size:11px; color:var(--ink-3)}
@@ -31,45 +29,28 @@
     border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer}
   header button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
   header button:disabled{opacity:.4; cursor:default}
-  header .hgap{width:18px; display:inline-block}
-  /* 全域設定:和「復原 / 重做」隔開,而且看得出來是另一類的東西 */
-  header button.gset{border-color:var(--accent); color:var(--accent); font-weight:650}
-  header button.gset:hover{background:var(--accent-soft)}
-  header button.gset.on{background:var(--accent); border-color:var(--accent); color:#fff}
-  header button.warn{border-color:#e6c9c5; color:var(--err); font-weight:600}
-  header button.warn:hover:not(:disabled){border-color:var(--err); background:#fdf0ef; color:var(--err)}
   header .units{display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-3);
     padding:2px 8px 2px 9px; border:1px solid var(--line); border-radius:5px; background:#fbfaf7}
   header .units select{font:inherit; font-size:11.5px; font-weight:650; width:auto; padding:1px 4px;
     border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--accent); cursor:pointer}
 
-  #app{display:grid; grid-template-columns:var(--tw,150px) 7px minmax(0,1fr) 7px var(--rw,330px);
+  #app{display:grid; grid-template-columns:var(--tw,238px) 7px minmax(0,1fr) 7px var(--rw,330px);
     height:calc(100% - 41px)}
   #tree, #tresizer, #pane, #resizer, #right{grid-row:1}   /* 釘在同一列,否則對調後會被擠到下一列 */
   #tree{grid-column:1} #tresizer{grid-column:2} #pane{grid-column:3}
   #resizer{grid-column:4} #right{grid-column:5}
   #app.swap #right{grid-column:3; border-left:0} #app.swap #pane{grid-column:5}
-  /* 沒選任何群組時,編輯區沒東西可編,整塊收掉把空間讓給畫布 */
-  #app.nosel{grid-template-columns:var(--tw,150px) 7px 0 0 minmax(0,1fr)}
-  #app.nosel #pane, #app.nosel #resizer{display:none}
-  #app.nosel #right, #app.nosel.swap #right{grid-column:5; border-left:1px solid var(--line)}
   #resizer, #tresizer{position:relative; background:#f2f0ea; border-left:1px solid var(--line);
     border-right:1px solid var(--line); cursor:col-resize; user-select:none}
   #resizer:hover, #resizer.on, #tresizer:hover, #tresizer.on{background:var(--accent-soft)}
   #resizer::after, #tresizer::after{content:"⋮"; position:absolute; top:50%; left:50%;
     transform:translate(-50%,-50%); color:var(--ink-3); font-size:12px; line-height:1}
-  @media(max-width:1180px){
-    /* 窄版本來是上下堆疊;沒選群組時讓畫布直接補到第一列,不留空白 */
-    #app.nosel{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
-    #app.nosel #right, #app.nosel.swap #right{grid-column:3; grid-row:1;
-      border-top:0; border-left:1px solid var(--line)}
-    #app{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
+  @media(max-width:1180px){ #app{grid-template-columns:var(--tw,210px) 7px minmax(0,1fr)}
     #resizer{display:none}
     #tree{grid-column:1; grid-row:1} #tresizer{grid-column:2; grid-row:1}
     #pane, #app.swap #pane{grid-column:3; grid-row:1}
     #right, #app.swap #right{grid-column:1/-1; grid-row:2; border-left:0; border-top:1px solid var(--line)} }
-  @media(max-width:740px){ #app, #app.nosel{grid-template-columns:minmax(0,1fr); height:auto}
-    #app.nosel #right, #app.nosel.swap #right{grid-column:1; grid-row:2; border-left:0}
+  @media(max-width:740px){ #app{grid-template-columns:minmax(0,1fr); height:auto}
     #tresizer{display:none}
     #tree{grid-column:1; grid-row:1}
     #pane, #app.swap #pane{grid-column:1; grid-row:2}
@@ -77,21 +58,10 @@
     #tree{border-right:0; border-bottom:1px solid var(--line); max-height:230px} }
 
   /* ---- 樹 ---- */
-  #tree{background:#fafaf7; border-right:1px solid var(--line); overflow:hidden; font-size:12px;
-    display:flex; flex-direction:column; min-height:0}
-  #treelist{flex:1 1 auto; overflow:auto; padding:6px 0; min-height:0}
-  /* 統計數字釘在左欄底下:只是「大概看一下」的東西,不值得佔畫布上方一整條 */
-  #tree .kpi{flex:0 0 auto; border:0; border-top:1px solid var(--line); border-radius:0;
-    background:#f4f2ec; padding:5px 10px 7px; font-size:10px; gap:0;
-    grid-template-columns:minmax(0,1fr)}
-  #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between;
-    min-width:0; line-height:1.5}
-  #tree .kpi .k{display:inline; font-size:9.5px; flex:0 1 auto;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  #tree .kpi b{font-size:10.5px; white-space:nowrap; flex:0 0 auto}
-  #tree .grp{font-size:10px; letter-spacing:.06em; color:var(--ink-3); font-weight:700;
-    padding:9px 10px 4px; text-transform:uppercase}
-  #tree .it{display:flex; align-items:center; gap:6px; padding:5px 8px 5px 11px; cursor:pointer; color:var(--ink-2)}
+  #tree{background:#fafaf7; border-right:1px solid var(--line); padding:6px 0; overflow:auto; font-size:12px}
+  #tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+    padding:10px 12px 4px; text-transform:uppercase}
+  #tree .it{display:flex; align-items:center; gap:7px; padding:5px 10px 5px 14px; cursor:pointer; color:var(--ink-2)}
   #tree .it:hover{background:#f0eee8}
   #tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
   #tree .it.err{color:var(--err)}
@@ -101,23 +71,26 @@
   #tree .it .ic{display:flex; flex:0 0 auto; line-height:0}
   #tree .it .ic.off{color:#c9c4ba !important; opacity:.6}
   #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
-    flex:0 0 auto; display:none}
-  #tree .it:hover .meta, #tree .it.on .meta{display:inline}
+  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); flex:0 0 auto}
   #tree .it.on .meta{color:var(--accent)}
-  #tree .addwrap{padding:7px 8px 7px 11px; position:relative}
+  #tree .addwrap{padding:7px 10px 7px 14px; position:relative}
   #tree .addbtn{font:inherit; font-size:11.5px; color:var(--accent); background:none; border:0;
     cursor:pointer; padding:0; font-weight:600}
-  /* 新增群組的選單掛在 body 上(和右鍵選單一樣),左欄再窄也不會被裁掉 */
-  .addmenu{width:min(336px, calc(100vw - 16px)); padding:5px}
-  .addmenu .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 8px 3px}
-  .addmenu .mcards{display:grid; gap:6px; padding:2px 3px 4px}
-  .addmenu .mcards button{display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 5px;
-    border:1px solid var(--line); border-radius:5px; background:#fff; text-align:center; color:var(--ink-2)}
-  .addmenu .mcards button:hover{border-color:var(--accent); background:#fff; color:var(--accent)}
-  .addmenu .mcards .mn{font-size:12.5px; font-weight:600}
-  .addmenu .mcards .mh2{font-size:10px; color:var(--ink-3); line-height:1.35}
-  .addmenu .mcards button:hover .mh2{color:var(--accent)}
+  #tree .menu{position:absolute; left:12px; top:28px; z-index:30; background:#fff; border:1px solid var(--line);
+    border-radius:6px; box-shadow:0 6px 22px rgba(30,36,48,.18); padding:5px; width:328px}
+  #tree .menu[hidden]{display:none}
+  #tree .menu .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 8px 3px}
+  #tree .menu button{display:flex; width:100%; align-items:center; gap:7px; font:inherit; font-size:12px;
+    padding:5px 8px; border:0; background:none; border-radius:4px; cursor:pointer; color:var(--ink-2); text-align:left}
+  #tree .menu button:hover{background:var(--accent-soft); color:var(--accent)}
+  #tree .menu button .sw{width:8px; height:8px; border-radius:2px}
+  #tree .menu .mcards{display:grid; gap:6px; padding:2px 3px 4px}
+  #tree .menu .mcards button{flex-direction:column; align-items:center; gap:3px; padding:9px 5px;
+    border:1px solid var(--line); border-radius:5px; background:#fff; text-align:center}
+  #tree .menu .mcards button:hover{border-color:var(--accent)}
+  #tree .menu .mcards .mn{font-size:12.5px; font-weight:600}
+  #tree .menu .mcards .mh2{font-size:10px; color:var(--ink-3); line-height:1.35}
+  #tree .menu .mcards button:hover .mh2{color:var(--accent)}
 
   /* ---- 面板 ---- */
   #pane{padding:13px 15px 40px; overflow:auto; min-width:0}
@@ -165,35 +138,11 @@
     border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer}
   .cpick button:hover{border-color:var(--accent); color:var(--accent)}
   .cpick button.on{color:var(--ink-3)}
-  .lbl2{font-size:11px; color:var(--ink-2); margin:9px 0 4px}
-  .pcards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px}
-  .pcards button{display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 4px;
-    border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer;
-    font:inherit; color:var(--ink-2); text-align:center; line-height:1.3}
-  .pcards button:hover{border-color:var(--accent)}
-  .pcards button.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
-  .pcards .ic{display:flex; line-height:0}
-  .pcards .pn{font-size:11.5px; font-weight:600}
-  .pcards .ph{font-size:9.5px; color:var(--ink-3)}
-  .pcards button.on .ph{color:var(--accent)}
   .out{font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
     display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:3px 14px}
   .out b{color:var(--ink); font-weight:650}
   .out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
   .hint{font-size:11px; color:var(--ink-3); margin-top:7px}
-  /* 一定要看到的說明(不進 i 收合) */
-  .note{font-size:10.5px; color:var(--ink-2); margin-top:6px; background:#fbfaf7;
-    border:1px solid var(--line-2); border-radius:4px; padding:5px 8px}
-  .note b{color:var(--ink)}
-  /* 提示預設收起,每個區塊只留一顆 i */
-  .ibtn{flex:0 0 auto; width:17px; height:17px; border-radius:50%; border:1px solid var(--line);
-    background:#fff; color:var(--ink-3); font-size:10.5px; font-weight:700; line-height:1;
-    font-family:Georgia,"Times New Roman",serif; cursor:pointer; padding:0; margin-left:7px;
-    letter-spacing:0; text-transform:none}
-  .ibtn:hover{border-color:var(--accent); color:var(--accent)}
-  .ibtn.on{background:var(--accent); border-color:var(--accent); color:#fff}
-  .hintbar{display:flex; flex-direction:column; align-items:flex-start; gap:0}
-  .hintbar > .ibtn{margin:7px 0 0}
   .hint:empty{display:none}   /* 唯讀的即時結果行沒內容時不佔位(syncRO 只換 innerHTML,不能靠 style 切換) */
   .hint b{color:var(--ink-2)}
 
@@ -248,8 +197,6 @@
   .viewcube button.on{background:var(--accent); border-color:var(--accent); color:#fff}
   .viewcube button.cor{font-size:14px; color:var(--ink-3)}
   .viewcube button.cor:hover{color:var(--accent)}
-  /* .cor 寫在 .on 後面,同權重會蓋掉選取色 —— 補一條讓箭頭跟著文字一起變白 */
-  .viewcube button.cor.on{color:#fff}
   .viewcube button.top{font-size:9.5px; font-weight:700; letter-spacing:.06em}
   .cvtools{position:absolute; top:6px; left:6px; display:flex; gap:4px; flex-wrap:wrap;
     align-items:center; max-width:calc(100% - 122px)}
@@ -279,10 +226,6 @@
   details.adv > summary{cursor:pointer; font-size:11px; color:var(--ink-3); font-weight:600; list-style:none}
   details.adv > summary::-webkit-details-marker{display:none}
   details.adv > summary::before{content:"▸ "; font-size:9px}
-  details.adv.elem > summary{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-2)}
-  details.adv.elem > summary .tag{font-size:10px; font-weight:600; padding:1px 7px; border-radius:9px}
-  details.adv.elem > summary .tag.ok{background:#eef3ee; color:var(--ok); font-family:var(--mono)}
-  details.adv.elem > summary .tag.todo{background:#fdf7e8; color:var(--warn)}
   details.adv[open] > summary::before{content:"▾ "}
   details.adv > div{margin-top:8px}
 
@@ -330,7 +273,7 @@
   #tree .it:hover .kebab, #tree .it.on .kebab{opacity:1}
   #tree .it .kebab:hover{background:var(--line-2); color:var(--ink)}
 
-  /* 位移複製 / 陣列對話框 */
+  /* 偏置複製對話框 */
   .mask{position:fixed; inset:0; z-index:70; background:rgba(20,22,26,.34);
     display:flex; align-items:center; justify-content:center}
   .dlg{background:#fff; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.28);
@@ -343,9 +286,8 @@
 <body>
 
 <header>
-  <span class="logo" title="空間線型產生器"><svg width="21" height="21" viewBox="0 0 44 30" fill="none" stroke-linecap="round" style="vertical-align:-4px"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="2.8"/><circle cx="4" cy="5" r="2.6" fill="currentColor"/><circle cx="22" cy="25" r="2.6" fill="currentColor"/><circle cx="40" cy="5" r="2.6" fill="currentColor"/></svg></span>
   <h1>空間線型產生器</h1>
-  <span class="stage">群組架構 v3.19</span>
+  <span class="stage">群組架構 v3.16</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -355,28 +297,19 @@
   <button id="btn-undo" disabled>↶ 復原</button>
   <button id="btn-redo" disabled>↷ 重做</button>
   <button id="btn-swap" title="輸入區與預覽區左右對調">⇄ 版面</button>
-  <span class="hgap"></span>
   <button id="btn-demo">載入範例</button>
-  <button id="btn-clear" class="warn">全部清空</button>
-  <span class="hgap"></span>
-  <button id="btn-num" class="gset" title="節點與元素的編號起始、號段增量、重合節點合併">⚙ 編號設定</button>
-  <button id="btn-imp" class="gset" title="載入參數檔、貼上 .mct 文字、讀 midas 的材料與斷面名稱"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 10.2V1.8"/><path d="M5.2 7.4 8 10.2l2.8-2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯入</button>
-  <button id="btn-out" class="gset" title="單位、.mct 預覽與下載、CSV"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 1.8v8.4"/><path d="M5.2 4.6 8 1.8l2.8 2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯出</button>
+  <button id="btn-clear">全部清空</button>
 </header>
 
 <div id="app">
-  <div id="tree">
-    <div id="treelist"></div>
-    <div class="kpi" id="kpi"></div>
-  </div>
+  <div id="tree"></div>
   <div id="tresizer" title="拖曳調整左側寬度(雙擊還原)"></div>
   <div id="pane"></div>
   <div id="resizer" title="拖曳調整預覽區寬度(雙擊還原)"></div>
   <div id="right">
     <div id="msgs"></div>
-    <div class="lbl" style="display:flex; align-items:center">3D 視圖
-      <button type="button" class="ibtn" id="vhelp" title="操作說明">i</button>
-      <span id="vhelptext" hidden style="font-weight:400;color:var(--ink-3);letter-spacing:0;margin-left:7px">中鍵拖曳平移 · Ctrl+中鍵旋轉 · Shift+中鍵縮放 · 滾輪縮放 · 左鍵點選節點/元素</span></div>
+    <div class="kpi" id="kpi"></div>
+    <div class="lbl">3D 視圖 <span style="font-weight:400;color:var(--ink-3);letter-spacing:0">— 中鍵拖曳平移 · Ctrl+中鍵旋轉 · Shift+中鍵縮放 · 滾輪縮放 · 左鍵點選節點/元素</span></div>
     <div class="cvwrap">
       <canvas id="cv"></canvas>
       <div class="cvtools">
@@ -1316,28 +1249,10 @@ const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CAB
 //   kind 只有 sub=3 用:1=Pretension 2=Horizontal 3=Lu(注意數字與敘述順序相反)
 const CABLE_DEF = () => ({ sub:3, kind:3, val:0, blmt:"NO" });
 const DEPS = { OFFSET:["ref"], LINK2:["a","b"], LINKZ:["ref","zRef"], FAN:["ref","srcG"] };
-// 一個群組依賴哪些群組:固定欄位,加上線群組裡各段指到別的群組的起點 / 終點參照
-function depIds(g){
-  if (!g) return [];
-  const out = (DEPS[g.type] || []).map(k => g[k]).filter(Boolean);
-  if (g.type === "CURVE") (g.pieces || []).forEach(pc => {
-    [sRefOf(pc), eRefOf(pc)].forEach(v => { const r = parseGRef(v); if (r) out.push(r.gid); });
-  });
-  return [...new Set(out)];
-}
 
 /* ---- 對接的配對方式 ----
    前五種都以「這排」的節點範圍(從/到/每 n)為準,只差在那排怎麼對過去;
    free 則是兩排各自給起點與步進,適合任意錯位。全部都吃「那排反序」。         */
-// 配對方式的小圖:灰色是兩排既有節點,主色是這個群組會產生的連桿
-const PAIR_ICON = {
-  same: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M6 4v8M15 4v8M24 4v8" stroke="currentColor" stroke-width="1.8"/></svg>`,
-  skew: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M6 4L13 12M14 4L21 12M22 4L27 12" stroke="currentColor" stroke-width="1.8"/></svg>`,
-  cross:`<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M6 4L14 12M14 4L6 12M16 4L24 12M24 4L16 12" stroke="currentColor" stroke-width="1.8"/></svg>`,
-  ratio:`<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M4 4L4 12M12 4L10.5 12M20 4L17 12M27 4L23.5 12" stroke="currentColor" stroke-width="1.8"/></svg>`,
-  near: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 5h24M3 11h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M7 5L5 11M15 5L17 11M23 5L22 11" stroke="currentColor" stroke-width="1.8"/></svg>`,
-  free: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M8 4L16 12M18 4L26 12" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="4" r="1.8" fill="currentColor"/><circle cx="16" cy="12" r="1.8" fill="currentColor"/></svg>`
-};
 const PAIR_MODES = [
   ["same",  "一對一(同序)",   ""],
   ["skew",  "錯開 n 格",       ""],
@@ -1372,13 +1287,6 @@ const nearestAt = (ts, v) => {
 let SEQ = 1;
 const newId = () => "g" + (SEQ++);
 
-// 元素的三個欄位都填了才算設定完成;沒填完就把那一區攤開,讓人知道還沒填
-const elemDone = g => !!(g && g.etype) && (num(g.mat) > 0) && (num(g.sect) > 0);
-const elemSummary = g => {
-  const t = (ELEM_TYPES.find(o => o[0] === g.etype) || [null, g.etype])[1];
-  return `${t} · 材料 ${Math.round(num(g.mat))} · 斷面 ${Math.round(num(g.sect))}`;
-};
-
 function defaultPiece(type){
   const sp = { ...SPLIT_DEF, spacing:dL(SPLIT_DEF.spacing), maxSpacing:dL(SPLIT_DEF.maxSpacing),
                tol:dL(SPLIT_DEF.tol), axisSpacing:dL(SPLIT_DEF.axisSpacing),
@@ -1410,10 +1318,8 @@ function fixFirstPiece(g){
 }
 
 function defaultGroup(type, n){
-  // 元素的類型 / 材料 / 斷面一律留空:填了才算「設定過」,面板才會把它收起來。
-  // 沒填也不會擋住匯出 —— attrOf() 仍然會退回 BEAM / 1 / 1。
   const base = { id:newId(), type, name:TYPES[type].name + (n || ""), on:true, xf:XF_DEF(),
-    etype:"", mat:"", sect:"",
+    etype:"BEAM", mat:1, sect:1,
     addN:[], addE:[],              // 手動節點(自己輸座標)/ 手動元素(點兩個節點)
     cable:CABLE_DEF() };           // 只受拉元素的子類型與初始值(元素類型是 CABLE 時才用得到)
   if (type === "CURVE") return { ...base,
@@ -1422,13 +1328,13 @@ function defaultGroup(type, n){
   if (type === "LINK2") return { ...base, a:"", b:"", pair:"same", skew:1,
     from:1, to:0, every:1,                       // same / skew / cross / ratio / near 用「這排」的節點範圍
     aFrom:1, aEvery:1, bFrom:1, bEvery:1, count:0, rev:false };   // free(自訂)用兩排各自的偏移與步進
-  if (type === "LINKZ") return { ...base, ref:"", zMode:"abs", targetZ:0,   // 索類請自行選 CABLE
+  if (type === "LINKZ") return { ...base, ref:"", zMode:"abs", targetZ:0,
     px:0, py:0, pz:0, sx:0, sy:0,                // zMode = "plane":過 (px,py,pz)、坡度 sx / sy 的斜面
     zRef:"",                                     // zMode = "ref":取另一群組對應節點的高程
-    from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5) };
+    from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5), etype:"CABLE" };
   if (type === "FAN")   return { ...base, srcMode:"coord", sx:0, sy:0, sz:dL(80), ref:"",
     srcG:"", srcI:1,                             // srcMode = "gnode":某群組的第 k 個節點
-    from:1, to:10, every:1, div:1, fMode:"abs", f:0 };
+    from:1, to:10, every:1, div:1, fMode:"abs", f:0, etype:"CABLE" };
   return base;
 }
 
@@ -1531,13 +1437,6 @@ const parseRef = v => {
   const m = /^(\d+):([sme])$/.exec(String(v || ""));
   return m ? { pi:+m[1], at:m[2] } : null;
 };
-/* 跨群組參照:"@<群組 id>:<第幾個節點>"(1 起算)。
-   存序號而不是節點編號 —— 上游重新分割時編號會跑掉,序號不會。 */
-const parseGRef = v => {
-  const m = /^@([A-Za-z0-9_]+):(\d+)$/.exec(String(v || ""));
-  return m ? { gid:m[1], idx:+m[2] } : null;
-};
-const anyRef = v => parseRef(v) || parseGRef(v);
 const sRefOf = pc => String((pc && pc.sRef) || "");
 const eRefOf = pc => String((pc && pc.eRef) || "");
 // 起點沿用前一段終點(舊的 cont);"<pi-1>:e" 效果相同,一併視為接續
@@ -1559,7 +1458,7 @@ function pieceStart(pc){
   return f ? f(p) : p;
 }
 // 這一段的終點有沒有指向別的段
-const endRefOn = pc => !!pc && !!anyRef(eRefOf(pc)) && !!END_CONT_T[pc.type]
+const endRefOn = pc => !!pc && !!parseRef(eRefOf(pc)) && !!END_CONT_T[pc.type]
   && !(pc.type === "ARC" && pc.arcMode === "center");
 
 /* 依相依關係決定各段的計算順序。
@@ -1715,7 +1614,7 @@ function buildModel(st, errs, warns){
   for (let pass = 0; pass < list.length + 2 && pending.length; pass++){
     for (let i = 0; i < pending.length; ){
       const g = pending[i];
-      const deps = depIds(g);
+      const deps = (DEPS[g.type] || []).map(k => g[k]).filter(Boolean);
       if (deps.every(d => built.has(d))){
         const idx = list.indexOf(g);        // 用清單順序配號,與相依解析順序無關
         const r = buildOne(g, idx, built, st, inc, prefix, errs, warns);
@@ -1817,7 +1716,7 @@ function pieceCurve(pc, start, warns, tag, endAt, noExtStart){
 
 // 建完之後再對「整組」套用平移/旋轉 —— 剛體,長度與弦線偏差都不受影響,
 // 依附本組的偏置/連接組會跟著移動(它們是在本組之後才建的)。
-// 元素的弦長 / 3D 長度是在 mkElem 當下算的;整個群組平移旋轉之後,凡是有一端不屬於本組的元素
+// 元素的弦長 / 3D 長度是在 mkElem 當下算的;整組平移旋轉之後,凡是有一端不屬於本組的元素
 // (連接族的元素)長度會變,必須重算,否則面板與 CSV 會顯示變換前的舊值。
 function refreshElemGeom(R){
   R.elems.forEach(e => { e.chord = distXY(e.a, e.b); e.len3d = dist3(e.a, e.b); });
@@ -1887,20 +1786,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     const pnodes = pcs.map(() => []);                  // 每段自己的原始節點
     const anchors = [];                                // pi → { s, m, e }
     const { order, cyclic } = orderPieces(pcs, errs, tag);
-    // 跨群組:直接去對方算好的節點串取第 k 個
-    const gRefPt = ref => {
-      const r = parseGRef(ref);
-      if (!r) return null;
-      const rr = built.get(r.gid);
-      if (!rr) return null;
-      const ch = chainOf(rr);
-      if (!ch.length) return null;
-      const q = ch[clamp(Math.round(r.idx), 1, ch.length) - 1];
-      return q ? { x:q.x, y:q.y, z:q.z } : null;
-    };
     const refPt = (ref, pi) => {
-      const gp = gRefPt(ref);
-      if (gp) return gp;
       const r = parseRef(ref);
       if (!r || cyclic.has(pi)) return null;
       const a = anchors[r.pi];
@@ -2101,7 +1987,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
   /* ---------- 偏置 ---------- */
   if (g.type === "OFFSET"){
     const ref = built.get(g.ref);
-    if (!ref || !ref.nodes.length){ errs.push(tag + "找不到基準群組,或基準群組沒有節點"); R.stat.err = "無基準"; return R; }
+    if (!ref || !ref.nodes.length){ errs.push(tag + "找不到基準組或基準組沒有節點"); R.stat.err = "無基準"; return R; }
     const d = num(g.d) || 0, h = num(g.h) || 0;
     let degenerate = false;
     chainOf(ref).forEach(n0 => {
@@ -2179,7 +2065,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     finishStat(R); return R;
   }
 
-  /* ---------- 垂落 ---------- */
+  /* ---------- 組對高程 ---------- */
   if (g.type === "LINKZ"){
     const ref = built.get(g.ref);
     if (!ref || !ref.nodes.length){ errs.push(tag + "找不到來源群組"); R.stat.err = "無來源"; return R; }
@@ -2231,7 +2117,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     finishStat(R); return R;
   }
 
-  /* ---------- 扇出(扇形) ---------- */
+  /* ---------- 點對組(扇形) ---------- */
   if (g.type === "FAN"){
     const ref = built.get(g.ref);
     if (!ref || !ref.nodes.length){ errs.push(tag + "找不到目標群組"); R.stat.err = "無目標"; return R; }
@@ -2316,8 +2202,9 @@ const MCT_FMT = {
   indent:"   "
 };
 // 值(key)是 .mct *UNIT 要的大寫代碼,不能改;顯示一律用正規的公制寫法(m / kN / kgf)。
-const UNIT_LENGTH = [["M","m"],["CM","cm"],["MM","mm"],["IN","in"],["FT","ft"]];
-const UNIT_FORCE  = [["KGF","kgf"],["KN","kN"],["N","N"],["TONF","tonf"],["LBF","lbf"],["KIPS","kips"]];
+const UNIT_LENGTH = [["M","m(公尺)"],["CM","cm(公分)"],["MM","mm(公釐)"],["IN","in(英吋)"],["FT","ft(英呎)"]];
+const UNIT_FORCE  = [["KGF","kgf(公斤力)"],["KN","kN(千牛頓)"],["N","N(牛頓)"],["TONF","tonf(公噸力)"],
+                     ["LBF","lbf"],["KIPS","kips"]];
 const LEN_FACTOR  = { M:1, CM:100, MM:1000, IN:1/0.0254, FT:1/0.3048 };
 const lenFactor = () => LEN_FACTOR[state.units.length] || 1;
 // 畫面上顯示用的單位符號 —— 輸入什麼單位,算什麼單位,匯出就是什麼單位,全程不換算
@@ -2446,7 +2333,7 @@ const toCSV = rows => "﻿" + rows.map(r => r.map(csvEsc).join(",")).join("\r\n"
 
 function nodeCSV(){
   const U = UL();
-  const rows = [["節點編號","群組","型別",`X (${U})`,`Y (${U})`,`Z (${U})`,`樁號 (${U})`,"方位角 (°)",
+  const rows = [["節點編號","組","型別",`X (${U})`,`Y (${U})`,`Z (${U})`,`樁號 (${U})`,"方位角 (°)",
     `當地半徑 (${U})`,`前一元素長度 3D (${U})`,`前一元素弦線偏差 (${U})`,"備註"]];
   MODEL.groups.forEach(r => {
     const prev = new Map(); r.elems.forEach(e => prev.set(e.j, e));
@@ -2466,7 +2353,7 @@ function nodeCSV(){
 }
 function elemCSV(){
   const U = UL();
-  const rows = [["元素編號","群組","類型","材料","斷面","i節點","j節點",`平面弦長 (${U})`,`3D長度 (${U})`,
+  const rows = [["元素編號","組","類型","材料","斷面","i節點","j節點",`平面弦長 (${U})`,`3D長度 (${U})`,
     `弧長 (${U})`,`弦線偏差 (${U})`,"群組"]];
   MODEL.groups.forEach(r => r.elems.forEach(e => rows.push([
     e.num, r.g.name, e.type, e.mat, e.sect, e.i, e.j,
@@ -2686,7 +2573,6 @@ function groupSummary(g){
   return r.nodes.length + " 節點";
 }
 
-let ADD_MENU_HTML = "";
 function renderTree(){
   const rows = state.groups.map((g, i) => {
     const T = TYPES[g.type], r = MODEL.byId ? MODEL.byId.get(g.id) : null;
@@ -2699,7 +2585,7 @@ function renderTree(){
   }).join("");
   // 偏置已改成「對任一組做偏置複製」(組的 ⋯ / 右鍵選單),不再是一種組別;
   // 舊檔裡既有的偏置組仍照常運作,只是不給新增。
-  ADD_MENU_HTML = ["geo","con"].map(fam => {
+  const menu = ["geo","con"].map(fam => {
     const items = Object.entries(TYPES).filter(([,T]) => T.fam === fam && !T.legacy);
     return `<div class="mh">${fam === "geo" ? "畫出節點" : "連接既有節點"}</div>` +
       `<div class="mcards" style="grid-template-columns:repeat(${items.length},minmax(0,1fr))">` +
@@ -2708,48 +2594,29 @@ function renderTree(){
          <span class="mn">${T.name}</span><span class="mh2">${esc(T.hint || "")}</span></button>`).join("") +
       `</div>`;
   }).join("");
-  $("#treelist").innerHTML =
+  $("#tree").innerHTML =
     `<div class="grp">群組(${state.groups.length})</div>` +
     (rows || `<div class="grp" style="font-weight:400;text-transform:none;letter-spacing:0;padding:2px 12px 8px">尚無任何群組</div>`) +
-    `<div class="addwrap"><button class="addbtn" id="add-btn">+ 新增群組…</button></div>
-`;
-  // 全域設定改放右上角,清單只留群組
-  const bc = $("#btn-clear");
-  if (bc) bc.disabled = !(state.groups && state.groups.length);
-  const bn = $("#btn-num"), bo = $("#btn-out"), bi = $("#btn-imp");
-  if (bn) bn.classList.toggle("on", SEL === "_num");
-  if (bo) bo.classList.toggle("on", SEL === "_out");
-  if (bi) bi.classList.toggle("on", SEL === "_imp");
+    `<div class="addwrap"><button class="addbtn" id="add-btn">+ 新增群組…</button>
+       <div class="menu" id="add-menu" hidden>${menu}</div></div>
+     <div class="grp">全域</div>
+     <div class="it${SEL === "_num" ? " on" : ""}" data-id="_num"><span class="sw" style="background:#8b95a3"></span>
+       <span class="nm">編號總表</span><span class="meta">增量 ${state.numbering.inc}</span></div>
+     <div class="it${SEL === "_out" ? " on" : ""}" data-id="_out"><span class="sw" style="background:#8b95a3"></span>
+       <span class="nm">輸出</span><span class="meta">${UF()}, ${UL()}</span></div>`;
 }
-
-function closeAddMenu(){ const m = $("#add-menu"); if (m) m.remove(); }
-function openAddMenu(box){
-  closeAddMenu();
-  const d = document.createElement("div");
-  d.className = "ctx addmenu"; d.id = "add-menu";
-  d.innerHTML = ADD_MENU_HTML;
-  document.body.appendChild(d);
-  const w = d.offsetWidth, h = d.offsetHeight;
-  d.style.left = Math.min(Math.max(8, box.left), Math.max(8, window.innerWidth - w - 8)) + "px";
-  d.style.top  = Math.min(box.bottom + 4, Math.max(8, window.innerHeight - h - 8)) + "px";
-  d.addEventListener("click", ev => {
-    const b = ev.target.closest("[data-new]"); if (!b) return;
-    closeAddMenu();
-    snapshot("new:" + Date.now());
-    const t = b.dataset.new;
-    const n = state.groups.filter(g => g.type === t).length + 1;
-    const g = defaultGroup(t, n);
-    state.groups.push(g); SEL = g.id; recompute(true);
-  });
-}
-document.addEventListener("click", e => {
-  if (!e.target.closest("#add-menu") && !e.target.closest("#add-btn")) closeAddMenu();
-});
-window.addEventListener("keydown", e => { if (e.key === "Escape") closeAddMenu(); });
 
 $("#tree").addEventListener("click", e => {
-  const ab = e.target.closest("#add-btn");
-  if (ab){ if ($("#add-menu")) closeAddMenu(); else openAddMenu(ab.getBoundingClientRect()); return; }
+  if (e.target.closest("#add-btn")){ $("#add-menu").hidden = !$("#add-menu").hidden; return; }
+  const nb = e.target.closest("[data-new]");
+  if (nb){
+    snapshot("new:" + Date.now());
+    const t = nb.dataset.new;
+    const n = state.groups.filter(g => g.type === t).length + 1;
+    const g = defaultGroup(t, n);
+    state.groups.push(g); SEL = g.id;
+    $("#add-menu").hidden = true; recompute(true); return;
+  }
   const kb = e.target.closest("[data-menu]");
   if (kb){ e.stopPropagation(); openGroupMenu(kb.dataset.menu, kb.getBoundingClientRect()); return; }
   const it = e.target.closest(".it");
@@ -2772,7 +2639,8 @@ function openGroupMenu(gid, box){
   const d = document.createElement("div");
   d.className = "ctx"; d.id = "ctx-menu";
   d.innerHTML =
-    `<button data-act="off">位移複製…</button>
+    `<button data-act="dup">原位複製</button>
+     <button data-act="off">偏置複製…</button>
      <button data-act="arr">沿線陣列…</button>
      <div class="sep"></div>
      <button data-act="tog">${g.on === false ? "啟用" : "停用"}</button>
@@ -2786,6 +2654,7 @@ function openGroupMenu(gid, box){
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const act = b.dataset.act;
     closeGroupMenu();
+    if (act === "dup"){ snapshot("dup:" + Date.now()); dupGroup(g, n => n + " 複本"); return; }
     if (act === "off"){ openOffsetDlg(g); return; }
     if (act === "arr"){ openArrayDlg(g); return; }
     if (act === "tog"){ snapshot("tog:" + Date.now()); g.on = (g.on === false); recompute(true); return; }
@@ -2801,7 +2670,7 @@ function openGroupMenu(gid, box){
 document.addEventListener("click", e => { if (!e.target.closest("#ctx-menu")) closeGroupMenu(); });
 window.addEventListener("keydown", e => { if (e.key === "Escape") closeGroupMenu(); });
 
-// 位移複製 = 內容與型別原封不動,只換 id / 名字,再加一段平移 / 旋轉 / 鏡射
+// 複製 = 內容與組別原封不動,只換 id / 名字;偏置就是「複製 + 一段平移旋轉」
 /* ---- 一組所參照的上游組(含自己)----
    連接族的內容是由來源組算出來的,所以「複製一個垂落組」只複製它自己時,
    複本仍然掛在原來那條線上 —— 看起來就像「跟著原組走,改自己的數值也沒用」。
@@ -2814,7 +2683,8 @@ function depChain(g, groups){
     const id = stack.pop();
     if (!id || seen.has(id) || !byId.has(id)) continue;
     seen.add(id);
-    depIds(byId.get(id)).forEach(v => stack.push(v));
+    const o = byId.get(id);
+    (DEPS[o.type] || []).forEach(k => { if (o[k]) stack.push(o[k]); });
   }
   return list.filter(x => seen.has(x.id));
 }
@@ -2951,7 +2821,6 @@ function openArrayDlg(g){
         <button class="btn p" id="ar-ok">建立</button></div>
     </div>`;
   document.body.appendChild(m);
-  foldHints(m, "dlg");
   const close = () => m.remove();
   m.addEventListener("click", e => { if (e.target === m) close(); });
   m.querySelector("#ar-cancel").onclick = close;
@@ -3006,38 +2875,7 @@ function openArrayDlg(g){
   };
 }
 
-/* ---------- 貼上文字匯入 ---------- */
-function openPasteDlg(){
-  const m = document.createElement("div");
-  m.className = "mask";
-  m.innerHTML = `<div class="dlg" style="width:min(620px, calc(100vw - 32px))">
-      <h3>貼上文字匯入</h3>
-      <div class="sub">把 midas 匯出的 .mct、或本工具的參數 JSON 整段貼進來就好,不必先存成檔案。</div>
-      <textarea id="pi-txt" rows="12" placeholder="在這裡貼上 .mct 或 JSON 的全文…"
-        style="font-family:var(--mono); font-size:11.5px; width:100%"></textarea>
-      <div class="hint">會做兩件事:抓 <code>*MATERIAL</code> / <code>*SECTION</code> 的編號與名稱進名稱庫;
-        文字裡若含本工具的參數檔頭,就一併還原整個模型。</div>
-      <div class="btns">
-        <button class="btn" id="pi-cancel">取消</button>
-        <button class="btn p" id="pi-ok">讀取</button></div>
-    </div>`;
-  document.body.appendChild(m);
-  foldHints(m, "dlg");
-  const close = () => m.remove();
-  m.addEventListener("click", e => { if (e.target === m) close(); });
-  m.querySelector("#pi-cancel").onclick = close;
-  const esckey = e => { if (e.key === "Escape"){ close(); window.removeEventListener("keydown", esckey); } };
-  window.addEventListener("keydown", esckey);
-  setTimeout(() => { const f = m.querySelector("#pi-txt"); if (f) f.focus(); }, 0);
-  m.querySelector("#pi-ok").onclick = () => {
-    const txt = m.querySelector("#pi-txt").value;
-    if (!txt.trim()){ alert("還沒貼上任何東西。"); return; }
-    close();
-    loadText(txt, "貼上的文字");
-  };
-}
-
-/* ---------- 位移複製對話框 ---------- */
+/* ---------- 偏置複製對話框 ---------- */
 function openOffsetDlg(g){
   const m = document.createElement("div");
   m.className = "mask";
@@ -3048,14 +2886,14 @@ function openOffsetDlg(g){
   const deepRow = upNames.length ? `<div class="fields g3" style="margin-top:8px">
       <label class="f" style="grid-column:span 3"><span>複製方式</span><select id="od-deep">
         <option value="1">獨立 —— 連 ${esc(upNames.join("、"))} 一起複製,複本自成一套</option>
-        <option value="0">連動 —— 只複製這一個群組,仍然掛在原來的 ${esc(upNames.join("、"))} 上</option>
+        <option value="0">連動 —— 只複製這一組,仍然掛在原來的 ${esc(upNames.join("、"))} 上</option>
       </select></label></div>
-    <div class="hint" style="margin-top:7px">這個群組的節點是<b>從上游算出來的</b>。選<b>連動</b>時複本仍由原來的
+    <div class="hint" style="margin-top:7px">這一組的節點是<b>從上游算出來的</b>。選<b>連動</b>時複本仍由原來的
       ${esc(upNames.join("、"))} 決定形狀,只有偏移量能調;要各走各的請選<b>獨立</b>。</div>` : "";
   m.innerHTML = `<div class="dlg">
-      <h3>位移複製「${esc(g.name)}」</h3>
+      <h3>偏置複製「${esc(g.name)}」</h3>
       <div class="sub">產生一個<b>同型別、內容完全相同</b>的新群組(${esc(TYPES[g.type].name)}),
-        再整個群組平移 / 旋轉。之後仍可在新群組的「平移與旋轉」裡隨時微調。</div>
+        再整組平移 / 旋轉。之後仍可在新群組的「平移與旋轉」裡隨時微調。</div>
       <div class="fields g3">${F(`dX (${UL()})`, "od-x", 0) + F(`dY (${UL()})`, "od-y", 0) + F(`dZ (${UL()})`, "od-z", 0)}</div>
       <div class="fields g3" style="margin-top:8px">${F("旋轉角 (°)", "od-r", 0)}
         <label class="f"><span>旋轉軸</span><select id="od-a">
@@ -3073,14 +2911,13 @@ function openOffsetDlg(g){
       <div class="hint" style="margin-top:7px">要做<b>鏡射複製</b>就選一個平面、填它的位置,
         平移量全部留 0 即可(這時複本不會和原本重疊,所以允許)。</div>
       ${deepRow}
-      <div class="hint" style="margin-top:9px">份數 &gt; 1 會<b>連續疊加</b>同一組位移量
-        (例如 dY = 5、份數 3 → 產生 +5 / +10 / +15 三個群組)。</div>
+      <div class="hint" style="margin-top:9px">份數 &gt; 1 會<b>連續疊加</b>同一組偏置量
+        (例如 dY = 5、份數 3 → 產生 +5 / +10 / +15 三組)。</div>
       <div class="btns">
         <button class="btn" id="od-cancel">取消</button>
         <button class="btn p" id="od-ok">建立</button></div>
     </div>`;
   document.body.appendChild(m);
-  foldHints(m, "dlg");
   const close = () => m.remove();
   m.addEventListener("click", e => { if (e.target === m) close(); });
   m.querySelector("#od-cancel").onclick = close;
@@ -3102,10 +2939,13 @@ function openOffsetDlg(g){
     snapshot("offdup:" + Date.now());
     // 每一份都從「原組」複製,偏置量乘上份序 —— 不用前一份接力,名字才不會越疊越長
     for (let k = 1; k <= cnt; k++)
-      dupGroup(g, n => `${n} ${mir ? "鏡射" : "位移"}${cnt > 1 ? k : ""}`,
+      dupGroup(g, n => `${n} ${mir ? "鏡射" : "偏置"}${cnt > 1 ? k : ""}`,
         { dx:dx*k, dy:dy*k, dz:dz*k, rot:rot*k, axis, mir, mirAt }, deep);
   };
 }
+document.addEventListener("click", e => {
+  if (!e.target.closest(".addwrap")) { const m = $("#add-menu"); if (m) m.hidden = true; }
+});
 
 /* ==========================================================================
    8b. UI — 屬性面板
@@ -3155,12 +2995,12 @@ const SEC = (h, tail, body, cls) => `<div class="sec${cls ? " " + cls : ""}"><di
 const OUT = rows => `<div class="out" data-ro>${rows.map(([k,v]) => `<div><span class="k">${esc(k)}</span> <b>${v}</b></div>`).join("")}</div>`;
 const P3 = (px, py, pz, lx, ly, lz) => fld(lx, px, undefined) ; // placeholder(未使用)
 
-// 可以被引用的組。連接族(垂落、扇出)自己也會產生節點,常常正是想再連接的對象,
+// 可以被引用的組。連接族(組對高程、點對組)自己也會產生節點,常常正是想再連接的對象,
 // 所以預設「全部組都列出來」;要限制族別才傳 famFilter。分族用 optgroup,組多時才找得到。
 const refOptions = (self, famFilter) => {
   const pool = state.groups.filter(g =>
     g.id !== self && (!famFilter || TYPES[g.type].fam === famFilter));
-  return [["geo","幾何族(產生節點)"], ["con","連接族(連接既有群組)"]].map(([fam, lab]) => ({
+  return [["geo","幾何族(產生節點)"], ["con","連接族(連接既有組)"]].map(([fam, lab]) => ({
     group: lab,
     items: pool.filter(g => TYPES[g.type].fam === fam).map(g => {
       const r = MODEL.byId ? MODEL.byId.get(g.id) : null;
@@ -3196,19 +3036,19 @@ function xfFields(k, xf, scope){
     ${mirOf(xf) ? `<div class="hint">鏡射<b>先做</b>,再旋轉、平移;鏡射平面用<b>絕對座標</b>。
       節點順序不變,元素的 i–j 方向會跟著翻面。</div>` : ""}`;
 }
-// 整個群組平移旋轉:改成小視窗(和偏置複製一致),不再佔屬性面板的版面。
+// 整組平移旋轉:改成小視窗(和偏置複製一致),不再佔屬性面板的版面。
 // 視窗裡直接改 g.xf 以保留即時預覽;「取消」把開啟前的值放回去。
 function openXfDlg(g){
   const before = clone({ ...XF_DEF(), ...(g.xf || {}) });
   const m = document.createElement("div");
   m.className = "mask";
   m.innerHTML = `<div class="dlg" style="width:min(560px, calc(100vw - 32px))">
-      <h3>平移與旋轉「${esc(g.name)}」(整個群組)</h3>
-      <div class="sub">只動<b>這個群組自己的節點</b>(含手動新增的),做<b>剛體變換</b>,編號不受影響。
-        旋轉角<b>逆時針為正</b>(俯視)。依附這個群組的連接群組會<b>跟著移動</b>。
+      <h3>平移與旋轉「${esc(g.name)}」(整組)</h3>
+      <div class="sub">只動<b>本組自己的節點</b>(含手動新增的),做<b>剛體變換</b>,編號不受影響。
+        旋轉角<b>逆時針為正</b>(俯視)。依附本組的連接組會<b>跟著移動</b>。
         ${TYPES[g.type].fam === "con"
-          ? "這是連接族,元素另一端在別的群組不會跟著動,所以<b>元素長度會改變</b>。"
-          : "節點全是自己的,元素長度與弦線偏差都不變。"}</div>
+          ? "本組是連接族,元素另一端在別組不會跟著動,所以<b>元素長度會改變</b>。"
+          : "本組節點全屬自己,元素長度與弦線偏差都不變。"}</div>
       <div id="xfd-body"></div>
       <div class="hint" style="margin-top:9px">邊改邊看 —— 畫面會即時更新。</div>
       <div class="btns">
@@ -3390,33 +3230,17 @@ function pieceCard(g, pc, pi, info, r){
   const segOpts = (g.pieces || []).map((q, j) => j === pi ? null
       : [String(j), `段 ${j+1}(${PIECES[q.type].name})`]).filter(Boolean);
   const atOpts = [["s","起點"],["m","中點"],["e","終點"]];
-  // 別的群組的節點也可以當起點 / 終點 —— 跨群組對齊不用再自己抄座標
-  const grpOpts = state.groups.filter(x => x.id !== g.id)
-    .map(x => ["@" + x.id, `${x.name}(${TYPES[x.type].name})的節點`]);
   const refName = v => {
-    const gr = parseGRef(v);
-    if (gr){
-      const og = state.groups.find(x => x.id === gr.gid);
-      return `${og ? og.name : "別的群組"}的第 ${gr.idx} 個節點`;
-    }
     const r = parseRef(v); if (!r) return "";
     const q = (g.pieces || [])[r.pi];
     return `段 ${r.pi+1}${q ? "(" + PIECES[q.type].name + ")" : ""}的${REF_AT[r.at]}`;
   };
-  // 回傳「來源」下拉 +(挑到段 → 位置下拉;挑到別的群組 → 第幾個節點)+ 視圖點選鈕
-  const refPair = (label, key, val, opts0, noGrp) => {
-    const gr = parseGRef(val), r = parseRef(val);
-    const gv = gr ? "@" + gr.gid : (r ? String(r.pi) : String(val || ""));
-    const picking = PICK && PICK.mode === "ref" && PICK.key === k + key;
-    if (noGrp)
-      return fld(label, k + key + "G", gv, { select:[...opts0, ...segOpts] }) +
-        (r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "");
-    return fld(label, k + key + "G", gv, { select:[...opts0, ...segOpts, ...grpOpts] }) +
-      (gr ? fld("第幾個節點", k + key + "I", gr.idx, { min:1 })
-          : r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "") +
-      `<div class="f"><span>&nbsp;</span><button class="btn${picking ? " d" : ""}" data-op="${
-        picking ? "mecancel" : "refpick"}" data-k="${k + key}">${
-        picking ? "點一個節點…" : "在圖上點"}</button></div>`;
+  // 回傳「段」下拉 +(挑到段時才有的)「位置」下拉
+  const refPair = (label, key, val, opts0) => {
+    const r = parseRef(val);
+    const gv = r ? String(r.pi) : String(val || "");
+    return fld(label, k + key + "G", gv, { select:[...opts0, ...segOpts] }) +
+      (r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "");
   };
   const ec = endRefOn(pc);
   const endSel = END_CONT_T[pc.type]
@@ -3559,7 +3383,7 @@ function pieceCard(g, pc, pi, info, r){
         <b>座標是絕對值,不接續前一段</b>,而且<b>不再分割</b> —— 貼幾個點就是幾個節點。</div>`;
   }
   else if (pc.type === "POINT"){
-    body = `<div class="fields g4">${refPair("連接", "sRef", sv, sHead, true)}</div>` +
+    body = `<div class="fields g4">${refPair("連接", "sRef", sv, sHead)}</div>` +
       xyzTable([rowE("座標")]) +
       `<div class="hint">${cont ? "會從前段終點拉一根直線元素到這個座標。" : "只加一個節點,不產生元素——適合錨碇點、支承點。"}</div>`;
   }
@@ -3627,7 +3451,7 @@ function nodeSec(g, r){
       <div class="btns" style="margin-top:9px">
         <button class="btn d" data-op="mndel" data-i="${mi}">刪除此節點</button>
         <button class="btn" data-op="nclr">取消選取</button></div>
-      <div class="hint" data-ro>這個群組<b>手動新增</b>的第 ${mi + 1} 個節點,座標可直接改。
+      <div class="hint" data-ro>本組<b>手動新增</b>的第 ${mi + 1} 個節點,座標可直接改。
         刪除它時,凡是用到它的手動元素會一起被清掉。</div>`;
   } else if (sel && canEdit){
     body = `<div class="fields g4">${
@@ -3652,15 +3476,15 @@ function nodeSec(g, r){
         <div><span class="k">Y</span> <b>${sel.y.toFixed(4)} ${UL()}</b></div>
         <div><span class="k">Z</span> <b>${sel.z.toFixed(4)} ${UL()}</b></div></div>
       <div class="btns" style="margin-top:9px"><button class="btn" data-op="nclr">取消選取</button></div>
-      <div class="hint">這個節點屬於<b>${esc(TYPES[g.type].name)}</b>,座標是從來源群組推導出來的,不能直接改
-        —— 要移動它請改<b>來源群組</b>,或用整個群組的「平移與旋轉」。
+      <div class="hint">這個節點屬於<b>${esc(TYPES[g.type].name)}</b>,座標是從來源組推導出來的,不能直接改
+        —— 要移動它請改<b>來源組</b>,或用整組的「平移與旋轉」。
         它仍然可以拿來當<b>手動元素</b>的端點。</div>`;
   } else {
     body = `<div class="hint" style="margin:0">在 <b>3D 視圖</b>上用<b>左鍵</b>點任一節點即可編輯座標、刪除或平移旋轉;
       點<b>兩節點之間的線</b>則是選取整根元素。被擋住時用 <b>Ctrl+中鍵</b>轉個角度比較好點。</div>`;
   }
   if (nEdit || nDel)
-    body += `<div class="btns" style="margin-top:9px"><button class="btn d" data-op="nclrall">清除這個群組的全部覆寫</button></div>`;
+    body += `<div class="btns" style="margin-top:9px"><button class="btn d" data-op="nclrall">清除本組全部覆寫</button></div>`;
   return SEC("節點", tail, body, sel ? "hot" : "");
 }
 
@@ -3763,7 +3587,8 @@ function paneFor(g){
   const head = `<div class="ptitle">
       <span class="nm">${esc(g.name)}</span><span class="fam ${T.fam}">${T.name}</span><span class="sp"></span>
       <label class="chk"><input type="checkbox" data-k="on"${g.on !== false ? " checked" : ""}> 啟用</label>
-      <button class="btn" data-op="offdup">位移複製…</button>
+      <button class="btn" data-op="dup">複製</button>
+      <button class="btn" data-op="offdup">偏置複製…</button>
       <button class="btn" data-op="arrdlg">沿線陣列…</button>
       <button class="btn${xfActive(g.xf) ? " p" : ""}" data-op="xfdlg">平移旋轉…${
         xfActive(g.xf) ? " ●" : ""}</button>
@@ -3777,22 +3602,17 @@ function paneFor(g){
      <div class="hint" style="margin-top:8px">匯出的 .mct <b>一律純英數</b>(中文在 midas 匯入會變亂碼),
        所以 <code>*GROUP</code> 用的匯出群組名是 <b>${r ? esc(r.gname) : "—"}</b>。
        ${fellBack ? "目前名稱沒有可用的英數字,只能<b>用序號代替</b>;想在 midas 裡看到有意義的匯出群組名,請在名稱裡加上英數(例如「主曲線 MAIN」)。" : ""}</div>
-     <details class="adv elem"${elemDone(g) ? "" : " open"}>
-       <summary>元素(整個群組預設)<span class="tag${elemDone(g) ? " ok" : " todo"}">${
-         elemDone(g) ? esc(elemSummary(g)) : "尚未設定"}</span></summary>
-       <div>
-         <div class="fields g3">${
-           fld("類型", "etype", g.etype, { select:[["","(未設定)"], ...ELEM_TYPES] }) +
-           matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
-         <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。<b>留空就照 BEAM / 材料 1 / 斷面 1 匯出</b>。${
-           libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
-             到右上角<b>「匯入 → midas 的材料與斷面名稱」</b>讀一份 midas 匯出的 .mct
-             (或直接把那個檔案<b>拖進本頁面</b>)。`}</div>
-         ${cableFields(g)}
-       </div>
-     </details>
+     <div class="subh">元素(整個群組預設)</div>
+     <div class="fields g3">${
+       fld("類型", "etype", g.etype, { select:ELEM_TYPES }) +
+       matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
+     <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。${
+       libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
+         到左下角<b>「輸出 → 材料與斷面名稱」</b>匯入一份 midas 匯出的 .mct
+         (或直接把那個檔案<b>拖進本頁面</b>)。`}</div>
+     ${cableFields(g)}
      <div class="hint" data-ro style="margin-top:12px;padding-top:9px;border-top:1px solid var(--line-2)">
-       <b>編號</b>(全自動:全域起始 + 這個群組在清單裡的順序 × 號段增量,可在「編號總表」調整)${
+       <b>編號</b>(全自動:全域起始 + 本組順序 × 號段增量,可在「編號總表」調整)${
        r ? ` —— 節點 <b>${numRange(r.nodes)}</b> · 元素 <b>${numRange(r.elems)}</b>` : ""}</div>`);
 
   let body = "";
@@ -3806,10 +3626,10 @@ function paneFor(g){
       `</div><div class="hint">段與段預設<b>接續前段終點</b>並共用接縫節點;把「起點」改成自訂座標即可斷開。</div>`);
   }
   else if (g.type === "OFFSET"){
-    body = SEC("放置", "依附另一個群組", `<div class="fields g3">${
+    body = SEC("放置", "依附另一組", `<div class="fields g3">${
         fld("基準群組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id, "geo")] }) +
         fld(`橫向 d(右正,${UL()})`, "d", g.d) + fld(`垂直 h(上正,${UL()})`, "h", g.h)}</div>
-      <div class="hint">節點沿基準群組的<b>法線投影</b>,一一對應。曲線上當地半徑 = <b>R − 偏向·d</b>;
+      <div class="hint">節點沿基準組的<b>法線投影</b>,一一對應。曲線上當地半徑 = <b>R − 偏向·d</b>;
         右轉曲線的圓心在右,所以<b>右側偏置是內側</b>。</div>`);
   }
   else if (g.type === "LINK2"){
@@ -3832,12 +3652,9 @@ function paneFor(g){
         fld("這排", "a", g.a, { select:[["","(未選)"], ...refOptions(g.id)] }) +
         fld("那排", "b", g.b, { select:[["","(未選)"], ...refOptions(g.id)] }) +
         fld("那排反序", "rev", !!g.rev, { check:true })}</div>
-      <div class="lbl2">配對方式</div>
-      <div class="pcards">${PAIR_MODES.map(([v,t,h]) =>
-        `<button type="button" class="${v === pm ? "on" : ""}" data-op="pair" data-v="${v}">
-           <span class="ic" style="color:${v === pm ? "currentColor" : colorOfGroup(g)}">${PAIR_ICON[v]}</span>
-           <span class="pn">${esc(t)}</span>${h ? `<span class="ph">${esc(h)}</span>` : ""}</button>`).join("")}</div>
-      <div class="fields g3" style="margin-top:8px">${pickBtn}</div>
+      <div class="fields g3" style="margin-top:8px">${
+        fld("配對方式", "pair", pm, { select:PAIR_MODES.map(([v,t,h]) => [v, h ? `${t} — ${h}` : t]), span:2 }) +
+        pickBtn}</div>
       ${pm === "free" ? freeRow : rangeRow}
       <div class="hint">${PAIR_HINT[pm] || ""}</div>`);
   }
@@ -3900,7 +3717,7 @@ function paneFor(g){
       rows.push(["3D 總長", st.len3d.toFixed(4) + " " + UL()]);
       if (TYPES[g.type].fam === "geo") rows.push(["最大弦線偏差", devTxt(st.maxDev)]);
     }
-    if (g.type === "OFFSET") rows.push(["基準群組", esc(st.ref || "")]);
+    if (g.type === "OFFSET") rows.push(["基準組", esc(st.ref || "")]);
   } else if (r && r.stat.err) rows.push(["狀態", `<span style="color:var(--err)">${esc(r.stat.err)}</span>`]);
 
   return head + nameSec + body + nodeSec(g, r) + elemPickSec(g, r) +
@@ -3915,7 +3732,7 @@ function paneNumbering(){
     <td>${r.nodes.length} / ${r.elems.length}</td>
     <td class="n">${esc(r.gname)}</td></tr>`).join("");
   return `<div class="ptitle"><span class="nm">編號總表</span><span class="fam geo">全域</span></div>` +
-    SEC("配置", MODEL.clash ? `<span style="color:var(--err)">${MODEL.clash} 個群組編號衝突</span>` : "無衝突 ✓",
+    SEC("配置", MODEL.clash ? `<span style="color:var(--err)">${MODEL.clash} 組編號衝突</span>` : "無衝突 ✓",
       `<div class="fields g4">${
         fld("節點起始", "numbering.nodeBase", state.numbering.nodeBase) +
         fld("元素起始", "numbering.elemBase", state.numbering.elemBase) +
@@ -3926,44 +3743,30 @@ function paneNumbering(){
         <button class="tgl${state.weld.on !== false ? " on" : ""}" data-op="weldtog">
           <span class="dot"></span>合併座標重合的節點</button></div>
        <div class="fields g3">${
-        fld(`距離多近算同一點 (${UL()})`, "weld.tol", state.weld.tol,
+        fld(`容差 (${UL()},0 = 完全相同才併)`, "weld.tol", state.weld.tol,
           { disabled:state.weld.on === false })}</div>
-       <div class="note">兩個節點的距離<b>小於等於</b>這個值就併成一個。
-         <b>0 = 座標要完全一樣才併</b>(最保守);以公尺為單位時填 <b>0.001</b> 就是「相距 1 mm 以內算同一點」。</div>
        <div class="hint">同一個位置<b>只留節點編號最小的那一個</b>,其餘刪掉,元素端點改指到它
          —— 等同 midas 的 <b>Merge Nodes</b>。段互相參照、連接族接到既有節點時最容易產生重合節點,
          不併的話在 midas 裡看起來相連、其實是兩個獨立的節點。<br>
          合併後<b>節點編號會跳號</b>(這是正常的),兩端併成同一點的元素會退化成零長度,一併刪除並回報。</div>`) +
-    SEC("各群組", `${MODEL.groups.length} 群組 · 節點 ${MODEL.tot.n} · 元素 ${MODEL.tot.e}`,
-      `<div data-ro><table class="t"><thead><tr><th>群組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>匯出群組名</th></tr></thead>
-       <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何群組</td></tr>`}</tbody></table></div>`);
-}
-
-function paneImport(){
-  return `<div class="ptitle"><span class="nm">匯入</span><span class="fam geo">全域</span></div>` +
-    SEC("參數檔", "", `<div class="btns">
-        <button class="btn p" data-op="load">選檔案…</button>
-        <button class="btn" data-op="pastein">貼上文字…</button>
-        <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt"></div>
-      <div class="hint">本工具匯出的 <b>參數 JSON</b>,或帶有參數檔頭的 <b>.mct</b>,讀進來就會還原整個模型。
-        檔案也可以<b>直接拖進頁面</b>。</div>`) +
-    SEC("midas 的材料與斷面名稱", libTail(), `<div class="btns">
-        <button class="btn p" data-op="load">選 .mct 檔…</button>
-        <button class="btn" data-op="pastein">貼上 .mct 文字…</button>
-        ${libTotal() ? `<button class="btn d" data-op="clearlib">清除名稱庫</button>` : ""}</div>
-      <div class="hint">在 midas Civil 裡把<b>斷面尺寸與材料參數建好</b>之後 Export 一份 .mct,
-        讀進來(檔案或直接貼上文字都可以),各群組的「材料 / 斷面」欄位就會顯示<b>實際的名稱</b>,
-        不用再對編號。只讀 <code>*MATERIAL</code> 與 <code>*SECTION</code> 的編號與名稱,不會動到你的幾何。</div>
-      ${libTable()}`);
+    SEC("各組", `${MODEL.groups.length} 組 · 節點 ${MODEL.tot.n} · 元素 ${MODEL.tot.e}`,
+      `<div data-ro><table class="t"><thead><tr><th>組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>群組名</th></tr></thead>
+       <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何組</td></tr>`}</tbody></table></div>`);
 }
 
 function paneOutput(){
-  return `<div class="ptitle"><span class="nm">匯出</span><span class="fam geo">全域</span></div>` +
+  return `<div class="ptitle"><span class="nm">輸出</span><span class="fam geo">全域</span></div>` +
     SEC("單位", `目前 <b>${esc(UF())}, ${esc(UL())}</b>`,
       `<div class="hint" style="margin:0">單位在<b>最上方標題列</b>設定。
         <b>輸入什麼單位,就算什麼單位</b> —— 畫面、CSV、檢核、匯出的 .mct 座標全部是同一組數字,
         中間<b>不做任何換算</b>;.mct 開頭的 <code>*UNIT</code> 就寫這裡選的單位。
         在標題列改單位時,會問要不要把既有數值一起換算(幾何大小不變)。</div>`) +
+    SEC("材料與斷面名稱", libTail(), `<div class="hint" style="margin:0 0 9px">
+        在 midas Civil 裡把<b>斷面尺寸與材料參數建好</b>之後 Export 一份 .mct,匯進來,
+        各組的「材料 / 斷面」欄位就會直接顯示<b>實際的名稱</b>,不用再對編號。</div>
+      <div class="btns"><button class="btn p" data-op="loadlib">匯入 midas .mct(讀材料 / 斷面)…</button>
+        ${libTotal() ? `<button class="btn d" data-op="clearlib">清除名稱庫</button>` : ""}</div>
+      ${libTable()}`) +
     SEC("3D 視角", "", `<div class="fields g3">${
       fld("方位角 (°)", "view.az", state.view.az) +
       fld("仰角 (°)", "view.el", state.view.el) +
@@ -3978,7 +3781,9 @@ function paneOutput(){
       <button class="btn" data-op="mctcopy">複製 MCT 文字</button>
       <button class="btn" data-op="csvn">節點 CSV</button>
       <button class="btn" data-op="csve">元素 CSV</button>
-      <button class="btn" data-op="json">參數 JSON</button></div>
+      <button class="btn" data-op="json">參數 JSON</button>
+      <button class="btn" data-op="load">載入 JSON / MCT…</button>
+      <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt"></div>
       <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟,長度欄位標題會標上目前單位。
         <b>.mct 檔頭嵌了完整參數(含單位),拖回本頁面即可還原重編。</b></div>`) +
     `<details class="adv" open><summary>MCT 預覽</summary><div><pre id="mctprev" style="font-family:var(--mono);font-size:11px;line-height:1.45;margin:0;background:#fbfaf7;border:1px solid var(--line);border-radius:6px;padding:9px 11px;max-height:300px;overflow:auto;white-space:pre;color:var(--ink-2)"></pre></div></details>`;
@@ -3996,87 +3801,31 @@ const restoreOpen = (root, keys) => root.querySelectorAll("details").forEach(d =
   const k = detailsKey(d); if (k && keys.has(k)) d.open = true;
 });
 
-/* ---- 提示收合 ----
-   提示原本一路攤在面板上,佔掉大半版面。改成每個區塊(或每張段卡)只留一顆 i:
-   預設收起,點了才展開。開合狀態記在 HINT_OPEN,重繪之後還原,免得打一個字就收回去。 */
-const HINT_OPEN = new Set();
-function foldHints(root, keyBase){
-  if (!root) return;
-  const claimed = new Set();
-  const attach = (box, head, key) => {
-    if (!head) return;
-    const hints = [...box.querySelectorAll(".hint")]
-      .filter(h => !claimed.has(h) && !h.classList.contains("keep") && h.textContent.trim());
-    if (!hints.length) return;
-    hints.forEach(h => claimed.add(h));
-    const k = keyBase + "|" + key;
-    // 內容只有提示的區塊,收起來時連 .b 一起藏掉,不然會留一塊莫名其妙的白
-    const bodyEl = box.classList && box.classList.contains("sec") ? box.querySelector(":scope > .b") : null;
-    const onlyHints = bodyEl && ![...bodyEl.children].some(c => !c.classList.contains("hint"));
-    const set = on => {
-      btn.classList.toggle("on", on);
-      hints.forEach(h => { h.hidden = !on; });
-      if (onlyHints) bodyEl.hidden = !on;
-    };
-    const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "ibtn"; btn.textContent = "i";
-    btn.title = "說明";
-    btn.addEventListener("click", ev => {
-      ev.preventDefault(); ev.stopPropagation();
-      const on = !HINT_OPEN.has(k);
-      if (on) HINT_OPEN.add(k); else HINT_OPEN.delete(k);
-      set(on);
-    });
-    head.appendChild(btn);
-    set(HINT_OPEN.has(k));
-  };
-  const nameOf = (el, i) => (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 20) + "#" + i;
-  [...root.querySelectorAll("details.pc")].forEach((el, i) => {
-    const sm = el.querySelector("summary");
-    attach(el, sm, "pc" + i + ":" + (sm ? nameOf(sm, i) : i));
-  });
-  [...root.querySelectorAll(".sec")].forEach((el, i) => {
-    const h = el.querySelector(".h");
-    attach(el, h, "sec" + (h ? nameOf(h, i) : i));
-  });
-  // 不在任何區塊裡的提示(對話框那種):各自配一顆 i
-  [...root.querySelectorAll(".hint")]
-    .filter(h => !claimed.has(h) && !h.classList.contains("keep") && h.textContent.trim())
-    .forEach((h, i) => {
-      const wrap = document.createElement("div");
-      wrap.className = "hintbar";
-      h.parentNode.insertBefore(wrap, h);
-      wrap.appendChild(h);
-      attach(wrap, wrap, "free" + i);
-      wrap.insertBefore(wrap.lastElementChild, h);
-    });
-}
-
 function renderPane(){
   const el = $("#pane");
-  // 沒選任何群組 → 收起整個編輯區,把空間讓給畫布(全域頁面 _num / _out / _imp 不算)
-  const app = $("#app"); if (app) app.classList.toggle("nosel", !SEL);
   /* 整塊 innerHTML 重寫時捲動位置會跑掉:新內容一貼上去,所有 <details> 都是 HTML 裡寫的
      「收合」狀態 → 內容瞬間變矮 → 瀏覽器把 scrollTop 夾到新的上限;等 restoreOpen() 再把卡片
      展開回來,scrollTop 已經被夾小了,畫面就往上跳一截。所以要自己存回去。 */
   const st0 = el.scrollTop;
   const keepScroll = () => { if (el.scrollTop !== st0) el.scrollTop = st0; };
-  if (SEL === "_num"){ el.innerHTML = paneNumbering(); foldHints(el, "_num"); keepScroll(); return; }
-  if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); foldHints(el, "_out"); keepScroll(); return; }
-  if (SEL === "_imp"){ el.innerHTML = paneImport(); foldHints(el, "_imp"); keepScroll(); return; }
+  if (SEL === "_num"){ el.innerHTML = paneNumbering(); keepScroll(); return; }
+  if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); keepScroll(); return; }
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
-    // 這一頁通常是看不到的(沒選群組時整個編輯區會收起來),留一份給極窄版面用
     el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
-      SEC("目前沒有選取任何群組", "", `<div class="hint keep" style="margin:0;font-size:12.5px;line-height:1.7">
-        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。</div>`);
+      SEC("目前沒有選取任何群組", "", `<div class="hint" style="margin:0;font-size:12.5px;line-height:1.8">
+        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。<br><br>
+        <b>一個群組 = 一串節點 + 連接它們的元素。</b>群組之間預設互不相干,不共用節點、不繼承方向、不共用編號。
+        每個群組自己決定起終點(全域座標直接給)、形狀、切幾個節點、元素種類與編號。<br><br>
+        要讓兩個群組產生關係,加一個<b>連接族</b>的群組 —— 那是唯一的耦合方式。</div>
+        <div class="btns" style="margin-top:12px">
+          <button class="btn p" data-op="demo">載入範例看看</button></div>`);
     return;
   }
   const openKeys = FORCE_OPEN || captureOpen(el);
   const forced = !!FORCE_OPEN;
   FORCE_OPEN = null;
   el.innerHTML = paneFor(g);
-  foldHints(el, g.type);          // key 用型別而不是 id:換到同型別的群組時,展開的提示會留著
   restoreOpen(el, openKeys);
   if (!forced) keepScroll();      // 明確要展開某張卡片時就讓它自己捲過去,不要硬拉回原位
 }
@@ -4191,20 +3940,13 @@ function applyField(root, k, el){
   }
   // 段的參照拆成兩個下拉:先選段(…RefG),再選那一段的哪一點(…RefA)。
   // 存進 state 的仍然是單一個字串 "<段索引>:<s|m|e>",這裡只負責把兩半拼回去。
-  const mr = k.match(/^(pieces\.\d+\.)(sRef|eRef)(G|A|I)$/);
+  const mr = k.match(/^(pieces\.\d+\.)(sRef|eRef)(G|A)$/);
   if (mr){
     const base = mr[1] + mr[2];
-    const raw = String(getPath(root, base) || "");
-    const cur = parseRef(raw), gcur = parseGRef(raw);
-    if (mr[3] === "I"){                                // 跨群組:改「第幾個節點」
-      if (gcur) setPath(root, base, "@" + gcur.gid + ":" + Math.max(1, Math.round(num(el.value)) || 1));
-      return;
-    }
+    const cur = parseRef(String(getPath(root, base) || ""));
     if (mr[3] === "G"){
-      const v = el.value;                              // "" | "prev" | "<段索引>" | "@<群組 id>"
-      setPath(root, base, (v === "" || v === "prev") ? v
-        : v[0] === "@" ? v + ":" + (gcur ? gcur.idx : 1)
-        : v + ":" + (cur ? cur.at : "s"));
+      const v = el.value;                              // "" | "prev" | "<段索引>"
+      setPath(root, base, (v === "" || v === "prev") ? v : v + ":" + (cur ? cur.at : "s"));
     } else if (cur){
       setPath(root, base, cur.pi + ":" + el.value);    // 只換 起點/中點/終點
     }
@@ -4292,7 +4034,7 @@ $("#pane").addEventListener("click", e => {
   if (op === "csve")    { download(`elements_${stamp()}.csv`, elemCSV(), "text/csv;charset=utf-8"); return; }
   if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); return; }
   if (op === "load")    { $("#file-in").click(); return; }
-  if (op === "pastein") { openPasteDlg(); return; }
+  if (op === "loadlib") { $("#file-in").click(); return; }
   if (op === "clearlib"){ snapshot("clearlib:" + Date.now()); state.lib = { mat:{}, sect:{} };
     recompute(true); return; }
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
@@ -4301,7 +4043,7 @@ $("#pane").addEventListener("click", e => {
   if (!g) return;
   if (op === "del"){ state.groups.splice(gi, 1); SEL = state.groups.length ? state.groups[Math.max(0, gi-1)].id : null; }
   if (op === "colauto" && g){ delete g.color; recompute(true); return; }
-  if (op === "pair" && g){ g.pair = b.dataset.v; recompute(true); return; }
+  if (op === "dup"){ dupGroup(g, n => n + " 複本"); return; }
   if (op === "offdup"){ openOffsetDlg(g); return; }
   if (op === "arrdlg" && g){ openArrayDlg(g); return; }
   if (op === "ndel" && g && SELNODE && SELNODE.gid === g.id && nodeEditable(g, SELNODE)){
@@ -4337,8 +4079,6 @@ $("#pane").addEventListener("click", e => {
   }
   if (op === "meadd" && g){ PICK = { gid:g.id, i:0 }; SELNODE = null; SELELEM = null; recompute(true); return; }
   if (op === "lkpick" && g){ PICK = { gid:g.id, i:0, mode:"link2" }; SELNODE = null; SELELEM = null; recompute(true); return; }
-  if (op === "refpick" && g){ PICK = { gid:g.id, i:0, mode:"ref", key:b.dataset.k };
-    SELNODE = null; SELELEM = null; recompute(true); return; }
   if (op === "mecancel"){ PICK = null; recompute(true); return; }
   if (op === "medel" && g){ g.addE.splice(+b.dataset.i, 1); recompute(true); return; }
   if (op === "nclrall" && g){ g.edits = {}; g.dels = []; SELNODE = null; recompute(true); return; }
@@ -4495,19 +4235,18 @@ function setSwap(on){
   app.style.setProperty("--rw", clamp(w, 240, 900) + "px");
   app.classList.toggle("swap", sw);
 })();
-// v3.19 左欄改成單行極簡、預設 150px。換一個 key,舊使用者存的 238 才不會蓋掉新預設。
-const LAY_TW = "scg.treeW2";
+const LAY_TW = "scg.treeW";
 function setTreeW(px){
-  const w = clamp(Math.round(px), 130, Math.max(200, window.innerWidth - 420));
+  const w = clamp(Math.round(px), 150, Math.max(200, window.innerWidth - 420));
   app.style.setProperty("--tw", w + "px");
   try { localStorage.setItem(LAY_TW, String(w)); } catch (err){}
   if (!view.locked) fitView();
   draw();
 }
 (function initTreeW(){
-  let w = 150;                                         // 讀不到 localStorage 時也要是新的預設
-  try { w = +localStorage.getItem(LAY_TW) || 150; } catch (err){}
-  app.style.setProperty("--tw", clamp(w, 130, 900) + "px");
+  let w = 238;
+  try { w = +localStorage.getItem(LAY_TW) || 238; } catch (err){}
+  app.style.setProperty("--tw", clamp(w, 150, 900) + "px");
 })();
 
 let RSZ = null;                                        // "right" = 預覽區、"tree" = 左側清單
@@ -4692,23 +4431,8 @@ document.addEventListener("drop", e => {
 });
 $("#btn-undo").onclick  = undo;
 $("#btn-redo").onclick  = redo;
-// 畫面上已經有東西時,載入範例會蓋掉它 —— 一定要先問過
-$("#btn-demo").onclick  = () => {
-  const has = state.groups && state.groups.length;
-  if (has && !confirm("載入範例會蓋掉畫布上現有的內容,確定嗎?")) return;
-  loadState(demoState());
-};
-$("#btn-clear").onclick = () => {
-  if (!(state.groups && state.groups.length)) return;
-  if (confirm("清空畫布上的所有內容?")) loadState(DEF_STATE());
-};
-$("#vhelp").onclick = () => {
-  const t = $("#vhelptext"), on = t.hidden;
-  t.hidden = !on; $("#vhelp").classList.toggle("on", on);
-};
-$("#btn-num").onclick = () => { SEL = "_num"; render(); };
-$("#btn-out").onclick = () => { SEL = "_out"; render(); };
-$("#btn-imp").onclick = () => { SEL = "_imp"; render(); };
+$("#btn-demo").onclick  = () => loadState(demoState());
+$("#btn-clear").onclick = () => { if (confirm("清空所有組?")) loadState(DEF_STATE()); };
 
 function loadState(s){
   if (state && state.groups && state.groups.length) snapshot("load:" + Date.now());
@@ -4734,11 +4458,11 @@ function renderChecks(){
     <div><span class="k">群組</span><b>${MODEL.groups.length}</b></div>
     <div><span class="k">節點</span><b>${MODEL.tot.n}</b></div>
     <div><span class="k">元素</span><b>${MODEL.tot.e}</b></div>
-    <div><span class="k">弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
+    <div><span class="k">最大弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
     <div><span class="k">最短元素</span><b${hot(lens.length && Math.min(...lens) < inU(0.3))}>${lens.length ? Math.min(...lens).toFixed(3) : "0.000"} ${UL()}</b></div>
-    <div><span class="k">總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
-    <div><span class="k">衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
-    <div><span class="k">匯出群組名</span><b>${MODEL.names.length}</b></div>`;
+    <div><span class="k">元素總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
+    <div><span class="k">編號衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
+    <div><span class="k">匯出群組</span><b>${MODEL.names.length}</b></div>`;
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
     ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${
@@ -5238,16 +4962,6 @@ cv.addEventListener("click", e => {
     const g0 = state.groups.find(x => x.id === PICK.gid);
     if (!g0){ PICK = null; recompute(true); return; }
     if (!hit){ PICK = null; recompute(true); focusHot(); return; }
-    if (PICK.mode === "ref"){                          // 只要點一個節點就結束
-      const q = locateNode(hit.n.num);
-      if (!q){ alert("找不到這個節點屬於哪一個群組,請再點一次。"); return; }
-      if (q.gid === g0.id){ alert("要指到<別的>群組的節點;同一個群組裡的段請用「段 N」那幾個選項。"
-        .replace(/[<>]/g, "「")); return; }
-      snapshot("refpick:" + Date.now());
-      setPath(g0, PICK.key, "@" + q.gid + ":" + (q.idx + 1));
-      PICK = null; SEL = g0.id;
-      recompute(true); focusHot(); return;
-    }
     if (!PICK.i){ PICK.i = hit.n.num; recompute(true); focusHot(); return; }
     if (hit.n.num === PICK.i) return;                  // 同一點按兩下:當作還沒選第二點
     if (PICK.mode === "link2"){
@@ -5294,9 +5008,7 @@ cv.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); }
 /* ---------- 工具列 ---------- */
 $("#vcube").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  // 和 midas 一樣:切視角就順便把整個模型重新框進畫面,不必再按一次「重新框選」
   camTo(+b.dataset.az, +b.dataset.el);
-  view.locked = false; fitView(); draw();
 });
 $("#btn-fit").onclick = () => { view.locked = false; fitView(); draw(); };
 $("#btn-nodes").onclick = e => { showNodes = !showNodes;
@@ -5548,9 +5260,9 @@ function runTests(){
     { id:"x1", type:"LINK2", name:"橫", a:"a1", b:"b1", every:2 }
   ]);
   const XM = LK.md.groups.find(r => r.g.id === "x1");
-  chk("H1","對接:元素數 = ⌈11/2⌉", XM.elems.length, 6, 0, "");
-  chk("H1","對接:不新增節點", XM.nodes.length, 0, 0, "");
-  chk("H1","對接:跨距", XM.elems[0].len3d, 8, 1e-9, "m");
+  chk("H1","組對組:元素數 = ⌈11/2⌉", XM.elems.length, 6, 0, "");
+  chk("H1","組對組:不新增節點", XM.nodes.length, 0, 0, "");
+  chk("H1","組對組:跨距", XM.elems[0].len3d, 8, 1e-9, "m");
   // v3.14:節點數不同不再是錯誤 —— 連到那排用完為止,對不到的出警告
   const MM = build([
     { id:"a2", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
@@ -5708,47 +5420,6 @@ function runTests(){
       RF.nodes.length === 0, `自有節點 ${RF.nodes.length}`, "自有節點 0(已合併)");
   }
   {
-    // v3.17:段的起點 / 終點指到「別的群組的第 k 個節點」
-    const two = extra => build([
-      { id:"x1", type:"LINE", name:"A", x1:0, y1:0, z1:0, x2:100, y2:0, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:4 } },
-      { id:"x2", type:"LINE", name:"B", x1:0, y1:50, z1:0, x2:100, y2:50, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:1 }, ...extra }
-    ]);
-    yes("X1","跨群組參照的字串格式", !!parseGRef("@g7:3") && parseGRef("@g7:3").gid === "g7"
-      && parseGRef("@g7:3").idx === 3, JSON.stringify(parseGRef("@g7:3")), '{gid:"g7",idx:3}');
-    yes("X1","段內參照不會被誤判成跨群組", parseGRef("2:e") === null, String(parseGRef("2:e")), "null");
-    const base = two({}).md.byId.get("x2");
-    chk("X1","沒指到別的群組時照自己的座標", base.nodes[0].y, 50, 1e-9, "m");
-    const R = two({ sRef:"@x1:3" });
-    const r2 = R.md.byId.get("x2");
-    yes("X1","跨群組起點:沒有錯誤", R.errs.length === 0, R.errs.join("|") || "無", 0);
-    chk("X1","跨群組起點:X 跟著對方第 3 個節點", r2.elems[0].a.x, 50, 1e-9, "m");
-    chk("X1","跨群組起點:Y 跟著對方第 3 個節點", r2.elems[0].a.y, 0, 1e-9, "m");
-    chk("X1","跨群組起點:終點沒被動到", r2.elems[0].b.x, 100, 1e-9, "m");
-    const E = two({ eRef:"@x1:1" }).md.byId.get("x2");
-    chk("X1","跨群組終點:接到對方第 1 個節點", E.elems[0].b.x, 0, 1e-9, "m");
-    chk("X1","跨群組終點:Y 也跟著", E.elems[0].b.y, 0, 1e-9, "m");
-    // 序號超出範圍時夾到頭尾,不是報錯
-    const C = two({ sRef:"@x1:99" }).md.byId.get("x2");
-    chk("X1","序號超過節點數 → 夾到最後一個", C.elems[0].a.x, 100, 1e-9, "m");
-    // 相依關係要看得到跨群組參照,順序才排得對
-    const gA = { id:"y1", type:"CURVE", name:"A", pieces:[{ ...defaultPiece("LINE"), sRef:"" }] };
-    const gB = { id:"y2", type:"CURVE", name:"B",
-      pieces:[{ ...defaultPiece("LINE"), sRef:"@y1:2" }] };
-    yes("X1","相依清單抓得到跨群組參照", depIds(gB).join(",") === "y1", depIds(gB).join(",") || "無", "y1");
-    yes("X1","沒有跨群組參照就沒有相依", depIds(gA).length === 0, depIds(gA).length, 0);
-    // 被引用的群組排在後面也要能解析(相依解析不看清單順序)
-    const Rev = build([
-      { id:"z2", type:"LINE", name:"B", x1:0, y1:50, z1:0, x2:100, y2:50, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:1 }, sRef:"@z1:3" },
-      { id:"z1", type:"LINE", name:"A", x1:0, y1:0, z1:0, x2:100, y2:0, z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:4 } }
-    ]);
-    yes("X1","被引用的群組排在後面仍可解析", Rev.errs.length === 0, Rev.errs.join("|") || "無", 0);
-    chk("X1","排在後面也對得到同一個點", Rev.md.byId.get("z2").elems[0].a.x, 50, 1e-9, "m");
-  }
-  {
     // v3.16:沿線陣列的取站 —— 三種放置方式與切線方位角
     const lineN = (n, dx, dy) => {
       const out = [];
@@ -5804,8 +5475,8 @@ function runTests(){
     { id:"h1", type:"LINKZ", name:"吊", ref:"s1", targetZ:0, every:1 }
   ]);
   const HM = LZ.md.groups.find(r => r.g.id === "h1");
-  chk("H3","垂落:元素數 = 來源節點數", HM.elems.length, 21, 0, "");
-  chk("H3","垂落:新增節點數 = 元素數", HM.nodes.length, 21, 0, "");
+  chk("H3","組對高程:元素數 = 來源節點數", HM.elems.length, 21, 0, "");
+  chk("H3","組對高程:新增節點數 = 元素數", HM.nodes.length, 21, 0, "");
   chk("H3","跨中吊索長 = 40 − 20", HM.elems[10].len3d, 20, 1e-9, "m");
   chk("H3","端部吊索長 = 40", HM.elems[0].len3d, 40, 1e-9, "m");
   const LZ2 = build([
@@ -5847,11 +5518,11 @@ function runTests(){
     { type:"LINE", name:"甲", x1:0,y1:0,z1:0, x2:10,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
     { type:"LINE", name:"乙", x1:500,y1:500,z1:50, x2:510,y2:500,z2:50, split:{ ...SPLIT_DEF, count:2 } }
   ]).md;
-  chk("K1","兩個群組互不相連:節點總數", IND.tot.n, 6, 0, "");
+  chk("K1","兩組互不相連:節點總數", IND.tot.n, 6, 0, "");
   chk("K1","甲起點不受乙影響", IND.groups[0].nodes[0].x, 0, 1e-12, "m");
   chk("K1","乙起點由自己決定", IND.groups[1].nodes[0].x, 500, 1e-12, "m");
-  chk("K2","第 1 群組節點起始", IND.groups[0].nodes[0].num, 1001, 0, "");
-  chk("K2","第 2 群組節點起始(+號段增量)", IND.groups[1].nodes[0].num, 2001, 0, "");
+  chk("K2","第 1 組節點起始", IND.groups[0].nodes[0].num, 1001, 0, "");
+  chk("K2","第 2 組節點起始(+號段增量)", IND.groups[1].nodes[0].num, 2001, 0, "");
   const allN = IND.groups.flatMap(r => r.nodes.map(n => n.num));
   yes("K2","編號不重複", new Set(allN).size === allN.length, new Set(allN).size, allN.length);
   // 被引用的組排在後面也要能解析
@@ -5859,7 +5530,7 @@ function runTests(){
     { id:"z1", type:"OFFSET", name:"偏", ref:"z2", d:3, h:0 },
     { id:"z2", type:"LINE", name:"基", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } }
   ]);
-  yes("K3","被引用的群組排在後面仍可解析", REV.errs.length === 0 &&
+  yes("K3","被引用的組排在後面仍可解析", REV.errs.length === 0 &&
     REV.md.groups.find(r => r.g.id === "z1").nodes.length === 5, REV.errs.length, 0);
   const CYC = build([
     { id:"y1", type:"OFFSET", name:"A", ref:"y2", d:3, h:0 },
@@ -6125,7 +5796,7 @@ function runTests(){
       fMode:"abs", f:20, split:{ ...SPLIT_DEF, count:20 } },
     { id:"h3", type:"LINKZ", name:"吊", ref:"s3", targetZ:0, from:5, to:9, every:1 }
   ]);
-  chk("H4","垂落:節點範圍 5–9 → 5 根",
+  chk("H4","組對高程:節點範圍 5–9 → 5 根",
     LZ3.md.groups.find(r => r.g.id === "h3").elems.length, 5, 0, "");
 
   /* ---- 多段組:段與段共用接縫節點 ---- */
@@ -6146,7 +5817,7 @@ function runTests(){
     MG.nodes.filter(n => Math.abs(n.x-20) < 1e-9 && Math.abs(n.z-30) < 1e-9).length, 1);
   chk("Q1","懸垂段跨中 = 弦線 − f", MG.nodes[2+10].z, 30-20, 1e-9, "m");
   const nums = MG.nodes.map(n => n.num);
-  yes("Q1","整個群組編號連續", nums.every((v,i) => i === 0 || v === nums[i-1]+1), nums[0]+"…"+nums[nums.length-1], "連續");
+  yes("Q1","整組編號連續", nums.every((v,i) => i === 0 || v === nums[i-1]+1), nums[0]+"…"+nums[nums.length-1], "連續");
 
   // 起點改自訂 → 斷開,不產生跨接元素
   const MB = buildPieces([
@@ -6174,7 +5845,7 @@ function runTests(){
     { type:"LINE", endMode:"point", x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:1 },
       ovr:true, etype:"CABLE", mat:9, sect:8 }
   ], { etype:"BEAM", mat:1, sect:1 }).g;
-  yes("Q4","第 1 段沿用群組設定", MO.elems[0].type === "BEAM" && MO.elems[0].mat === 1,
+  yes("Q4","第 1 段沿用組設定", MO.elems[0].type === "BEAM" && MO.elems[0].mat === 1,
     MO.elems[0].type + "/" + MO.elems[0].mat, "BEAM/1");
   yes("Q4","第 2 段覆寫", MO.elems[1].type === "CABLE" && MO.elems[1].mat === 9,
     MO.elems[1].type + "/" + MO.elems[1].mat, "CABLE/9");
@@ -6245,7 +5916,7 @@ function runTests(){
       dels:[2] }] });
     return buildModel(st0, [], []).groups[0];
   })();
-  chk("R5","多段群組刪接縫:節點 5−1", NEh.nodes.length, 4, 0, "");
+  chk("R5","多段組刪接縫:節點 5−1", NEh.nodes.length, 4, 0, "");
   chk("R5","跨段元素長度 = 10 + 20", NEh.elems.find(e => Math.abs(e.len3d-30) < 1e-9) ? 30 : 0, 30, 1e-9, "m");
 
   /* ---- 單位:輸入即輸出 ---- */
@@ -6337,9 +6008,9 @@ function runTests(){
     return buildModel(st0, [], []).groups[0];
   };
   const G0 = XFG(null), G1 = XFG({ ...XF_DEF(), dx:10, dy:20, dz:5 });
-  chk("U2","整個群組平移:起點 X", G1.nodes[0].x, 10, 1e-9, "m");
-  chk("U2","整個群組平移:起點 Y", G1.nodes[0].y, 20, 1e-9, "m");
-  chk("U2","整個群組平移:終點 Z", G1.nodes[4].z, 5, 1e-9, "m");
+  chk("U2","整組平移:起點 X", G1.nodes[0].x, 10, 1e-9, "m");
+  chk("U2","整組平移:起點 Y", G1.nodes[0].y, 20, 1e-9, "m");
+  chk("U2","整組平移:終點 Z", G1.nodes[4].z, 5, 1e-9, "m");
   chk("U2","剛體:元素總長不變", G1.stat.len3d, G0.stat.len3d, 1e-9, "m");
   chk("U2","剛體:弦線偏差不變", G1.stat.maxDev, G0.stat.maxDev, 1e-12, "m");
   chk("U2","節點編號不變", G1.nodes[4].num, G0.nodes[4].num, 0, "");
@@ -6408,9 +6079,9 @@ function runTests(){
   chk("S1","元素數不變", T1.main.elems.length, T0.main.elems.length, 0, "");
   chk("S1","節點編號不變", T1.main.nodes[3].num, T0.main.nodes[3].num, 0, "");
   chk("S1","座標確實有改", T1.main.nodes[3].y, 22, 1e-12, "m");
-  yes("S2","相依的偏置群組連接關係也不變", topo(T1.off) === topo(T0.off), "相同", "相同");
-  yes("S2","對接連接關係也不變", topo(T1.lk) === topo(T0.lk), "相同", "相同");
-  chk("S2","偏置群組節點數不變", T1.off.nodes.length, T0.off.nodes.length, 0, "");
+  yes("S2","相依的偏置組連接關係也不變", topo(T1.off) === topo(T0.off), "相同", "相同");
+  yes("S2","組對組連接關係也不變", topo(T1.lk) === topo(T0.lk), "相同", "相同");
+  chk("S2","偏置組節點數不變", T1.off.nodes.length, T0.off.nodes.length, 0, "");
   yes("S2","覆寫後仍無錯誤", T1.errs.length === 0, T1.errs.length, 0);
   // 逐軸容錯:只給 Y,X/Z 沿用原值
   const T2 = CT({ 3:{ x:NaN, y:22, z:NaN } });
@@ -6455,7 +6126,7 @@ function runTests(){
   yes("S6","兩段 → 兩條分段折線", sp.length === 2, sp.length, 2);
   yes("S6","分段折線帶著段序號", sp.map(x => x.pi).join(",") === "0,1", sp.map(x => x.pi).join(","), "0,1");
   chk("S6","接縫兩邊共用同一個點", Math.hypot(sp[0].pts[sp[0].pts.length-1].x - sp[1].pts[0].x, 0, 0), 0, 1e-12, "m");
-  yes("S6","段一律用群組色(不再各段分色)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
+  yes("S6","段一律用組色(不再各段分色)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
 
   /* ---- 復原 / 重做 ---- */
   const savedHist = { past:HIST.past.slice(), future:HIST.future.slice(), key:HIST.key, t:HIST.t };
@@ -6533,7 +6204,7 @@ function runTests(){
         etype:"CABLE", cable:{ sub:3, kind:1, val:250 } }
     ]);
     const la = elemLine(L.md.byId.get("ca").elems[0]), lb = elemLine(L.md.byId.get("cb").elems[0]);
-    yes("P2","各群組可有不同的纜索初始值",
+    yes("P2","各組可有不同的纜索初始值",
       /, 3, 9\.5, 3$/.test(la) && /, 3, 250, 1$/.test(lb), la + " | " + lb, "Lu 9.5 / Pretension 250");
   }
   const uL = state.units.length;
@@ -6564,14 +6235,14 @@ function runTests(){
       { id:"m3", type:"OFFSET", name:"O", ref:"m1", d:5, h:0 }
     ]);
     const A = L.md.byId.get("m1"), O = L.md.byId.get("m3");
-    chk("M1","手動節點加在群組節點之後", A.nodes.length, 6, 0, "");
+    chk("M1","手動節點加在本組節點之後", A.nodes.length, 6, 0, "");
     const man = A.nodes.filter(n => n.manual);
-    yes("M1","手動節點編號接續群組", man.length === 1 && man[0].num === A.nodeBase + 5,
+    yes("M1","手動節點編號接續本組", man.length === 1 && man[0].num === A.nodeBase + 5,
       man.length ? man[0].num : "無", A.nodeBase + 5);
     yes("M1","手動節點座標即輸入值", man[0].x === 50 && man[0].y === 50 && man[0].z === 10,
       `${man[0].x},${man[0].y},${man[0].z}`, "50,50,10");
-    chk("M2","手動節點不影響下游偏置群組的節點數", O.nodes.length, 5, 0, "");
-    yes("M2","下游群組不會因手動節點算出 NaN",
+    chk("M2","手動節點不影響下游偏置組的節點數", O.nodes.length, 5, 0, "");
+    yes("M2","下游組不會因手動節點算出 NaN",
       O.elems.every(e => Number.isFinite(e.len3d)), "全部有限", "全部有限");
   }
   {
@@ -6588,7 +6259,7 @@ function runTests(){
     const L = mkL([{ i:nA, j:nB }]);
     const B = L.md.byId.get("x2");
     const me = B.elems.filter(e => e.manual);
-    yes("M3","手動元素可跨群組連接", me.length === 1 && me[0].i === nA && me[0].j === nB,
+    yes("M3","手動元素可跨組連接", me.length === 1 && me[0].i === nA && me[0].j === nB,
       me.length ? `${me[0].i}-${me[0].j}` : "無", `${nA}-${nB}`);
     yes("M3","手動元素編號接在自動元素之後", me[0].num === B.elemBase + autoE,
       me[0].num, B.elemBase + autoE);
@@ -6599,21 +6270,21 @@ function runTests(){
       bad.errs.some(t => t.indexOf("找不到節點") >= 0), bad.errs.join("|") || "無", "有錯誤訊息");
   }
   {
-    // 對接的節點範圍
+    // 組對組的節點範圍
     const mk = (from, to, every) => build([
       { id:"l1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:9 } },
       { id:"l2", type:"LINE", name:"B", x1:0,y1:20,z1:0, x2:100,y2:20,z2:0, split:{ ...SPLIT_DEF, count:9 } },
       { id:"l3", type:"LINK2", name:"L", a:"l1", b:"l2", from, to, every }
     ]).md.byId.get("l3");
-    chk("M4","對接:預設全連(10 節點)", mk(1, 0, 1).elems.length, 10, 0, "");
-    chk("M4","對接:範圍 3–7", mk(3, 7, 1).elems.length, 5, 0, "");
-    chk("M4","對接:範圍 3–7 每 2 個", mk(3, 7, 2).elems.length, 3, 0, "");
+    chk("M4","組對組:預設全連(10 節點)", mk(1, 0, 1).elems.length, 10, 0, "");
+    chk("M4","組對組:範圍 3–7", mk(3, 7, 1).elems.length, 5, 0, "");
+    chk("M4","組對組:範圍 3–7 每 2 個", mk(3, 7, 2).elems.length, 3, 0, "");
     const r = mk(3, 7, 1);
-    yes("M4","對接:範圍起點正確", r.elems[0].i === r.elems[0].a.num && r.elems[0].a.num % 1000 === 3,
+    yes("M4","組對組:範圍起點正確", r.elems[0].i === r.elems[0].a.num && r.elems[0].a.num % 1000 === 3,
       r.elems[0].a.num, "第 3 個節點");
   }
   {
-    // 偏置複製 = 同型別 + 同內容 + 整個群組平移;連接族也能平移且長度會重算
+    // 偏置複製 = 同型別 + 同內容 + 整組平移;連接族也能平移且長度會重算
     const L = build([
       { id:"c1", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 } },
       { id:"c2", type:"LINE", name:"A2", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:4 },
@@ -6621,8 +6292,8 @@ function runTests(){
       { id:"c3", type:"LINKZ", name:"Z", ref:"c1", targetZ:-50, every:1, xf:{ ...XF_DEF(), dz:-10 } }
     ]);
     const a = L.md.byId.get("c1"), b = L.md.byId.get("c2"), z = L.md.byId.get("c3");
-    yes("M5","複本平移後與原群組同節點數", a.nodes.length === b.nodes.length, b.nodes.length, a.nodes.length);
-    chk("M5","複本整個群組平移 dy", b.nodes[0].y - a.nodes[0].y, 12, 1e-9, "");
+    yes("M5","複本平移後與原組同節點數", a.nodes.length === b.nodes.length, b.nodes.length, a.nodes.length);
+    chk("M5","複本整組平移 dy", b.nodes[0].y - a.nodes[0].y, 12, 1e-9, "");
     chk("M5","複本元素長度不變(剛體)", b.stat.len3d, a.stat.len3d, 1e-9, "");
     chk("M5","連接族平移:自有節點跟著動", z.nodes.filter(n => n.gid === "c3")[0].z, -60, 1e-9, "");
     yes("M5","連接族平移後元素長度有重算",
@@ -6638,7 +6309,7 @@ function runTests(){
     yes("M6","上游鏈:垂落 → 它的來源線", ids(gs[1]) === "u1,u2", ids(gs[1]), "u1,u2");
     yes("M6","上游鏈:對接 → 垂落 → 線", ids(gs[2]) === "u1,u2,u3", ids(gs[2]), "u1,u2,u3");
     yes("M6","上游鏈:線自己沒有上游", ids(gs[0]) === "u1", ids(gs[0]), "u1");
-    yes("M6","上游鏈:不會把無關的群組拉進來", ids(gs[2]).indexOf("u4") < 0, ids(gs[2]), "不含 u4");
+    yes("M6","上游鏈:不會把無關的組拉進來", ids(gs[2]).indexOf("u4") < 0, ids(gs[2]), "不含 u4");
   }
 
   /* ---- v3.8:餘數頭尾平分 / 段色固定 / 段間參照 / 單位寫法 / midas 名稱庫 ---- */
@@ -6663,7 +6334,7 @@ function runTests(){
       { ...defaultPiece("LINE"), sRef:"prev", x2:200,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"prev", x2:300,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } }] }] });
     const rC = buildModel(st0, [], []).groups[0];
-    yes("R2","整個群組同一個顏色", colOf(rC) === rC.color, colOf(rC), rC.color);
+    yes("R2","整組同一個顏色", colOf(rC) === rC.color, colOf(rC), rC.color);
     yes("R2","段的身分靠 pi 帶到折線上",
       elemPolysBy(rC).map(x => x.pi).join(",") === "0,1,2",
       elemPolysBy(rC).map(x => x.pi).join(","), "0,1,2");
@@ -6739,7 +6410,7 @@ function runTests(){
       { ...defaultGroup("CURVE"), id:"d2", name:"B", pieces:[
         { ...defaultPiece("POINT"), sRef:"", x2:0, y2:0, z2:0 }] }] });
     const Wd = [], md2 = buildModel(dg, [], Wd);
-    chk("R6","跨群組的重合節點也會併", md2.tot.n, 1, 0, "");
+    chk("R6","跨組的重合節點也會併", md2.tot.n, 1, 0, "");
     // 容差
     const tolSt = grp => normState({ ...DEF_STATE(), weld:grp, groups:[
       { ...defaultGroup("CURVE"), id:"t1", name:"A", pieces:[
@@ -6904,7 +6575,7 @@ function runTests(){
   {
     // v3.9:編號一律自動,每組不再有自己的起始號
     const gA = defaultGroup("CURVE");
-    yes("R9","群組不再帶自己的編號欄位",
+    yes("R9","組不再帶自己的編號欄位",
       gA.autoNum === undefined && gA.nodeBase === undefined && gA.elemBase === undefined,
       `${gA.autoNum}/${gA.nodeBase}/${gA.elemBase}`, "都是 undefined");
     // 舊檔的手動編號要被清掉並改用自動
@@ -6915,8 +6586,8 @@ function runTests(){
       oldSt.groups[0].autoNum === undefined && oldSt.groups[0].nodeBase === undefined,
       JSON.stringify([oldSt.groups[0].autoNum, oldSt.groups[0].nodeBase]), "[null,null]");
     const mdA = buildModel(oldSt, [], []);
-    chk("R9","第一個群組用全域起始", mdA.byId.get("o1").nodeBase, oldSt.numbering.nodeBase, 0, "");
-    chk("R9","第二個群組 = 全域起始 + 號段增量",
+    chk("R9","第一組用全域起始", mdA.byId.get("o1").nodeBase, oldSt.numbering.nodeBase, 0, "");
+    chk("R9","第二組 = 全域起始 + 號段增量",
       mdA.byId.get("o2").nodeBase, oldSt.numbering.nodeBase + oldSt.numbering.inc, 0, "");
     // 纜索欄位只有用 CABLE 時才出現,而且是接在元素預設後面
     const gCab = { ...defaultGroup("CURVE"), etype:"CABLE" };
@@ -6955,7 +6626,7 @@ function runTests(){
   {
     // 第一段一定要能自己給起點座標 —— 新建的組不會經過 normState,所以 defaultGroup 本身就要對
     const gNew = defaultGroup("CURVE");
-    yes("R7","新建線群組的第一段是自訂座標", gNew.pieces[0].sRef === "",
+    yes("R7","新建曲線組的第一段是自訂座標", gNew.pieces[0].sRef === "",
       JSON.stringify(gNew.pieces[0].sRef), '""');
     yes("R7","新建的第一段沒有殘留舊的 cont 欄位", gNew.pieces[0].cont === undefined,
       String(gNew.pieces[0].cont), "undefined");
@@ -6987,10 +6658,7 @@ function runTests(){
       JSON.stringify(g4.pieces[0].sRef), '"1:e"');
   }
   {
-    // v3.17:單位下拉只留英文代號,不再帶中文括號
-    yes("R4","長度單位只有英文代號",
-      UNIT_LENGTH.every(o => /^[a-z]{1,2}$/.test(o[1])) && UNIT_LENGTH[0][1] === "m",
-      UNIT_LENGTH.map(o => o[1]).join(" "), "m cm mm in ft");
+    yes("R4","長度單位用公制小寫", UNIT_LENGTH[0][1].indexOf("m(") === 0, UNIT_LENGTH[0][1], "m(…");
     yes("R4","力單位用 kN / kgf 寫法",
       UNIT_FORCE.some(o => o[1].indexOf("kN") === 0) && UNIT_FORCE.some(o => o[1].indexOf("kgf") === 0),
       UNIT_FORCE.map(o => o[1]).join(" "), "含 kN 與 kgf");

@@ -21,8 +21,6 @@
   header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
   header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
-  /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
-  header .logo{display:inline-flex; color:var(--accent); line-height:0; margin-right:-3px}
   header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
     background:var(--accent-soft); color:var(--accent); font-weight:600}
   header .note{font-size:11px; color:var(--ink-3)}
@@ -43,33 +41,23 @@
   header .units select{font:inherit; font-size:11.5px; font-weight:650; width:auto; padding:1px 4px;
     border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--accent); cursor:pointer}
 
-  #app{display:grid; grid-template-columns:var(--tw,150px) 7px minmax(0,1fr) 7px var(--rw,330px);
+  #app{display:grid; grid-template-columns:var(--tw,238px) 7px minmax(0,1fr) 7px var(--rw,330px);
     height:calc(100% - 41px)}
   #tree, #tresizer, #pane, #resizer, #right{grid-row:1}   /* 釘在同一列,否則對調後會被擠到下一列 */
   #tree{grid-column:1} #tresizer{grid-column:2} #pane{grid-column:3}
   #resizer{grid-column:4} #right{grid-column:5}
   #app.swap #right{grid-column:3; border-left:0} #app.swap #pane{grid-column:5}
-  /* 沒選任何群組時,編輯區沒東西可編,整塊收掉把空間讓給畫布 */
-  #app.nosel{grid-template-columns:var(--tw,150px) 7px 0 0 minmax(0,1fr)}
-  #app.nosel #pane, #app.nosel #resizer{display:none}
-  #app.nosel #right, #app.nosel.swap #right{grid-column:5; border-left:1px solid var(--line)}
   #resizer, #tresizer{position:relative; background:#f2f0ea; border-left:1px solid var(--line);
     border-right:1px solid var(--line); cursor:col-resize; user-select:none}
   #resizer:hover, #resizer.on, #tresizer:hover, #tresizer.on{background:var(--accent-soft)}
   #resizer::after, #tresizer::after{content:"⋮"; position:absolute; top:50%; left:50%;
     transform:translate(-50%,-50%); color:var(--ink-3); font-size:12px; line-height:1}
-  @media(max-width:1180px){
-    /* 窄版本來是上下堆疊;沒選群組時讓畫布直接補到第一列,不留空白 */
-    #app.nosel{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
-    #app.nosel #right, #app.nosel.swap #right{grid-column:3; grid-row:1;
-      border-top:0; border-left:1px solid var(--line)}
-    #app{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
+  @media(max-width:1180px){ #app{grid-template-columns:var(--tw,210px) 7px minmax(0,1fr)}
     #resizer{display:none}
     #tree{grid-column:1; grid-row:1} #tresizer{grid-column:2; grid-row:1}
     #pane, #app.swap #pane{grid-column:3; grid-row:1}
     #right, #app.swap #right{grid-column:1/-1; grid-row:2; border-left:0; border-top:1px solid var(--line)} }
-  @media(max-width:740px){ #app, #app.nosel{grid-template-columns:minmax(0,1fr); height:auto}
-    #app.nosel #right, #app.nosel.swap #right{grid-column:1; grid-row:2; border-left:0}
+  @media(max-width:740px){ #app{grid-template-columns:minmax(0,1fr); height:auto}
     #tresizer{display:none}
     #tree{grid-column:1; grid-row:1}
     #pane, #app.swap #pane{grid-column:1; grid-row:2}
@@ -82,16 +70,15 @@
   #treelist{flex:1 1 auto; overflow:auto; padding:6px 0; min-height:0}
   /* 統計數字釘在左欄底下:只是「大概看一下」的東西,不值得佔畫布上方一整條 */
   #tree .kpi{flex:0 0 auto; border:0; border-top:1px solid var(--line); border-radius:0;
-    background:#f4f2ec; padding:5px 10px 7px; font-size:10px; gap:0;
-    grid-template-columns:minmax(0,1fr)}
-  #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between;
-    min-width:0; line-height:1.5}
-  #tree .kpi .k{display:inline; font-size:9.5px; flex:0 1 auto;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  #tree .kpi b{font-size:10.5px; white-space:nowrap; flex:0 0 auto}
-  #tree .grp{font-size:10px; letter-spacing:.06em; color:var(--ink-3); font-weight:700;
-    padding:9px 10px 4px; text-transform:uppercase}
-  #tree .it{display:flex; align-items:center; gap:6px; padding:5px 8px 5px 11px; cursor:pointer; color:var(--ink-2)}
+    background:#f4f2ec; padding:6px 12px 8px; font-size:11px; gap:1px 10px;
+    grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tree .kpi > div{display:flex; align-items:baseline; gap:6px; justify-content:space-between; min-width:0}
+  #tree .kpi .k{display:inline; font-size:9.5px; flex:0 0 auto}
+  #tree .kpi b{font-size:11.5px; white-space:nowrap}
+  #tree .kpi .k{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #tree .grp{font-size:10px; letter-spacing:.08em; color:var(--ink-3); font-weight:700;
+    padding:10px 12px 4px; text-transform:uppercase}
+  #tree .it{display:flex; align-items:center; gap:7px; padding:5px 10px 5px 14px; cursor:pointer; color:var(--ink-2)}
   #tree .it:hover{background:#f0eee8}
   #tree .it.on{background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 2px 0 0 var(--accent)}
   #tree .it.err{color:var(--err)}
@@ -101,11 +88,9 @@
   #tree .it .ic{display:flex; flex:0 0 auto; line-height:0}
   #tree .it .ic.off{color:#c9c4ba !important; opacity:.6}
   #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
-    flex:0 0 auto; display:none}
-  #tree .it:hover .meta, #tree .it.on .meta{display:inline}
+  #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); flex:0 0 auto}
   #tree .it.on .meta{color:var(--accent)}
-  #tree .addwrap{padding:7px 8px 7px 11px; position:relative}
+  #tree .addwrap{padding:7px 10px 7px 14px; position:relative}
   #tree .addbtn{font:inherit; font-size:11.5px; color:var(--accent); background:none; border:0;
     cursor:pointer; padding:0; font-weight:600}
   /* 新增群組的選單掛在 body 上(和右鍵選單一樣),左欄再窄也不會被裁掉 */
@@ -181,10 +166,6 @@
   .out b{color:var(--ink); font-weight:650}
   .out .k{color:var(--ink-3); font-family:"Noto Sans TC",sans-serif}
   .hint{font-size:11px; color:var(--ink-3); margin-top:7px}
-  /* 一定要看到的說明(不進 i 收合) */
-  .note{font-size:10.5px; color:var(--ink-2); margin-top:6px; background:#fbfaf7;
-    border:1px solid var(--line-2); border-radius:4px; padding:5px 8px}
-  .note b{color:var(--ink)}
   /* 提示預設收起,每個區塊只留一顆 i */
   .ibtn{flex:0 0 auto; width:17px; height:17px; border-radius:50%; border:1px solid var(--line);
     background:#fff; color:var(--ink-3); font-size:10.5px; font-weight:700; line-height:1;
@@ -279,10 +260,6 @@
   details.adv > summary{cursor:pointer; font-size:11px; color:var(--ink-3); font-weight:600; list-style:none}
   details.adv > summary::-webkit-details-marker{display:none}
   details.adv > summary::before{content:"▸ "; font-size:9px}
-  details.adv.elem > summary{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-2)}
-  details.adv.elem > summary .tag{font-size:10px; font-weight:600; padding:1px 7px; border-radius:9px}
-  details.adv.elem > summary .tag.ok{background:#eef3ee; color:var(--ok); font-family:var(--mono)}
-  details.adv.elem > summary .tag.todo{background:#fdf7e8; color:var(--warn)}
   details.adv[open] > summary::before{content:"▾ "}
   details.adv > div{margin-top:8px}
 
@@ -343,9 +320,8 @@
 <body>
 
 <header>
-  <span class="logo" title="空間線型產生器"><svg width="21" height="21" viewBox="0 0 44 30" fill="none" stroke-linecap="round" style="vertical-align:-4px"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="2.8"/><circle cx="4" cy="5" r="2.6" fill="currentColor"/><circle cx="22" cy="25" r="2.6" fill="currentColor"/><circle cx="40" cy="5" r="2.6" fill="currentColor"/></svg></span>
   <h1>空間線型產生器</h1>
-  <span class="stage">群組架構 v3.19</span>
+  <span class="stage">群組架構 v3.17</span>
   <span class="note">X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -360,8 +336,7 @@
   <button id="btn-clear" class="warn">全部清空</button>
   <span class="hgap"></span>
   <button id="btn-num" class="gset" title="節點與元素的編號起始、號段增量、重合節點合併">⚙ 編號設定</button>
-  <button id="btn-imp" class="gset" title="載入參數檔、貼上 .mct 文字、讀 midas 的材料與斷面名稱"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 10.2V1.8"/><path d="M5.2 7.4 8 10.2l2.8-2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯入</button>
-  <button id="btn-out" class="gset" title="單位、.mct 預覽與下載、CSV"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 1.8v8.4"/><path d="M5.2 4.6 8 1.8l2.8 2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯出</button>
+  <button id="btn-out" class="gset" title="單位、材料與斷面名稱、.mct 預覽與下載">⬇ 輸出與匯出</button>
 </header>
 
 <div id="app">
@@ -1372,13 +1347,6 @@ const nearestAt = (ts, v) => {
 let SEQ = 1;
 const newId = () => "g" + (SEQ++);
 
-// 元素的三個欄位都填了才算設定完成;沒填完就把那一區攤開,讓人知道還沒填
-const elemDone = g => !!(g && g.etype) && (num(g.mat) > 0) && (num(g.sect) > 0);
-const elemSummary = g => {
-  const t = (ELEM_TYPES.find(o => o[0] === g.etype) || [null, g.etype])[1];
-  return `${t} · 材料 ${Math.round(num(g.mat))} · 斷面 ${Math.round(num(g.sect))}`;
-};
-
 function defaultPiece(type){
   const sp = { ...SPLIT_DEF, spacing:dL(SPLIT_DEF.spacing), maxSpacing:dL(SPLIT_DEF.maxSpacing),
                tol:dL(SPLIT_DEF.tol), axisSpacing:dL(SPLIT_DEF.axisSpacing),
@@ -1410,10 +1378,8 @@ function fixFirstPiece(g){
 }
 
 function defaultGroup(type, n){
-  // 元素的類型 / 材料 / 斷面一律留空:填了才算「設定過」,面板才會把它收起來。
-  // 沒填也不會擋住匯出 —— attrOf() 仍然會退回 BEAM / 1 / 1。
   const base = { id:newId(), type, name:TYPES[type].name + (n || ""), on:true, xf:XF_DEF(),
-    etype:"", mat:"", sect:"",
+    etype:"BEAM", mat:1, sect:1,
     addN:[], addE:[],              // 手動節點(自己輸座標)/ 手動元素(點兩個節點)
     cable:CABLE_DEF() };           // 只受拉元素的子類型與初始值(元素類型是 CABLE 時才用得到)
   if (type === "CURVE") return { ...base,
@@ -1422,13 +1388,13 @@ function defaultGroup(type, n){
   if (type === "LINK2") return { ...base, a:"", b:"", pair:"same", skew:1,
     from:1, to:0, every:1,                       // same / skew / cross / ratio / near 用「這排」的節點範圍
     aFrom:1, aEvery:1, bFrom:1, bEvery:1, count:0, rev:false };   // free(自訂)用兩排各自的偏移與步進
-  if (type === "LINKZ") return { ...base, ref:"", zMode:"abs", targetZ:0,   // 索類請自行選 CABLE
+  if (type === "LINKZ") return { ...base, ref:"", zMode:"abs", targetZ:0,
     px:0, py:0, pz:0, sx:0, sy:0,                // zMode = "plane":過 (px,py,pz)、坡度 sx / sy 的斜面
     zRef:"",                                     // zMode = "ref":取另一群組對應節點的高程
-    from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5) };
+    from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5), etype:"CABLE" };
   if (type === "FAN")   return { ...base, srcMode:"coord", sx:0, sy:0, sz:dL(80), ref:"",
     srcG:"", srcI:1,                             // srcMode = "gnode":某群組的第 k 個節點
-    from:1, to:10, every:1, div:1, fMode:"abs", f:0 };
+    from:1, to:10, every:1, div:1, fMode:"abs", f:0, etype:"CABLE" };
   return base;
 }
 
@@ -2716,10 +2682,9 @@ function renderTree(){
   // 全域設定改放右上角,清單只留群組
   const bc = $("#btn-clear");
   if (bc) bc.disabled = !(state.groups && state.groups.length);
-  const bn = $("#btn-num"), bo = $("#btn-out"), bi = $("#btn-imp");
+  const bn = $("#btn-num"), bo = $("#btn-out");
   if (bn) bn.classList.toggle("on", SEL === "_num");
   if (bo) bo.classList.toggle("on", SEL === "_out");
-  if (bi) bi.classList.toggle("on", SEL === "_imp");
 }
 
 function closeAddMenu(){ const m = $("#add-menu"); if (m) m.remove(); }
@@ -3003,37 +2968,6 @@ function openArrayDlg(g){
           rot:turn ? -dA : 0, axis:"Z", pivot:turn ? B : null }, deep, true, anchor) || anchor;
     });
     recompute(true);
-  };
-}
-
-/* ---------- 貼上文字匯入 ---------- */
-function openPasteDlg(){
-  const m = document.createElement("div");
-  m.className = "mask";
-  m.innerHTML = `<div class="dlg" style="width:min(620px, calc(100vw - 32px))">
-      <h3>貼上文字匯入</h3>
-      <div class="sub">把 midas 匯出的 .mct、或本工具的參數 JSON 整段貼進來就好,不必先存成檔案。</div>
-      <textarea id="pi-txt" rows="12" placeholder="在這裡貼上 .mct 或 JSON 的全文…"
-        style="font-family:var(--mono); font-size:11.5px; width:100%"></textarea>
-      <div class="hint">會做兩件事:抓 <code>*MATERIAL</code> / <code>*SECTION</code> 的編號與名稱進名稱庫;
-        文字裡若含本工具的參數檔頭,就一併還原整個模型。</div>
-      <div class="btns">
-        <button class="btn" id="pi-cancel">取消</button>
-        <button class="btn p" id="pi-ok">讀取</button></div>
-    </div>`;
-  document.body.appendChild(m);
-  foldHints(m, "dlg");
-  const close = () => m.remove();
-  m.addEventListener("click", e => { if (e.target === m) close(); });
-  m.querySelector("#pi-cancel").onclick = close;
-  const esckey = e => { if (e.key === "Escape"){ close(); window.removeEventListener("keydown", esckey); } };
-  window.addEventListener("keydown", esckey);
-  setTimeout(() => { const f = m.querySelector("#pi-txt"); if (f) f.focus(); }, 0);
-  m.querySelector("#pi-ok").onclick = () => {
-    const txt = m.querySelector("#pi-txt").value;
-    if (!txt.trim()){ alert("還沒貼上任何東西。"); return; }
-    close();
-    loadText(txt, "貼上的文字");
   };
 }
 
@@ -3777,20 +3711,15 @@ function paneFor(g){
      <div class="hint" style="margin-top:8px">匯出的 .mct <b>一律純英數</b>(中文在 midas 匯入會變亂碼),
        所以 <code>*GROUP</code> 用的匯出群組名是 <b>${r ? esc(r.gname) : "—"}</b>。
        ${fellBack ? "目前名稱沒有可用的英數字,只能<b>用序號代替</b>;想在 midas 裡看到有意義的匯出群組名,請在名稱裡加上英數(例如「主曲線 MAIN」)。" : ""}</div>
-     <details class="adv elem"${elemDone(g) ? "" : " open"}>
-       <summary>元素(整個群組預設)<span class="tag${elemDone(g) ? " ok" : " todo"}">${
-         elemDone(g) ? esc(elemSummary(g)) : "尚未設定"}</span></summary>
-       <div>
-         <div class="fields g3">${
-           fld("類型", "etype", g.etype, { select:[["","(未設定)"], ...ELEM_TYPES] }) +
-           matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
-         <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。<b>留空就照 BEAM / 材料 1 / 斷面 1 匯出</b>。${
-           libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
-             到右上角<b>「匯入 → midas 的材料與斷面名稱」</b>讀一份 midas 匯出的 .mct
-             (或直接把那個檔案<b>拖進本頁面</b>)。`}</div>
-         ${cableFields(g)}
-       </div>
-     </details>
+     <div class="subh">元素(整個群組預設)</div>
+     <div class="fields g3">${
+       fld("類型", "etype", g.etype, { select:ELEM_TYPES }) +
+       matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
+     <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。${
+       libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
+         到左下角<b>「輸出 → 材料與斷面名稱」</b>匯入一份 midas 匯出的 .mct
+         (或直接把那個檔案<b>拖進本頁面</b>)。`}</div>
+     ${cableFields(g)}
      <div class="hint" data-ro style="margin-top:12px;padding-top:9px;border-top:1px solid var(--line-2)">
        <b>編號</b>(全自動:全域起始 + 這個群組在清單裡的順序 × 號段增量,可在「編號總表」調整)${
        r ? ` —— 節點 <b>${numRange(r.nodes)}</b> · 元素 <b>${numRange(r.elems)}</b>` : ""}</div>`);
@@ -3926,10 +3855,8 @@ function paneNumbering(){
         <button class="tgl${state.weld.on !== false ? " on" : ""}" data-op="weldtog">
           <span class="dot"></span>合併座標重合的節點</button></div>
        <div class="fields g3">${
-        fld(`距離多近算同一點 (${UL()})`, "weld.tol", state.weld.tol,
+        fld(`容差 (${UL()},0 = 完全相同才併)`, "weld.tol", state.weld.tol,
           { disabled:state.weld.on === false })}</div>
-       <div class="note">兩個節點的距離<b>小於等於</b>這個值就併成一個。
-         <b>0 = 座標要完全一樣才併</b>(最保守);以公尺為單位時填 <b>0.001</b> 就是「相距 1 mm 以內算同一點」。</div>
        <div class="hint">同一個位置<b>只留節點編號最小的那一個</b>,其餘刪掉,元素端點改指到它
          —— 等同 midas 的 <b>Merge Nodes</b>。段互相參照、連接族接到既有節點時最容易產生重合節點,
          不併的話在 midas 裡看起來相連、其實是兩個獨立的節點。<br>
@@ -3939,31 +3866,19 @@ function paneNumbering(){
        <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何群組</td></tr>`}</tbody></table></div>`);
 }
 
-function paneImport(){
-  return `<div class="ptitle"><span class="nm">匯入</span><span class="fam geo">全域</span></div>` +
-    SEC("參數檔", "", `<div class="btns">
-        <button class="btn p" data-op="load">選檔案…</button>
-        <button class="btn" data-op="pastein">貼上文字…</button>
-        <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt"></div>
-      <div class="hint">本工具匯出的 <b>參數 JSON</b>,或帶有參數檔頭的 <b>.mct</b>,讀進來就會還原整個模型。
-        檔案也可以<b>直接拖進頁面</b>。</div>`) +
-    SEC("midas 的材料與斷面名稱", libTail(), `<div class="btns">
-        <button class="btn p" data-op="load">選 .mct 檔…</button>
-        <button class="btn" data-op="pastein">貼上 .mct 文字…</button>
-        ${libTotal() ? `<button class="btn d" data-op="clearlib">清除名稱庫</button>` : ""}</div>
-      <div class="hint">在 midas Civil 裡把<b>斷面尺寸與材料參數建好</b>之後 Export 一份 .mct,
-        讀進來(檔案或直接貼上文字都可以),各群組的「材料 / 斷面」欄位就會顯示<b>實際的名稱</b>,
-        不用再對編號。只讀 <code>*MATERIAL</code> 與 <code>*SECTION</code> 的編號與名稱,不會動到你的幾何。</div>
-      ${libTable()}`);
-}
-
 function paneOutput(){
-  return `<div class="ptitle"><span class="nm">匯出</span><span class="fam geo">全域</span></div>` +
+  return `<div class="ptitle"><span class="nm">輸出</span><span class="fam geo">全域</span></div>` +
     SEC("單位", `目前 <b>${esc(UF())}, ${esc(UL())}</b>`,
       `<div class="hint" style="margin:0">單位在<b>最上方標題列</b>設定。
         <b>輸入什麼單位,就算什麼單位</b> —— 畫面、CSV、檢核、匯出的 .mct 座標全部是同一組數字,
         中間<b>不做任何換算</b>;.mct 開頭的 <code>*UNIT</code> 就寫這裡選的單位。
         在標題列改單位時,會問要不要把既有數值一起換算(幾何大小不變)。</div>`) +
+    SEC("材料與斷面名稱", libTail(), `<div class="hint" style="margin:0 0 9px">
+        在 midas Civil 裡把<b>斷面尺寸與材料參數建好</b>之後 Export 一份 .mct,匯進來,
+        各群組的「材料 / 斷面」欄位就會直接顯示<b>實際的名稱</b>,不用再對編號。</div>
+      <div class="btns"><button class="btn p" data-op="loadlib">匯入 midas .mct(讀材料 / 斷面)…</button>
+        ${libTotal() ? `<button class="btn d" data-op="clearlib">清除名稱庫</button>` : ""}</div>
+      ${libTable()}`) +
     SEC("3D 視角", "", `<div class="fields g3">${
       fld("方位角 (°)", "view.az", state.view.az) +
       fld("仰角 (°)", "view.el", state.view.el) +
@@ -3978,7 +3893,9 @@ function paneOutput(){
       <button class="btn" data-op="mctcopy">複製 MCT 文字</button>
       <button class="btn" data-op="csvn">節點 CSV</button>
       <button class="btn" data-op="csve">元素 CSV</button>
-      <button class="btn" data-op="json">參數 JSON</button></div>
+      <button class="btn" data-op="json">參數 JSON</button>
+      <button class="btn" data-op="load">載入 JSON / MCT…</button>
+      <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt"></div>
       <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟,長度欄位標題會標上目前單位。
         <b>.mct 檔頭嵌了完整參數(含單位),拖回本頁面即可還原重編。</b></div>`) +
     `<details class="adv" open><summary>MCT 預覽</summary><div><pre id="mctprev" style="font-family:var(--mono);font-size:11px;line-height:1.45;margin:0;background:#fbfaf7;border:1px solid var(--line);border-radius:6px;padding:9px 11px;max-height:300px;overflow:auto;white-space:pre;color:var(--ink-2)"></pre></div></details>`;
@@ -4010,13 +3927,9 @@ function foldHints(root, keyBase){
     if (!hints.length) return;
     hints.forEach(h => claimed.add(h));
     const k = keyBase + "|" + key;
-    // 內容只有提示的區塊,收起來時連 .b 一起藏掉,不然會留一塊莫名其妙的白
-    const bodyEl = box.classList && box.classList.contains("sec") ? box.querySelector(":scope > .b") : null;
-    const onlyHints = bodyEl && ![...bodyEl.children].some(c => !c.classList.contains("hint"));
     const set = on => {
       btn.classList.toggle("on", on);
       hints.forEach(h => { h.hidden = !on; });
-      if (onlyHints) bodyEl.hidden = !on;
     };
     const btn = document.createElement("button");
     btn.type = "button"; btn.className = "ibtn"; btn.textContent = "i";
@@ -4054,8 +3967,6 @@ function foldHints(root, keyBase){
 
 function renderPane(){
   const el = $("#pane");
-  // 沒選任何群組 → 收起整個編輯區,把空間讓給畫布(全域頁面 _num / _out / _imp 不算)
-  const app = $("#app"); if (app) app.classList.toggle("nosel", !SEL);
   /* 整塊 innerHTML 重寫時捲動位置會跑掉:新內容一貼上去,所有 <details> 都是 HTML 裡寫的
      「收合」狀態 → 內容瞬間變矮 → 瀏覽器把 scrollTop 夾到新的上限;等 restoreOpen() 再把卡片
      展開回來,scrollTop 已經被夾小了,畫面就往上跳一截。所以要自己存回去。 */
@@ -4063,13 +3974,14 @@ function renderPane(){
   const keepScroll = () => { if (el.scrollTop !== st0) el.scrollTop = st0; };
   if (SEL === "_num"){ el.innerHTML = paneNumbering(); foldHints(el, "_num"); keepScroll(); return; }
   if (SEL === "_out"){ el.innerHTML = paneOutput(); renderMctPrev(); foldHints(el, "_out"); keepScroll(); return; }
-  if (SEL === "_imp"){ el.innerHTML = paneImport(); foldHints(el, "_imp"); keepScroll(); return; }
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
-    // 這一頁通常是看不到的(沒選群組時整個編輯區會收起來),留一份給極窄版面用
     el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
-      SEC("目前沒有選取任何群組", "", `<div class="hint keep" style="margin:0;font-size:12.5px;line-height:1.7">
-        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。</div>`);
+      SEC("目前沒有選取任何群組", "", `<div class="hint keep" style="margin:0;font-size:12.5px;line-height:1.8">
+        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。<br><br>
+        <b>一個群組 = 一串節點 + 連接它們的元素。</b>群組之間預設互不相干,不共用節點、不繼承方向、不共用編號。
+        每個群組自己決定起終點(全域座標直接給)、形狀、切幾個節點、元素種類與編號。<br><br>
+        要讓兩個群組產生關係,加一個<b>連接族</b>的群組 —— 那是唯一的耦合方式。</div>`);
     return;
   }
   const openKeys = FORCE_OPEN || captureOpen(el);
@@ -4292,7 +4204,7 @@ $("#pane").addEventListener("click", e => {
   if (op === "csve")    { download(`elements_${stamp()}.csv`, elemCSV(), "text/csv;charset=utf-8"); return; }
   if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); return; }
   if (op === "load")    { $("#file-in").click(); return; }
-  if (op === "pastein") { openPasteDlg(); return; }
+  if (op === "loadlib") { $("#file-in").click(); return; }
   if (op === "clearlib"){ snapshot("clearlib:" + Date.now()); state.lib = { mat:{}, sect:{} };
     recompute(true); return; }
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
@@ -4495,19 +4407,18 @@ function setSwap(on){
   app.style.setProperty("--rw", clamp(w, 240, 900) + "px");
   app.classList.toggle("swap", sw);
 })();
-// v3.19 左欄改成單行極簡、預設 150px。換一個 key,舊使用者存的 238 才不會蓋掉新預設。
-const LAY_TW = "scg.treeW2";
+const LAY_TW = "scg.treeW";
 function setTreeW(px){
-  const w = clamp(Math.round(px), 130, Math.max(200, window.innerWidth - 420));
+  const w = clamp(Math.round(px), 150, Math.max(200, window.innerWidth - 420));
   app.style.setProperty("--tw", w + "px");
   try { localStorage.setItem(LAY_TW, String(w)); } catch (err){}
   if (!view.locked) fitView();
   draw();
 }
 (function initTreeW(){
-  let w = 150;                                         // 讀不到 localStorage 時也要是新的預設
-  try { w = +localStorage.getItem(LAY_TW) || 150; } catch (err){}
-  app.style.setProperty("--tw", clamp(w, 130, 900) + "px");
+  let w = 238;
+  try { w = +localStorage.getItem(LAY_TW) || 238; } catch (err){}
+  app.style.setProperty("--tw", clamp(w, 150, 900) + "px");
 })();
 
 let RSZ = null;                                        // "right" = 預覽區、"tree" = 左側清單
@@ -4708,7 +4619,6 @@ $("#vhelp").onclick = () => {
 };
 $("#btn-num").onclick = () => { SEL = "_num"; render(); };
 $("#btn-out").onclick = () => { SEL = "_out"; render(); };
-$("#btn-imp").onclick = () => { SEL = "_imp"; render(); };
 
 function loadState(s){
   if (state && state.groups && state.groups.length) snapshot("load:" + Date.now());
@@ -4734,11 +4644,11 @@ function renderChecks(){
     <div><span class="k">群組</span><b>${MODEL.groups.length}</b></div>
     <div><span class="k">節點</span><b>${MODEL.tot.n}</b></div>
     <div><span class="k">元素</span><b>${MODEL.tot.e}</b></div>
-    <div><span class="k">弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
+    <div><span class="k">最大弦線偏差</span><b${hot(maxDev > inU(0.05))}>${devTxt(maxDev)}</b></div>
     <div><span class="k">最短元素</span><b${hot(lens.length && Math.min(...lens) < inU(0.3))}>${lens.length ? Math.min(...lens).toFixed(3) : "0.000"} ${UL()}</b></div>
-    <div><span class="k">總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
-    <div><span class="k">衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
-    <div><span class="k">匯出群組名</span><b>${MODEL.names.length}</b></div>`;
+    <div><span class="k">元素總長</span><b>${MODEL.tot.len3d.toFixed(3)} ${UL()}</b></div>
+    <div><span class="k">編號衝突</span><b${hot(MODEL.clash)}>${MODEL.clash ? MODEL.clash + " 群" : "無"}</b></div>
+    <div><span class="k">匯出群組</span><b>${MODEL.names.length}</b></div>`;
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
     ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${
@@ -5294,9 +5204,7 @@ cv.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); }
 /* ---------- 工具列 ---------- */
 $("#vcube").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  // 和 midas 一樣:切視角就順便把整個模型重新框進畫面,不必再按一次「重新框選」
   camTo(+b.dataset.az, +b.dataset.el);
-  view.locked = false; fitView(); draw();
 });
 $("#btn-fit").onclick = () => { view.locked = false; fitView(); draw(); };
 $("#btn-nodes").onclick = e => { showNodes = !showNodes;
