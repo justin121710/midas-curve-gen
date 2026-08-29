@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>空間線型產生器 — midas Civil</title>
+<title>線形建模器 — 線形表轉 midas Civil 幾何</title>
 <style>
   :root{
     --paper:#f7f6f2; --ink:#1e2430; --ink-2:#5a6472; --ink-3:#8b95a3;
@@ -22,7 +22,8 @@
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
   header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
   /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
-  header .logo{display:inline-flex; color:var(--accent); line-height:0; margin-right:-3px}
+  /* 標誌:只有那條線,排在標題文字裡當一個字,對齊就交給行內排版 */
+  header h1 .logo{color:var(--accent); vertical-align:-3px; margin-right:5px}
   header .stage{font-size:11px; padding:2px 8px; border-radius:10px;
     background:var(--accent-soft); color:var(--accent); font-weight:600}
   header .note{font-size:11px; color:var(--ink-3)}
@@ -102,7 +103,7 @@
   #tree .it .ic.off{color:#c9c4ba !important; opacity:.6}
   #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
-    flex:0 0 auto; display:none}
+    flex:0 0 auto; display:none; letter-spacing:-.04em; font-variant-numeric:tabular-nums}
   #tree .it:hover .meta, #tree .it.on .meta{display:inline}
   #tree .it.on .meta{color:var(--accent)}
   #tree .addwrap{padding:7px 8px 7px 11px; position:relative}
@@ -253,12 +254,20 @@
   .viewcube button.top{font-size:9.5px; font-weight:700; letter-spacing:.06em}
   .cvtools{position:absolute; top:6px; left:6px; display:flex; gap:4px; flex-wrap:wrap;
     align-items:center; max-width:calc(100% - 122px)}
-  .cvtools button, .cvtools .tag, .cvtools select, .cvtools input{font:inherit; font-size:10.5px;
-    padding:2px 6px; border-radius:4px; width:auto;
+  /* 每一顆都同高、同框:按鈕和「方位 / 仰角」那種輸入框看起來才是一排 */
+  .cvtools > button, .cvtools > .tag, .cvtools > select{font:inherit; font-size:10.5px;
+    height:23px; padding:0 7px; border-radius:4px; width:auto; display:inline-flex;
+    align-items:center; gap:5px; box-sizing:border-box;
     border:1px solid var(--line); background:rgba(255,255,255,.93); color:var(--ink-2); cursor:pointer}
-  .cvtools button:hover{border-color:var(--accent); color:var(--accent)}
-  .cvtools input{width:58px; font-family:var(--mono); text-align:right; cursor:text}
+  .cvtools > button:hover{border-color:var(--accent); color:var(--accent)}
+  /* 輸入框長在 .tag 裡面,自己不要再畫一層框 */
   .cvtools .tag{font-family:var(--mono); cursor:default; color:var(--ink-3)}
+  .cvtools .tag input{font:inherit; font-size:10.5px; font-family:var(--mono); width:46px;
+    height:19px; padding:0 2px; text-align:right; cursor:text;
+    border:0; background:transparent; color:var(--ink-2)}
+  .cvtools .tag input:focus{outline:1px solid var(--accent-soft); border-radius:3px}
+  .cvtools button svg{flex:0 0 auto}
+  .cvtools button.off{color:var(--ink-3)}
   .readout{position:absolute; left:6px; bottom:6px; background:rgba(255,255,255,.94);
     border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-family:var(--mono);
     font-size:10.5px; color:var(--ink-2); pointer-events:none; white-space:pre}
@@ -343,10 +352,9 @@
 <body>
 
 <header>
-  <span class="logo" title="空間線型產生器"><svg width="21" height="21" viewBox="0 0 44 30" fill="none" stroke-linecap="round" style="vertical-align:-4px"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="2.8"/><circle cx="4" cy="5" r="2.6" fill="currentColor"/><circle cx="22" cy="25" r="2.6" fill="currentColor"/><circle cx="40" cy="5" r="2.6" fill="currentColor"/></svg></span>
-  <h1>空間線型產生器</h1>
-  <span class="stage">群組架構 v3.19</span>
-  <span class="note">X=東 · Y=北 · Z=高程</span>
+  <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
+  <span class="stage">群組架構 v3.20</span>
+  <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
     <select id="u-force" title="力的單位(寫進 .mct 的 *UNIT)"></select>
@@ -381,7 +389,7 @@
       <canvas id="cv"></canvas>
       <div class="cvtools">
         <button id="btn-fit">重新框選</button>
-        <button id="btn-nodes">節點:開</button>
+        <button id="btn-nodes" title="顯示 / 隱藏節點"></button>
         <span class="tag">方位<input type="number" step="5" id="vaz" title="方位角(°)"></span>
         <span class="tag">仰角<input type="number" step="5" id="vel" title="仰角(°):90 = 俯視,0 = 立面"></span>
         <span class="tag zbox">Z ×<input type="number" step="any" id="zsc" title="Z 軸放大倍率"><button id="zauto" style="border:0;background:none;color:var(--accent);cursor:pointer;padding:0 2px">1:1</button></span>
@@ -407,7 +415,7 @@
 <script>
 "use strict";
 /* ==========================================================================
-   空間線型產生器 v3 — 組式架構
+   線形建模器 v3 — 群組架構
    一組 = 一串節點 + 連接它們的元素。組與組預設互不相干,起終點在全域座標直接給。
    ========================================================================== */
 
@@ -2389,7 +2397,7 @@ function mctText(){
     arr.forEach(o => { if (o.num < lo) lo = o.num; if (o.num > hi) hi = o.num; });
     return lo === hi ? String(lo) : lo + "-" + hi; };
   L.push(rule);
-  L.push(`${C} Spatial Curve Generator  (spatial-curve-gen)`);
+  L.push(`${C} Alignment Modeler  (alignment-modeler)`);
   L.push(`${C} Generated : ${localStampText()} ${tzOffset()}`);
   L.push(`${C} Units     : ${u.force}, ${u.length}   (coordinates exported as entered, no conversion)`);
   L.push(`${C} Groups    : ${MODEL.groups.length}`);
@@ -2476,7 +2484,7 @@ function elemCSV(){
 }
 
 const FORMAT_VERSION = 3;
-const paramsJSON = () => JSON.stringify({ formatVersion:FORMAT_VERSION, tool:"spatial-curve-gen",
+const paramsJSON = () => JSON.stringify({ formatVersion:FORMAT_VERSION, tool:"alignment-modeler",
   generated:localStampISO(), state }, null, 1);
 const PARAM_BEGIN = "==== CURVE-GEN-PARAMS-BEGIN ====", PARAM_END = "==== CURVE-GEN-PARAMS-END ====";
 // 參數區塊裡有使用者輸入的中文(組名、段名),整份 .mct 要保持純 ASCII 才不會在 midas 裡變亂碼,
@@ -2681,9 +2689,10 @@ function groupSummary(g){
   if (g.on === false) return "停用";
   if (!r) return "—";
   if (r.stat.err) return r.stat.err;
-  if (TYPES[g.type].fam === "con") return r.elems.length + " 元素";
-  if (g.type === "CURVE") return `${(g.pieces||[]).length} 段 · ${r.nodes.length} 節點`;
-  return r.nodes.length + " 節點";
+  // 數字與單位之間不留空白,清單才擠得下(「2段 · 29節點」而不是「2 段 · 29 節點」)
+  if (TYPES[g.type].fam === "con") return r.elems.length + "元素";
+  if (g.type === "CURVE") return `${(g.pieces||[]).length}段 · ${r.nodes.length}節點`;
+  return r.nodes.length + "節點";
 }
 
 let ADD_MENU_HTML = "";
@@ -4067,7 +4076,7 @@ function renderPane(){
   const g = state.groups.find(x => x.id === SEL);
   if (!g){
     // 這一頁通常是看不到的(沒選群組時整個編輯區會收起來),留一份給極窄版面用
-    el.innerHTML = `<div class="ptitle"><span class="nm">空間線型產生器</span></div>` +
+    el.innerHTML = `<div class="ptitle"><span class="nm">線形建模器</span></div>` +
       SEC("目前沒有選取任何群組", "", `<div class="hint keep" style="margin:0;font-size:12.5px;line-height:1.7">
         圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。</div>`);
     return;
@@ -5299,8 +5308,22 @@ $("#vcube").addEventListener("click", e => {
   view.locked = false; fitView(); draw();
 });
 $("#btn-fit").onclick = () => { view.locked = false; fitView(); draw(); };
-$("#btn-nodes").onclick = e => { showNodes = !showNodes;
-  e.target.textContent = "節點:" + (showNodes ? "開" : "關"); draw(); };
+/* 節點的顯示切換:文字 +(畫斜線的)眼睛,不再寫「開 / 關」 */
+const EYE = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+  stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M1.4 8S3.9 3.6 8 3.6 14.6 8 14.6 8 12.1 12.4 8 12.4 1.4 8 1.4 8Z"/>
+  <circle cx="8" cy="8" r="2"/></svg>`;
+const EYE_OFF = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+  stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M1.4 8S3.9 3.6 8 3.6 14.6 8 14.6 8 12.1 12.4 8 12.4 1.4 8 1.4 8Z"/>
+  <circle cx="8" cy="8" r="2"/><path d="M2.9 13.1 13.1 2.9"/></svg>`;
+function syncNodesBtn(){
+  const b = $("#btn-nodes"); if (!b) return;
+  b.innerHTML = `節點${showNodes ? EYE : EYE_OFF}`;
+  b.classList.toggle("off", !showNodes);
+}
+$("#btn-nodes").onclick = () => { showNodes = !showNodes; syncNodesBtn(); draw(); };
+syncNodesBtn();
 $("#vaz").addEventListener("input", e => {
   const a = num(e.target.value); if (!Number.isFinite(a)) return;
   view.az = norm360(a); camUpdate(); camPush(); syncViewUI(); draw();
