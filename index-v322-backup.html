@@ -147,7 +147,7 @@
   .sec > .h .tail{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0; text-transform:none}
   .sec > .b{padding:10px 12px}
   .fields{display:grid; gap:8px 10px}
-  /* 起點欄位與終點欄位之間畫一條淡線,兩顆「圖上點」才不會分不出來 */
+  /* 起點那一排和終點那一排之間畫一條淡線,兩顆「圖上點」才不會分不出來 */
   .fields.rowsep{border-top:1px dashed var(--line-2); margin-top:9px; padding-top:9px}
   /* 座標一律排成 X / Y / Z 三欄,起點與終點上下對齊 —— 不讓 Z 被擠到下一行 */
   .xyz{display:grid; grid-template-columns:56px repeat(3,minmax(0,1fr)); gap:4px 8px; align-items:center}
@@ -156,14 +156,13 @@
     overflow:hidden; text-overflow:ellipsis}
   .xyz > .na{font-size:11px; color:var(--ink-3); text-align:center}
   .xyz.t5{grid-template-columns:56px repeat(3,minmax(0,1fr)) auto}
+  .meList{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px}
+  .mepair{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:11.5px;
+    color:var(--ink-2); border:1px solid var(--line-2); border-radius:2px; padding:2px 4px 2px 8px; background:#ffffff}
   .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
-  /* 欄位排版對 <label>(有標籤的輸入)與 <div>(只有按鈕的那一格)一視同仁 ——
-     只寫 label.f 的話,「圖上點起點」那種按鈕格會掉出網格的對齊基準 */
-  .f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2); min-width:0}
-  .f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:14px}
-  /* 按鈕格:上緣和旁邊的輸入框切齊,不要被網格拉長 */
-  div.f > .btn{align-self:stretch}
+  label.f{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-2); min-width:0}
+  label.f > span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   input[type=text], input[type=number], select, textarea{
     font:inherit; font-family:var(--mono); font-size:12.5px; padding:4px 6px;
     border:1px solid var(--line); border-radius:2px; background:#fff; color:var(--ink); width:100%; min-width:0}
@@ -300,7 +299,6 @@
   .readout{position:absolute; left:6px; bottom:6px; background:rgba(255,255,255,.94);
     border:1px solid var(--line); border-radius:2px; padding:3px 7px; font-family:var(--mono);
     font-size:10.5px; color:var(--ink-2); pointer-events:none; white-space:pre}
-  .readout:empty{display:none}
   .kpi{display:grid; grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:4px 12px;
     font-family:var(--mono); font-size:12px; background:var(--panel);
     border:1px solid var(--line); border-radius:3px; padding:8px 10px}
@@ -346,15 +344,6 @@
   .zbox{display:flex; align-items:center; gap:4px}
   .zbox input{width:52px; font-family:var(--mono); font-size:10.5px; padding:1px 4px;
     border:1px solid var(--line); border-radius:2px; text-align:right}
-  /* 「1:1」= 把 Z 放大倍率歸位。做成和工具列同一套字體的小膠囊,不再是一段裸露的藍字。 */
-  .cvtools .zbox{padding-right:3px}
-  .cvtools .zbox .zfit{font:inherit; font-family:var(--mono); font-size:9.5px; letter-spacing:.02em;
-    height:17px; padding:0 7px; margin-left:1px; border-radius:9px; box-sizing:border-box;
-    border:1px solid var(--line-2); background:var(--bg-2); color:var(--ink-3);
-    cursor:pointer; display:inline-flex; align-items:center; transition:none}
-  .cvtools .zbox .zfit:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
-  /* Z 已經被放大時才點得有意義 —— 這時把它點亮成主色外框當提示 */
-  .cvtools .zbox .zfit.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
   .nodepick{position:absolute; pointer-events:none}
 
   #tests table.tt{width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono)}
@@ -373,11 +362,6 @@
   .ctx button:hover{background:var(--bg-2)}
   .ctx button.d{color:var(--err)}
   .ctx .sep{height:1px; background:var(--line-2); margin:4px 2px}
-  .ctx .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 10px 4px}
-  /* 範例選單:一行標題 + 一行說明 */
-  .ctx button > b{display:block; font-size:12.5px; font-weight:650; color:var(--ink)}
-  .ctx button > span{display:block; font-size:10.5px; color:var(--ink-3); margin-top:1px}
-  .ctx button:hover > b{color:var(--accent)}
   #tree .it .kebab{margin-left:4px; opacity:0; border:0; background:none; cursor:pointer;
     color:var(--ink-3); font-size:13px; line-height:1; padding:0 3px; border-radius:2px}
   #tree .it:hover .kebab, #tree .it.on .kebab{opacity:1}
@@ -397,7 +381,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.24</span>
+  <span class="stage">群組架構 v3.22</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -434,9 +418,9 @@
       <div class="cvtools">
         <button id="btn-fit">重新框選</button>
         <button id="btn-nodes" title="顯示 / 隱藏節點"></button>
-        <span class="tag">方位角<input type="number" step="5" id="vaz" title="方位角(°):0–360 循環,超出自動繞回"></span>
-        <span class="tag">仰角<input type="number" step="5" id="vel" title="仰角(°):90 = 俯視,0 = 立面;超出自動繞回"></span>
-        <span class="tag zbox">Z ×<input type="number" step="any" id="zsc" title="Z 軸放大倍率"><button type="button" id="zauto" class="zfit" title="回到 Z 不放大(1:1)">1:1</button></span>
+        <span class="tag">方位<input type="number" step="5" id="vaz" title="方位角(°)"></span>
+        <span class="tag">仰角<input type="number" step="5" id="vel" title="仰角(°):90 = 俯視,0 = 立面"></span>
+        <span class="tag zbox">Z ×<input type="number" step="any" id="zsc" title="Z 軸放大倍率"><button id="zauto" style="border:0;background:none;color:var(--accent);cursor:pointer;padding:0 2px">1:1</button></span>
       </div>
       <div class="viewcube" id="vcube">
         <button class="cor" data-k="NW" data-az="225" data-el="45" title="西北 45°">↘</button>
@@ -471,17 +455,6 @@ const norm360 = a => { a %= 360; return a < 0 ? a + 360 : a; };
 // 仰角用 (-180, 180]:轉過 ±90 的極點時 cos 變號,上方向自然翻面,不會卡住
 const norm180 = a => { const v = ((a + 180) % 360 + 360) % 360 - 180; return v === -180 ? 180 : v; };
 const clamp = (v, lo, hi) => v < lo ? lo : (v > hi ? hi : v);
-/* 「第幾個節點」這類序號欄位的合法範圍永遠是 1..max:
-   超過上限就停在上限(不繞回頭,免得「連到最後一個」被打成「連到第一個」),
-   0 或負值則從上限往回扣(0 → max、−1 → max−1),跟方位角一樣不出現負值。 */
-const wrapIndex = (v, max) => {
-  if (!Number.isFinite(v)) return 1;
-  v = Math.round(v);
-  if (!Number.isFinite(max) || max < 1) return Math.max(1, v);
-  if (v > max) return max;
-  if (v >= 1) return v;
-  return ((v - 1) % max + max) % max + 1;
-};
 const num = v => Number.isFinite(+v) ? +v : NaN;
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -1396,27 +1369,6 @@ const isHex = v => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
 const groupColor = (g, idx) => isHex(g && g.color) ? g.color : GCOLORS[idx % GCOLORS.length];
 // 沒建模結果時(例如剛開檔),清單也要能給出同一個顏色
 const colorOfGroup = g => groupColor(g, Math.max(0, state.groups.indexOf(g)));
-
-/* ---- 段的顏色:群組色的深淺變化 ----
-   v3.11 曾經把「各段分色」拿掉,因為換色相會跟別組的主題色撞在一起、分不出誰是誰。
-   但整組同一個顏色時,段與段之間也看不出界線 —— 尤其接縫節點共用的時候。
-   折衷:**色相不動、只動明度**。群組還是一眼認得出來,段與段之間有明顯落差,
-   而且面板上的編號徽章與圖上那一段用的是同一個顏色,對得起來。                    */
-const hex2rgb = h => [1,3,5].map(i => parseInt(h.slice(i, i+2), 16));
-const rgb2hex = c => "#" + c.map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0")).join("");
-function shade(hex, t){                     // t < 0 變深、t > 0 變淺
-  if (!isHex(hex)) return hex;
-  const c = hex2rgb(hex);
-  return rgb2hex(t >= 0 ? c.map(v => v + (255 - v)*t) : c.map(v => v*(1 + t)));
-}
-/* 第 pi 段(共 n 段)的顏色:以群組色為中心,往深、往淺兩邊分開。
-   往淺的幅度刻意小一點 —— 白底上太淡的線會看不見,往深不會。
-   段數是奇數時,正中間那一段剛好就是群組色本身。                              */
-const pieceColor = (base, pi, n) => {
-  if (n <= 1) return base;
-  const t = (pi % n) / (n - 1) - 0.5;
-  return shade(base, t < 0 ? t * 0.9 : t * 0.62);
-};
 // 編輯中的曲線組:各段分色(其他組維持自己的主題色)
 const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CABLE 纜索"]];
 // 只受拉元素(TENSTR)的設定,依實機樣本:
@@ -1435,9 +1387,9 @@ function depIds(g){
 }
 
 /* ---- 對接的配對方式 ----
-   前五種都以「起始群組」的節點範圍(從/到/每 n)為準,只差在目標群組怎麼對過去;
-   free 則是自己畫一個樣式單元、再沿兩個群組各自的步進重複。全部都吃「目標群組反序」。 */
-// 配對方式的小圖:灰色是兩個群組既有的節點,主色是這個群組會產生的連桿
+   前五種都以「這排」的節點範圍(從/到/每 n)為準,只差在那排怎麼對過去;
+   free 則是兩排各自給起點與步進,適合任意錯位。全部都吃「那排反序」。         */
+// 配對方式的小圖:灰色是兩排既有節點,主色是這個群組會產生的連桿
 const PAIR_ICON = {
   same: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M6 4v8M15 4v8M24 4v8" stroke="currentColor" stroke-width="1.8"/></svg>`,
   skew: `<svg width="34" height="18" viewBox="0 0 30 16" fill="none" stroke-linecap="round"><path d="M3 4h24M3 12h24" stroke="${ICON_CTX}" stroke-width="1"/><path d="M6 4L13 12M14 4L21 12M22 4L27 12" stroke="currentColor" stroke-width="1.8"/></svg>`,
@@ -1452,16 +1404,16 @@ const PAIR_MODES = [
   ["cross", "X 形交叉斜撐",    ""],
   ["ratio", "依比例對應",      "分割數不同也能連"],
   ["near",  "連到最近的節點",  "不平行的兩條線"],
-  ["free",  "自訂連接方式",    "自己畫樣式或在視圖點選"]
+  ["free",  "自訂偏移與步進",  "可在視圖上點兩個節點"]
 ];
 const pairOf = g => PAIR_MODES.some(m => m[0] === (g && g.pair)) ? g.pair : "same";
 const PAIR_HINT = {
-  same: "兩個群組<b>同序</b>一對一。目標群組比較短時<b>連到用完為止</b>,不再是錯誤。",
-  skew: "起始群組第 j 個接目標群組第 <b>j + 錯開格數</b> 個;填負值往回錯。",
+  same: "兩排<b>同序</b>一對一。那排比較短時<b>連到用完為止</b>,不再是錯誤。",
+  skew: "這排第 j 個接那排第 <b>j + 錯開格數</b> 個;填負值往回錯。",
   cross:"相鄰兩格拉一對<b>來回斜撐</b> —— 一個組就是完整的 X,不必建兩組。",
-  ratio:"依<b>弧長比例</b>對應:起始群組走到 30% 的節點,接目標群組 30% 位置最近的那個節點。<b>兩個群組分割數不同也連得起來</b>。",
+  ratio:"依<b>弧長比例</b>對應:這排走到 30% 的節點,接那排 30% 位置最近的那個。<b>兩排分割數不同也連得起來</b>。",
   near: "每個節點接<b>空間中距離最近</b>的那個節點。兩條線不平行、扭曲時最實用;疏密差太多會有幾根接到同一點,會出警告。",
-  free: "自己畫一個<b>樣式單元</b>(兩點直連、斜撐、X 形交叉、四點交叉都可以),再沿兩個群組的節點一路重複。點「編輯連接方式」開啟樣式視窗,裡面也可以改成<b>直接在 3D 視圖點兩個節點</b>。"
+  free: "兩排各自給起點與步進 —— 「這排從第 2 個、那排從第 3 個、每 2 個一根」就是這樣填。也可以按上面的按鈕<b>直接在 3D 視圖點兩個節點</b>,起點會自己帶入。"
 };
 // 沿節點串的累積 3D 長度,正規化成 0..1。「依比例對應」用弧長比例而不是索引比例,
 // 兩排疏密不同(例如一排等分、一排照間距表切)時才對得準。
@@ -1527,15 +1479,14 @@ function defaultGroup(type, n){
   if (type === "CURVE") return { ...base,
     pieces:[{ ...defaultPiece("LINE"), sRef:"" }] };
   if (type === "OFFSET")return { ...base, ref:"", d:dL(5), h:0 };
-  if (type === "LINK2") return { ...base, a:"", b:"", aSide:"own", bSide:"own", pair:"same", skew:1,
-    from:1, to:0, every:1,                       // same / skew / cross / ratio / near 用起始群組的節點範圍
-    // free(自訂)= 一個「樣式單元」+ 兩個群組各自的起點與步進;pattern 是單元內的連線
-    aFrom:1, aEvery:1, bFrom:1, bEvery:1, count:0, rev:false, pattern:[[0,0]] };
-  if (type === "LINKZ") return { ...base, ref:"", refSide:"own", zRefSide:"own", zMode:"abs", targetZ:0,
+  if (type === "LINK2") return { ...base, a:"", b:"", pair:"same", skew:1,
+    from:1, to:0, every:1,                       // same / skew / cross / ratio / near 用「這排」的節點範圍
+    aFrom:1, aEvery:1, bFrom:1, bEvery:1, count:0, rev:false };   // free(自訂)用兩排各自的偏移與步進
+  if (type === "LINKZ") return { ...base, ref:"", zMode:"abs", targetZ:0,   // 索類請自行選 CABLE
     px:0, py:0, pz:0, sx:0, sy:0,                // zMode = "plane":過 (px,py,pz)、坡度 sx / sy 的斜面
     zRef:"",                                     // zMode = "ref":取另一群組對應節點的高程
     from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5) };
-  if (type === "FAN")   return { ...base, srcMode:"coord", sx:0, sy:0, sz:dL(80), ref:"", refSide:"own", srcGSide:"own",
+  if (type === "FAN")   return { ...base, srcMode:"coord", sx:0, sy:0, sz:dL(80), ref:"",
     srcG:"", srcI:1,                             // srcMode = "gnode":某群組的第 k 個節點
     from:1, to:10, every:1, div:1, fMode:"abs", f:0 };
   return base;
@@ -1753,7 +1704,7 @@ function addManualElems(groups, errs){
     if (!list.length) return;
     const attr = { type:g.etype || "BEAM", mat:Math.round(num(g.mat)) || 1,
                    sect:Math.round(num(g.sect)) || 1 };
-    list.forEach((pair, ei) => {
+    list.forEach(pair => {
       if (!pair) return;
       const a = resolve(pair.ai, pair.i), b = resolve(pair.bi, pair.j);
       const lab = `${pair.ai || pair.i}–${pair.bi || pair.j}`;
@@ -1761,7 +1712,7 @@ function addManualElems(groups, errs){
       if (a.num === b.num){ errs.push(`「${g.name}」手動元素的兩端是同一個節點 ${a.num}`); return; }
       r.elems.push({ num:r.elemBase + r.elems.length, i:a.num, j:b.num, a, b,
         chord:distXY(a, b), len3d:dist3(a, b), gid:g.id, group:r.gname,
-        ...attr, cable:{ ...CABLE_DEF(), ...(g.cable || {}) }, dev:0, pi:-1, manual:true, mi:ei });
+        ...attr, cable:{ ...CABLE_DEF(), ...(g.cable || {}) }, dev:0, pi:-1, manual:true });
     });
     finishStat(r);
   });
@@ -1960,34 +1911,6 @@ function refreshElemGeom(R){
 // 手動節點沒有方位角與曲率,混進去會讓偏置的法線投影算出 NaN;而且使用者補一個輔助點
 // 就讓既有的偏置 / 連接組節點數改變,也不是「獨立新增」該有的行為。
 const chainOf = r => r.nodes.some(n => n.manual) ? r.nodes.filter(n => !n.manual) : r.nodes;
-
-/* ---- 參照一個群組時要取它的哪些節點 ----
-   一個群組手上其實有兩種節點:**自己產生的**(R.nodes),以及**自己的元素碰到的**
-   —— 後者對連接族來說有一大半在別的群組上。舉例:一個垂落群組自己只擁有「元素終點端」
-   那一票節點,起點端全部落在來源線上。以前一律只給 chainOf(),所以這種群組永遠只有一側
-   連得到,另一側根本指不到。
-   這裡不預設使用者在做什麼結構,只把兩側都攤開來讓他自己選;
-   自有節點與元素端點一致的群組(線、偏置)沒有這個問題,UI 就不顯示這個選項。 */
-const SIDE_OPTS = [["own","本群組的節點"], ["i","元素的起點端"], ["j","元素的終點端"], ["all","元素的全部端點"]];
-const sideOf = v => SIDE_OPTS.some(o => o[0] === v) ? v : "own";
-// 元素端點會重複(例如扇出的起點),依元素順序去重,順序就是使用者在圖上看到的順序
-const endsOf = (r, keys) => {
-  const out = [], seen = new Set();
-  (r.elems || []).forEach(e => keys.forEach(k => {
-    const n = e[k]; if (n && !seen.has(n.num)){ seen.add(n.num); out.push(n); }
-  }));
-  return out;
-};
-function nodeSetOf(r, side){
-  if (!r) return [];
-  const sd = sideOf(side);
-  if (sd === "own") return chainOf(r);
-  const out = endsOf(r, sd === "i" ? ["a"] : sd === "j" ? ["b"] : ["a","b"]);
-  return out.length ? out : chainOf(r);        // 沒有元素時退回自有節點,不要變成空的
-}
-// 這個群組的自有節點和元素端點不是同一票人 —— 只有這種群組才需要問「取哪一側」
-const sideful = r => !!(r && r.elems && r.elems.length &&
-  r.elems.some(e => (e.a && e.a.gid !== r.g.id) || (e.b && e.b.gid !== r.g.id)));
 
 function addManualNodes(g, R){
   const list = Array.isArray(g.addN) ? g.addN : [];
@@ -2282,32 +2205,24 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
   if (g.type === "LINK2"){
     const A0 = built.get(g.a), B0 = built.get(g.b);
     if (!A0 || !B0){ errs.push(tag + "找不到要連接的群組"); R.stat.err = "缺少來源"; return R; }
-    const A = nodeSetOf(A0, g.aSide), Braw = nodeSetOf(B0, g.bSide);
-    const B = g.rev ? [...Braw].reverse() : Braw;      // 「目標群組反序」:兩條線走向相反時用
+    const A = chainOf(A0), Braw = chainOf(B0);
+    const B = g.rev ? [...Braw].reverse() : Braw;      // 「那排反序」:兩條線走向相反時用
     const NA = A.length, NB = B.length;
     if (!NA || !NB){ errs.push(tag + "來源群組沒有節點"); R.stat.err = "無節點"; return R; }
     const mode = pairOf(g);
     const iv = (v, d) => { const n = Math.round(num(v)); return Number.isFinite(n) ? n : d; };
-    const pairs = [];                                   // [起始群組索引, 目標群組索引],都是 0 起算
+    const pairs = [];                                   // [這排索引, 那排索引],都是 0 起算
     let outside = 0;
     if (mode === "free"){
-      /* 自訂:一個「樣式單元」(pattern,單元內可以有任意多條連線 —— 兩點直連、
-         四點交叉都只是不同的單元),沿兩個群組各自以 aEvery / bEvery 的步進重複。
-         沒有 pattern 的舊檔案 = 單元只有一條 [0,0],結果和以前逐根對逐根完全相同。 */
-      const pat = patOf(g);
+      // 兩排各自的起點與步進 —— A 從第 2 個、B 從第 3 個、每 n 個一根都在這裡表達
       const a0 = clamp(iv(g.aFrom, 1) || 1, 1, NA) - 1;
       const b0 = clamp(iv(g.bFrom, 1) || 1, 1, NB) - 1;
       const ae = Math.max(1, iv(g.aEvery, 1) || 1), be = Math.max(1, iv(g.bEvery, 1) || 1);
-      const wA = Math.max(...pat.map(q => q[0])), wB = Math.max(...pat.map(q => q[1]));
-      const room = Math.max(0,
-        Math.min(Math.floor((NA-1-a0-wA)/ae), Math.floor((NB-1-b0-wB)/be)) + 1);
+      const room = Math.min(Math.floor((NA-1-a0)/ae), Math.floor((NB-1-b0)/be)) + 1;
       const want = Math.max(0, iv(g.count, 0) || 0);
       const cnt = want > 0 ? Math.min(want, room) : room;
-      if (want > room) warns.push(tag + `想重複 ${want} 次,節點只夠 ${room} 次,已重複到用完為止`);
-      for (let k = 0; k < cnt; k++) pat.forEach(([qa, qb]) => {
-        const ja = a0 + k*ae + qa, jb = b0 + k*be + qb;
-        if (ja >= 0 && ja < NA && jb >= 0 && jb < NB) pairs.push([ja, jb]); else outside++;
-      });
+      if (want > room) warns.push(tag + `想連 ${want} 根,節點只夠 ${room} 根,已連到用完為止`);
+      for (let k = 0; k < cnt; k++) pairs.push([a0 + k*ae, b0 + k*be]);
     } else {
       const lo0 = clamp(iv(g.from, 1) || 1, 1, NA);
       const hi0 = clamp(iv(g.to, 0) || NA, 1, NA);
@@ -2333,12 +2248,12 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
         });
       }
     }
-    if (outside) warns.push(tag + `有 ${outside} 根對不到目標群組的節點(超出範圍),已略過`);
+    if (outside) warns.push(tag + `有 ${outside} 根對不到那排的節點(超出範圍),已略過`);
     if (!pairs.length){ errs.push(tag + "沒有可以連接的節點對"); R.stat.err = "無配對"; return R; }
     if (mode === "ratio" || mode === "near"){
       const seen = new Set(); let dup = 0;
       pairs.forEach(([, q]) => { if (seen.has(q)) dup++; else seen.add(q); });
-      if (dup) warns.push(tag + `有 ${dup} 根連到重複的節點(兩個群組疏密差太多)`);
+      if (dup) warns.push(tag + `有 ${dup} 根連到重複的節點(兩排疏密差太多)`);
     }
     pairs.forEach(([j, q]) => mkElem(A[j], B[q], null));
     R.stat = { ...R.stat, a:A0.g.name, b:B0.g.name, count:pairs.length, pair:mode };
@@ -2359,7 +2274,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     const pl = { px:num(g.px) || 0, py:num(g.py) || 0, pz:num(g.pz) || 0,
                  sx:num(g.sx) || 0, sy:num(g.sy) || 0 };
     const zr = zMode === "ref" ? built.get(g.zRef) : null;
-    const zrn = zr ? nodeSetOf(zr, g.zRefSide) : null;
+    const zrn = zr ? chainOf(zr) : null;
     if (zMode === "ref" && (!zrn || !zrn.length)){
       errs.push(tag + "找不到取高程的那個群組"); R.stat.err = "無高程來源"; return R;
     }
@@ -2367,7 +2282,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     const snap = g.bottom === "snap";
     const tolS = Math.max(0, num(g.snapTol) || 0);
     const pool = snap ? [...built.values()].flatMap(r => r.nodes) : [];
-    const src0 = nodeSetOf(ref, g.refSide);
+    const src0 = chainOf(ref);
     const N0 = src0.length;
     const lo0 = clamp(Math.round(num(g.from)) || 1, 1, N0);
     const hi0 = clamp(Math.round(num(g.to)) || N0, 1, N0);
@@ -2405,7 +2320,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     if (g.srcMode === "gnode"){
       // 用「某群組的第 k 個節點」而不是節點編號:上游重新分割時編號會跑掉,序號不會
       const sg = built.get(g.srcG);
-      const sn = sg ? nodeSetOf(sg, g.srcGSide) : null;
+      const sn = sg ? chainOf(sg) : null;
       if (!sn || !sn.length){ errs.push(tag + "找不到起點所在的群組"); R.stat.err = "起點無效"; return R; }
       const ki = clamp(Math.round(num(g.srcI)) || 1, 1, sn.length);
       src = sn[ki-1];
@@ -2421,7 +2336,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     R.src = src;
     const N = Math.max(1, Math.round(num(g.div)) || 1);
     const every = Math.max(1, Math.round(num(g.every)) || 1);
-    const tgt = nodeSetOf(ref, g.refSide);
+    const tgt = chainOf(ref);
     const from = clamp(Math.round(num(g.from)) || 1, 1, tgt.length);
     const to   = clamp(Math.round(num(g.to)) || tgt.length, 1, tgt.length);
     const lo = Math.min(from, to), hi = Math.max(from, to);
@@ -2801,137 +2716,51 @@ function scaleModel(st, k){
 }
 
 /* ---------- 範例 ---------- */
-/* ==========================================================================
-   範例模型(三個,各自完整)
-   一個是「把整套流程走一遍」的樣品,所以每個都做到可以直接匯出:
-   線 → 偏置 → 對接 → 垂落 / 扇出,元素類型、材料、斷面全部填好。
-   ========================================================================== */
-const DEMO_G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
-  pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p,
-    sRef:i === 0 ? "" : (p.cont === false ? "" : "prev") })), ...o });
-const DEMO_D = (t, o) => ({ type:t, ...o });
-const SPL = o => ({ ...SPLIT_DEF, ...o });
-
-/* ---- 一、人行吊橋 ----
-   跨徑 80 m、垂跨比 0.12 的懸索人行橋。主索走「錨碇 → 塔頂 → 懸鏈線 → 塔頂 → 錨碇」
-   三段一組;吊索由主索垂落到橋面邊樑,下端直接貼附既有節點,不另生節點。      */
-function demoSuspension(){
+function demoState(){
   const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const Y = 1.2, ZD = 10, ZT = 22, ZA = 6, L = 80, SP = 2.5;
+  const G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
+    pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p,
+      sRef:i === 0 ? "" : (p.cont === false ? "" : "prev") })), ...o });
+  const D = (t, o) => ({ type:t, ...o });
 
-  // 橋面中心線 → 兩側邊樑 → 橫梁
-  const deck = G("橋面中心線", [D("LINE", { x1:0, y1:0, z1:ZD, endMode:"point",
-    x2:L, y2:0, z2:ZD, split:SPL({ mode:"spacing", spacing:SP, rem:"keep" }) })],
-    { etype:"BEAM", mat:1, sect:1 });
-  const edW = { ...defaultGroup("OFFSET"), name:"邊樑西", ref:deck.id, d:-Y, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const edE = { ...defaultGroup("OFFSET"), name:"邊樑東", ref:deck.id, d:Y,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:edW.id, b:edE.id,
-                pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
+  // 主曲線:線形鏈(含縱斷面)
+  const chain = G("主曲線", [D("CHAIN", { x1:0, y1:0, z1:100, az:90, sta:0,
+    segments:[{ type:"LINE", L:50 }, { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }, { type:"LINE", L:50 }],
+    profile:[{ sta:0, z:100, L:0 }, { sta:128.54, z:105.1416, L:100 }, { sta:257.08, z:100, L:0 }],
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } })], { etype:"BEAM", mat:1, sect:1 });
+  const off = { ...defaultGroup("OFFSET"), name:"左緣", ref:chain.id, d:-5, h:0, etype:"BEAM", mat:1, sect:1 };
+  const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:chain.id, b:off.id, every:2, etype:"BEAM", mat:1, sect:9 };
 
-  // 主索(每側三段:引索 → 懸鏈線 → 引索),接縫節點共用
-  const cable = (nm, y, sect) => G(nm, [
-    D("LINE", { x1:-15, y1:y, z1:ZA, endMode:"point", x2:0, y2:y, z2:ZT, split:SPL({ count:3 }) }),
-    D("SAG",  { x2:L, y2:y, z2:ZT, curve:"catenary", fMode:"ratio", f:0.12,
-                split:SPL({ count:32 }) }),
-    D("LINE", { endMode:"point", x2:L+15, y2:y, z2:ZA, split:SPL({ count:3 }) })
-  ], { etype:"CABLE", mat:2, sect });
-  const cW = cable("主索西", -Y, 11), cE = cable("主索東", Y, 11);
+  // 主索:塔頂直線 → 懸鏈線 → 支承直線,三段一組、接縫共用節點
+  const cable = (nm, y) => G(nm, [
+    D("LINE",  { cont:false, x1:380, y1:y, z1:100, endMode:"point", x2:400, y2:y, z2:130,
+                 split:{ ...SPLIT_DEF, count:2 } }),
+    D("SAG",   { x2:650, y2:y, z2:130, curve:"catenary", fMode:"ratio", f:0.1,
+                 split:{ ...SPLIT_DEF, count:25 } }),
+    D("LINE",  { endMode:"point", x2:670, y2:y, z2:100, split:{ ...SPLIT_DEF, count:2 } })
+  ], { etype:"CABLE", mat:2, sect:11 });
+  const cw = cable("主索西", -8), ce = cable("主索東", 8);
+  const hw = { ...defaultGroup("LINKZ"), name:"吊索西", ref:cw.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
+  const he = { ...defaultGroup("LINKZ"), name:"吊索東", ref:ce.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
 
-  // 吊索:主索第 5..35 個節點垂落到橋面高程,下端貼附邊樑既有節點
-  const hang = (nm, ref) => ({ ...defaultGroup("LINKZ"), name:nm, ref, targetZ:ZD,
-    from:5, to:35, every:1, bottom:"snap", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
-  const hW = hang("吊索西", cW.id), hE = hang("吊索東", cE.id);
-
-  // 塔架:兩根立柱 + 頂橫梁,一組三段
-  const tower = (nm, x) => G(nm, [
-    D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) })
+  // 螺旋匝道:直線引道 → 螺旋 → 直線
+  const hx = G("螺旋匝道", [
+    D("LINE",  { cont:false, x1:-260, y1:0, z1:100, endMode:"point", x2:-210, y2:0, z2:100,
+                 split:{ ...SPLIT_DEF, count:5 } }),
+    D("HELIX", { R:50, R2:"", az0:90, turns:2, pitch:12, dir:1, split:{ ...SPLIT_DEF, count:72 } }),
+    D("LINE",  { endMode:"polar", len:60, az:90, el:0, split:{ ...SPLIT_DEF, count:6 } })
   ], { etype:"BEAM", mat:3, sect:4 });
 
-  s.groups = [deck, edW, edE, xb, cW, cE, hW, hE, tower("塔架西", 0), tower("塔架東", L)];
+  // 拱肋:鉛直平面圓弧 + 兩端錨碇節點
+  const arc = G("拱肋", [
+    D("POINT", { cont:false, x2:400, y2:30, z2:100 }),
+    D("ARC",   { arcMode:"endpoints", plane:"V", dir:1, major:false,
+                 x2:650, y2:30, z2:100, R:180, split:{ ...SPLIT_DEF, count:24 } })
+  ], { etype:"BEAM", mat:1, sect:7 });
+
+  s.groups = [chain, off, xb, cw, ce, hw, he, hx, arc];
   return s;
 }
-
-/* ---- 二、公路橋梁 ----
-   平面「直線 → 緩和曲線 → 圓弧 → 緩和曲線 → 直線」、縱斷面用 VPI + 對稱豎曲線,
-   全長 340 m。橋面 10.5 m 寬,每 20 m 一組橫隔梁,墩柱落在傾斜的地面上。   */
-function demoHighway(){
-  const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const HW = 5.25;                                     // 橋面半寬
-
-  const main = G("主線", [D("CHAIN", { x1:0, y1:0, z1:40, az:90, sta:0,
-    segments:[
-      { type:"LINE",   L:60 },
-      { type:"SPIRAL", R0inf:true, R1:250, dir:1, defBy:"Ls", Ls:60 },
-      { type:"ARC",    R:250, dir:1, defBy:"delta", delta:50 },
-      { type:"SPIRAL", R0:250, R1inf:true, dir:1, defBy:"Ls", Ls:60 },
-      { type:"LINE",   L:60 }
-    ],
-    profile:[{ sta:0, z:40, L:0 }, { sta:170, z:46.8, L:160 }, { sta:458.2, z:40, L:0 }],
-    split:SPL({ mode:"spacing", spacing:5, rem:"keep" }) })],
-    { etype:"BEAM", mat:1, sect:1 });
-  const edL = { ...defaultGroup("OFFSET"), name:"左緣", ref:main.id, d:-HW, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const edR = { ...defaultGroup("OFFSET"), name:"右緣", ref:main.id, d:HW,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const dia = { ...defaultGroup("LINK2"), name:"橫隔梁", a:edL.id, b:edR.id,
-                pair:"same", from:1, to:0, every:4, etype:"BEAM", mat:1, sect:3 };
-  // 墩柱:每 8 個節點(= 每 40 m)一支,下端落在沿 X 每 100 m 降 3 m 的地面上
-  const pier = { ...defaultGroup("LINKZ"), name:"墩柱", ref:main.id, zMode:"plane",
-                 px:0, py:0, pz:20, sx:-0.03, sy:0, from:9, to:85, every:8,
-                 etype:"BEAM", mat:3, sect:5 };
-
-  s.groups = [main, edL, edR, dia, pier];
-  return s;
-}
-
-/* ---- 三、螺旋人行上升步道 ----
-   繞中央柱 2.5 圈、每圈爬升 5 m 的螺旋坡道。踏面兩側偏置成內外緣,
-   外緣再往上偏置 1.1 m 當扶手;柱頂用扇出拉吊索撐住外緣。            */
-function demoSpiral(){
-  const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const R = 12, W = 1.1, TURNS = 2.5, PITCH = 5, ZTOP = 16;
-
-  const ramp = G("坡道中心線", [
-    D("LINE",  { x1:R + 18, y1:0, z1:0, endMode:"point", x2:R, y2:0, z2:0,
-                 split:SPL({ count:6 }) }),
-    D("HELIX", { R, R2:"", az0:90, turns:TURNS, pitch:PITCH, dir:1,
-                 split:SPL({ count:90 }) }),
-    D("LINE",  { endMode:"polar", len:16, az:90, el:0, split:SPL({ count:5 }) })
-  ], { etype:"BEAM", mat:1, sect:1 });
-
-  const inn = { ...defaultGroup("OFFSET"), name:"內緣", ref:ramp.id, d:-W, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const out = { ...defaultGroup("OFFSET"), name:"外緣", ref:ramp.id, d:W,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const tread = { ...defaultGroup("LINK2"), name:"踏面橫梁", a:inn.id, b:out.id,
-                  pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
-  const rail = { ...defaultGroup("OFFSET"), name:"外側扶手", ref:out.id, d:0, h:1.1,
-                 etype:"BEAM", mat:3, sect:6 };
-  const post = { ...defaultGroup("LINK2"), name:"欄杆立柱", a:out.id, b:rail.id,
-                 pair:"same", from:1, to:0, every:4, etype:"BEAM", mat:3, sect:7 };
-  const mast = G("中央柱", [D("LINE", { x1:0, y1:0, z1:0, endMode:"point",
-    x2:0, y2:0, z2:ZTOP, split:SPL({ count:8 }) })], { etype:"BEAM", mat:3, sect:4 });
-  // 柱頂(第 9 個節點 = 頂端)拉吊索到外緣,每 6 個節點一根
-  const stay = { ...defaultGroup("FAN"), name:"吊索", srcMode:"gnode", srcG:mast.id, srcI:9,
-                 ref:out.id, from:9, to:95, every:6, div:1, etype:"CABLE", mat:2, sect:12 };
-
-  s.groups = [ramp, inn, out, tread, rail, post, mast, stay];
-  return s;
-}
-
-const DEMOS = [
-  ["susp",  "人行吊橋",       "主索 + 吊索 + 塔架,跨徑 80 m", demoSuspension],
-  ["road",  "公路橋梁",       "緩和曲線 + 豎曲線 + 墩柱,全長 340 m", demoHighway],
-  ["ramp",  "螺旋人行步道",   "螺旋坡道 + 扶手 + 中央柱斜索,2.5 圈", demoSpiral]
-];
-const demoState = () => demoSuspension();          // 舊入口(參數檔還原等)仍指向第一個
 
 /* ==========================================================================
    8. UI — 樹
@@ -3410,128 +3239,6 @@ function openOffsetDlg(gsOrG){
   };
 }
 
-/* ---------- 自訂連接方式對話框(對接的「自訂」)----------
-   面板上只留一個入口,細節全部在這裡:上排 = 起始群組、下排 = 目標群組,
-   點一上、一下就連成一條;畫出來的這一組連線是「樣式單元」,沿兩排節點重複下去。
-   所以兩點直連、四點交叉、任意錯位都只是不同的單元,不再需要各給一個模式。 */
-const PAT_PRESETS = [
-  ["一對一",   [[0,0]]],
-  ["斜撐",     [[0,1]]],
-  ["X 形交叉", [[0,1],[1,0]]],
-  ["四點交叉", [[0,0],[0,1],[1,0],[1,1]]]
-];
-function openLinkFreeDlg(g){
-  if (!g) return;
-  const COLS = 5;                                       // 樣式單元最多看 5 個節點
-  let pat = patOf(g).filter(q => q[0] < COLS && q[1] < COLS).map(q => q.slice());
-  if (!pat.length) pat = [[0,0]];
-  let sel = null;                                       // 已點到的第一顆:{ row:"a"|"b", i }
-  const iv = (v, d) => { const n = Math.round(num(v)); return Number.isFinite(n) && n > 0 ? n : d; };
-  const st0 = { aFrom:iv(g.aFrom,1), aEvery:iv(g.aEvery,1),
-                bFrom:iv(g.bFrom,1), bEvery:iv(g.bEvery,1),
-                count:Math.max(0, Math.round(num(g.count)) || 0) };
-  const nameOf = id => { const o = state.groups.find(x => x.id === id); return o ? o.name : "(未選)"; };
-
-  const m = document.createElement("div");
-  m.className = "mask";
-  const F = (lab, id, v, min) => `<label class="f"><span>${lab}</span>
-    <input type="number" step="1"${min !== undefined ? ` min="${min}"` : ""} id="${id}" value="${v}"></label>`;
-  m.innerHTML = `<div class="dlg" style="width:min(600px, calc(100vw - 32px))">
-      <h3>自訂連接方式「${esc(g.name)}」</h3>
-      <div class="sub">先決定<b>一個樣式單元怎麼連</b> —— 點上排一顆、再點下排一顆就連成一條,
-        點同一條可以取消。畫好的單元會沿兩個群組的節點<b>一路重複</b>下去。</div>
-      <div class="btns" style="justify-content:flex-start; margin:0 0 11px">
-        <button class="btn" id="lf-pick">改用在 3D 視圖上點兩個節點…</button></div>
-      <div id="lf-grid" style="border:1px solid var(--line); border-radius:4px;
-        background:var(--bg-2); padding:6px 4px"></div>
-      <div class="btns" style="justify-content:flex-start; margin:9px 0 0; flex-wrap:wrap">
-        ${PAT_PRESETS.map((o,i) => `<button class="btn" data-pre="${i}">${esc(o[0])}</button>`).join("")}
-        <button class="btn d" id="lf-clr">清除</button></div>
-      <div class="fields g4" style="margin-top:11px">${
-        F("起始群組:起算節點", "lf-af", st0.aFrom, 1) + F("起始群組:每次前進", "lf-ae", st0.aEvery, 1) +
-        F("目標群組:起算節點", "lf-bf", st0.bFrom, 1) + F("目標群組:每次前進", "lf-be", st0.bEvery, 1)}</div>
-      <div class="fields g4" style="margin-top:8px">${F("重複幾次(0 = 到節點用完)", "lf-n", st0.count, 0)}</div>
-      <div class="note" id="lf-sum"></div>
-      <div class="btns">
-        <button class="btn" id="lf-cancel">取消</button>
-        <button class="btn p" id="lf-ok">套用</button></div>
-    </div>`;
-  document.body.appendChild(m);
-
-  const q = id => m.querySelector("#" + id);
-  const gv = (id, d) => { const n = Math.round(num(q(id).value)); return Number.isFinite(n) ? n : d; };
-  const colX = i => 62 + i*96;
-  const YA = 56, YB = 122;
-  const has = (a, b) => pat.findIndex(p => p[0] === a && p[1] === b);
-
-  function paint(){
-    const af = Math.max(1, gv("lf-af", 1)), bf = Math.max(1, gv("lf-bf", 1));
-    const lines = pat.map(([a,b]) =>
-      `<line x1="${colX(a)}" y1="${YA}" x2="${colX(b)}" y2="${YB}"
-         stroke="${colorOfGroup(g)}" stroke-width="2.2" stroke-linecap="round"/>`).join("");
-    const dots = (row, y, base) => Array.from({ length:COLS }, (_, i) => {
-      const on = sel && sel.row === row && sel.i === i;
-      const used = pat.some(p => p[row === "a" ? 0 : 1] === i);
-      return `<g class="lfdot" data-row="${row}" data-i="${i}" style="cursor:pointer">
-        <circle cx="${colX(i)}" cy="${y}" r="16" fill="transparent"/>
-        <circle cx="${colX(i)}" cy="${y}" r="${on ? 7.5 : 5.5}"
-          fill="${on ? "var(--accent)" : (used ? "#fff" : "var(--line)")}"
-          stroke="${on ? "var(--accent)" : (used ? colorOfGroup(g) : "var(--line)")}" stroke-width="2"/>
-        <text x="${colX(i)}" y="${row === "a" ? y - 15 : y + 24}" text-anchor="middle"
-          font-size="11" fill="var(--ink-3)" font-family="var(--mono)">${base + i}</text></g>`;
-    }).join("");
-    q("lf-grid").innerHTML =
-      `<svg viewBox="0 0 560 172" width="100%" style="display:block; user-select:none">
-        <text x="8" y="26" font-size="11" fill="var(--ink-3)">起始群組 · ${esc(nameOf(g.a))}</text>
-        <text x="8" y="164" font-size="11" fill="var(--ink-3)">目標群組 · ${esc(nameOf(g.b))}</text>
-        <line x1="46" y1="${YA}" x2="${colX(COLS-1)+16}" y2="${YA}" stroke="var(--line)" stroke-width="1"/>
-        <line x1="46" y1="${YB}" x2="${colX(COLS-1)+16}" y2="${YB}" stroke="var(--line)" stroke-width="1"/>
-        ${lines}${dots("a", YA, af)}${dots("b", YB, bf)}
-      </svg>`;
-    const tmp = { aFrom:gv("lf-af",1), aEvery:gv("lf-ae",1), bFrom:gv("lf-bf",1),
-                  bEvery:gv("lf-be",1), count:gv("lf-n",0), pattern:pat };
-    q("lf-sum").textContent = patSummary(tmp);
-  }
-  paint();
-
-  q("lf-grid").addEventListener("click", e => {
-    const d = e.target.closest(".lfdot"); if (!d) return;
-    const row = d.dataset.row, i = +d.dataset.i;
-    if (!sel || sel.row === row){ sel = { row, i }; paint(); return; }
-    const a = row === "a" ? i : sel.i, b = row === "a" ? sel.i : i;
-    const k = has(a, b);
-    if (k >= 0) pat.splice(k, 1); else pat.push([a, b]);
-    sel = null; paint();
-  });
-  m.querySelectorAll("[data-pre]").forEach(btn => btn.onclick = () => {
-    pat = PAT_PRESETS[+btn.dataset.pre][1].map(p => p.slice()); sel = null; paint();
-  });
-  q("lf-clr").onclick = () => { pat = []; sel = null; paint(); };
-  ["lf-af","lf-ae","lf-bf","lf-be","lf-n"].forEach(id => q(id).addEventListener("input", paint));
-
-  const close = () => { m.remove(); window.removeEventListener("keydown", esckey); };
-  const esckey = e => { if (e.key === "Escape") close(); };
-  window.addEventListener("keydown", esckey);
-  m.addEventListener("click", e => { if (e.target === m) close(); });
-  q("lf-cancel").onclick = close;
-  q("lf-pick").onclick = () => {
-    close();
-    PICK = { gid:g.id, i:0, mode:"link2" }; SELNODE = null; SELELEM = null;
-    recompute(true);
-  };
-  q("lf-ok").onclick = () => {
-    if (!pat.length){ alert("樣式單元裡一條連線都沒有,請先點兩顆節點連起來。"); return; }
-    snapshot("lkfree:" + Date.now());
-    g.pair = "free";
-    g.pattern = pat.map(p => p.slice());
-    g.aFrom = Math.max(1, gv("lf-af", 1)); g.aEvery = Math.max(1, gv("lf-ae", 1));
-    g.bFrom = Math.max(1, gv("lf-bf", 1)); g.bEvery = Math.max(1, gv("lf-be", 1));
-    g.count = Math.max(0, gv("lf-n", 0));
-    close();
-    recompute(true);
-  };
-}
-
 /* ==========================================================================
    8b. UI — 屬性面板
    ========================================================================== */
@@ -3556,11 +3263,7 @@ function fld(label, key, val, opt){
   } else if (opt.check){
     return `<label class="chk" style="margin-top:14px"><input type="checkbox" data-k="${key}"${val ? " checked" : ""}> ${esc(label)}</label>`;
   } else {
-    // opt.idxMax:序號欄位(第幾個節點),離開欄位時自動收斂到 1..max。
-    // opt.stepMax:步進欄位,同樣收在 1..max,但 0 / 負值一律當 1(每個節點都連)。
-    const rg = opt.idxMax !== undefined ? ` data-idx="${Math.max(0, Math.round(opt.idxMax) || 0)}"`
-             : opt.stepMax !== undefined ? ` data-step="${Math.max(0, Math.round(opt.stepMax) || 0)}"` : "";
-    inner = `<input type="number" step="any"${opt.min !== undefined ? ` min="${opt.min}"` : ""}${rg} data-k="${key}" value="${Number.isFinite(+val) ? val : ""}"${opt.disabled ? " disabled" : ""}>`;
+    inner = `<input type="number" step="any"${opt.min !== undefined ? ` min="${opt.min}"` : ""} data-k="${key}" value="${Number.isFinite(+val) ? val : ""}"${opt.disabled ? " disabled" : ""}>`;
   }
   return `<label class="f"${opt.span ? ` style="grid-column:span ${opt.span}"` : ""}>` +
     `<span>${esc(label)}</span>${inner}</label>`;
@@ -3584,52 +3287,6 @@ const SEC = (h, tail, body, cls) => `<div class="sec${cls ? " " + cls : ""}"><di
 const OUT = rows => `<div class="out" data-ro>${rows.map(([k,v]) => `<div><span class="k">${esc(k)}</span> <b>${v}</b></div>`).join("")}</div>`;
 const P3 = (px, py, pz, lx, ly, lz) => fld(lx, px, undefined) ; // placeholder(未使用)
 
-/* ---- 連接族欄位的共用小工具 ---- */
-// 某個群組在指定側取得到的節點數 —— 序號欄位的上限就是這個
-const chainCount = (id, side) => {
-  const r = id && MODEL.byId ? MODEL.byId.get(id) : null;
-  return r ? nodeSetOf(r, side).length : 0;
-};
-// 「取哪些節點」的下拉:只有自有節點與元素端點不一致的群組才需要問
-const sideField = (gid, key, val) => {
-  const r = gid && MODEL.byId ? MODEL.byId.get(gid) : null;
-  return sideful(r) ? fld("取哪些節點", key, sideOf(val), { select:SIDE_OPTS }) : "";
-};
-/* 序號欄位顯示的值:一律是「實際生效」的那個數字。
-   舊檔案裡的 0(意思是「到底」)與超出範圍的殘值都在這裡換算成看得懂的序號,
-   state 本身不動 —— 使用者沒去改它,節點數變了它還是會自己跟著跑。 */
-const idxShow = (v, max, whenZero) => {
-  const n = Math.round(num(v)) || 0;
-  if (!max) return n || "";
-  return n ? wrapIndex(n, max) : whenZero;
-};
-// 群組下拉最上面固定放一個「在畫布上點選」—— 選了它就進入點選模式,不會真的存進 state
-const PICK_OPT = ["@pick", "▸ 在畫布上點選…"];
-const pickingKey = (g, key) => PICK && PICK.mode === "group" && PICK.gid === g.id && PICK.key === key;
-const pickNote = (g, key, label) => pickingKey(g, key)
-  ? `<div class="hint keep" style="margin-top:7px; color:var(--accent)">
-       請在 3D 視圖上<b>點一根元素</b>,<b>${esc(label)}</b>就會設成畫出它的那個群組
-       —— 點元素比點節點準,重合節點也不會選錯。按 <b>Esc</b> 或下面的取消鈕結束。</div>`
-  : "";
-
-/* ---- 自訂連接方式(對接的 free 模式)----
-   pattern = [[起始群組偏移, 目標群組偏移], …],0 起算,描述「一個樣式單元」怎麼連;
-   單元沿兩排節點各自以 aEvery / bEvery 的步進重複下去。
-   舊檔案沒有 pattern 就當成 [[0,0]],和以前的「一根對一根」完全相同。 */
-const patOf = g => {
-  const p = (g && Array.isArray(g.pattern) ? g.pattern : [])
-    .map(q => Array.isArray(q) ? [Math.max(0, Math.round(num(q[0])) || 0), Math.max(0, Math.round(num(q[1])) || 0)] : null)
-    .filter(Boolean);
-  return p.length ? p : [[0, 0]];
-};
-const patSummary = g => {
-  const p = patOf(g), ae = Math.max(1, Math.round(num(g.aEvery)) || 1), be = Math.max(1, Math.round(num(g.bEvery)) || 1);
-  const cnt = Math.max(0, Math.round(num(g.count)) || 0);
-  return `樣式 ${p.length} 條連線 · 起始群組第 ${Math.max(1, Math.round(num(g.aFrom)) || 1)} 個節點起、` +
-    `每次前進 ${ae} 個 · 目標群組第 ${Math.max(1, Math.round(num(g.bFrom)) || 1)} 個節點起、每次前進 ${be} 個 · ` +
-    (cnt ? `重複 ${cnt} 次` : "重複到節點用完");
-};
-
 // 可以被引用的組。連接族(垂落、扇出)自己也會產生節點,常常正是想再連接的對象,
 // 所以預設「全部組都列出來」;要限制族別才傳 famFilter。分族用 optgroup,組多時才找得到。
 const refOptions = (self, famFilter) => {
@@ -3638,7 +3295,9 @@ const refOptions = (self, famFilter) => {
   return [["geo","幾何族(產生節點)"], ["con","連接族(連接既有群組)"]].map(([fam, lab]) => ({
     group: lab,
     items: pool.filter(g => TYPES[g.type].fam === fam).map(g => {
-      return [g.id, g.name];        // 只寫名字:型別看圖示、節點數在自己的面板裡
+      const r = MODEL.byId ? MODEL.byId.get(g.id) : null;
+      return [g.id, `${g.name}(${TYPES[g.type].name}` +
+        (r ? `,${r.nodes.length} 節點` : "") + `)`];
     })
   })).filter(o => o.items.length);
 };
@@ -3838,7 +3497,7 @@ function chainTables(pc, k, info){
       <th>參數<span style="font-weight:400;color:var(--ink-3)">(直線 L / 圓弧 R·偏向·Δ / 緩和 R0·R1·偏向·Ls)</span></th>
       <th>起訖樁號</th><th></th></tr></thead><tbody>${segRows}</tbody></table>
     <div class="btns" style="margin-top:7px">
-      <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="LINE">+ 直線</button>
+      <button class="btn p" data-op="addseg" data-p="${pc._i}" data-t="LINE">+ 直線</button>
       <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="ARC">+ 圓弧</button>
       <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="SPIRAL">+ 緩和曲線</button></div>
     <div class="lbl" style="margin:12px 0 5px">縱斷面(選用)${P.length ? "" : " — 無,整段維持起點高程"}</div>
@@ -3865,7 +3524,7 @@ function pieceCard(g, pc, pi, info, r){
   const atOpts = [["s","起點"],["m","中點"],["e","終點"]];
   // 別的群組的節點也可以當起點 / 終點 —— 跨群組對齊不用再自己抄座標
   const grpOpts = state.groups.filter(x => x.id !== g.id)
-    .map(x => ["@" + x.id, `${x.name} 的節點`]);
+    .map(x => ["@" + x.id, `${x.name}(${TYPES[x.type].name})的節點`]);
   const refName = v => {
     const gr = parseGRef(v);
     if (gr){
@@ -3888,13 +3547,8 @@ function pieceCard(g, pc, pi, info, r){
       (gr ? fld("第幾個節點", k + key + "I", gr.idx, { min:1 })
           : r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "") +
       `<div class="f"><span>&nbsp;</span><button class="btn${picking ? " d" : ""}" data-op="${
-        picking ? "mecancel" : "refpick"}" data-k="${k + key}" title="${picking
-          ? "點畫面上的節點或線,按這裡(或 Esc)取消"
-          : `在 3D 視圖上點一個節點(點線也可以,會取比較近的那一端),當作這一段的${esc(label)}`}">${
-        picking ? `點選中… 按此取消` : `圖上點${esc(label)}`}</button></div>` +
-      (picking ? `<div class="hint keep" style="grid-column:1/-1; margin-top:0; color:var(--accent)">
-        在 3D 視圖上點<b>別的群組</b>的節點就設定完成;<b>點線也可以</b>,會取離游標比較近的那一端。
-        點空了不會取消 —— 要結束請按 <b>Esc</b> 或上面那顆鈕。</div>` : "");
+        picking ? "mecancel" : "refpick"}" data-k="${k + key}" title="在 3D 視圖上點一個節點,當作這一段的${esc(label)}">${
+        picking ? `點${esc(label)}…` : `圖上點${esc(label)}`}</button></div>`;
   };
   const ec = endRefOn(pc);
   const endSel = END_CONT_T[pc.type]
@@ -4080,7 +3734,7 @@ function pieceCard(g, pc, pi, info, r){
         旋轉中心預設是<b>本段起點</b>,所以單純轉方向不會把接縫扯開。</div></div></details>`;
 
   return `<details class="pc" data-pi="${pi}">
-    <summary><span class="idx" style="background:${pieceColor(colorOfGroup(g), pi, (g.pieces || []).length)}">${pi+1}</span>
+    <summary><span class="idx" style="background:${TYPES[g.type].color}">${pi+1}</span>
       <select data-k="${k}type" onclick="event.stopPropagation()">${
         Object.entries(PIECES).map(([v,t]) => `<option value="${v}"${v===pc.type?" selected":""}>${t.name}</option>`).join("")}</select>
       <span class="st" data-ro>${stat}</span>
@@ -4109,9 +3763,8 @@ function nodeSec(g, r){
       <div class="btns" style="margin-top:9px">
         <button class="btn d" data-op="mndel" data-i="${mi}">刪除此節點</button>
         <button class="btn" data-op="nclr">取消選取</button></div>
-      <div class="hint" data-ro>這是<b>舊版手動節點</b>(第 ${mi + 1} 個),座標可直接改。
-        現在要補一個算不出來的點,用<b>「線」群組的節點段</b>即可;
-        刪除它時,凡是用到它的舊版手動元素會一起被清掉。</div>`;
+      <div class="hint" data-ro>這個群組<b>手動新增</b>的第 ${mi + 1} 個節點,座標可直接改。
+        刪除它時,凡是用到它的手動元素會一起被清掉。</div>`;
   } else if (sel && canEdit){
     body = `<div class="fields g4">${
       fld("節點編號", "@num", sel.num, { text:true, disabled:true }) +
@@ -4173,10 +3826,9 @@ function cableFields(g){
         程式<b>不會替你換算</b>,請照目前單位填。</div>`;
 }
 
-/* ---- 在 3D 視圖上點節點 ---- */
+/* ---- 手動節點與元素(每一組都有)---- */
 // PICK 不進 state、不進復原堆疊 —— 它只是「現在正在點第幾個端點」的暫時狀態。
 let PICK = null;                       // { gid, i, mode } i = 已點到的第一個節點編號
-let hoverE = null;                     // 點選群組時滑鼠掃到的那根元素 { num, gid, name }
 // 節點編號 → 它屬於哪一組、在該組的節點串裡排第幾個(0 起算)。
 // 存的是「第幾個」而不是節點編號:上游的線之後重新分割,對接關係才不會錯位。
 function locateNode(numv){
@@ -4188,6 +3840,36 @@ function locateNode(numv){
   }
   return null;
 }
+function manualSec(g, r){
+  const ns = Array.isArray(g.addN) ? g.addN : [];
+  const es = Array.isArray(g.addE) ? g.addE : [];
+  const picking = PICK && PICK.gid === g.id && PICK.mode !== "link2";
+  const nTable = ns.length ? xyzTable(ns.map((q, i) => ({
+      label:`#${i+1}`, kx:`addN.${i}.x`, vx:q.x, ky:`addN.${i}.y`, vy:q.y, kz:`addN.${i}.z`, vz:q.z,
+      tail:`<button class="iconbtn danger" data-op="mndel" data-i="${i}" title="刪除">✕</button>`
+    })), "margin:0") : "";
+  const gname = ref => { const r = parseGRef(ref); if (!r) return null;
+    const og = state.groups.find(x => x.id === r.gid);
+    return og ? `${og.name} #${r.idx}` : null; };
+  const eList = es.map((q, i) => {
+    const t = (gname(q.ai) && gname(q.bi)) ? `${gname(q.ai)} – ${gname(q.bi)}` : `${q.i} – ${q.j}`;
+    return `<span class="mepair">${esc(t)}` +
+      `<button class="iconbtn danger" data-op="medel" data-i="${i}" title="刪除">✕</button></span>`;
+  }).join("");
+  return SEC("手動節點與元素",
+    `${ns.length} 節點 · ${es.length} 元素`,
+    `${nTable}
+     <div class="btns" style="margin-top:${ns.length ? "9px" : "0"}">
+       <button class="btn" data-op="mnadd">+ 節點</button>
+       ${picking
+         ? `<button class="btn d" data-op="mecancel">${PICK.i ? `已點 #${PICK.i},再點第二點` : "點第一個節點…"}</button>`
+         : `<button class="btn" data-op="meadd">+ 元素(點兩個節點)</button>`}</div>
+     ${es.length ? `<div class="meList">${eList}</div>` : ""}
+     <div class="hint">補一個算不出來的點,或把兩個既有節點接成一根元素 —— <b>兩端可以跨群組</b>。
+       新節點會生在<b>目前選取的節點</b>上(沒選就放本群組中心),再微調座標即可。</div>`,
+    picking ? "hot" : "");
+}
+
 /* ---- 被選取的元素 ---- */
 // 在圖面上點到任何群組的元素,都會切到那個群組並在這裡顯示它 —— 包含連接族。
 // 連接族的節點是從來源推導出來的,不能直接搬,所以只顯示資料、不給移動。
@@ -4202,15 +3884,6 @@ function elemPickSec(g, r){
       <div><span class="k">節點 i–j</span> <b>${e.i} – ${e.j}</b></div>
       <div><span class="k">長度</span> <b>${e.len3d.toFixed(4)} ${UL()}</b></div>
       <div><span class="k">類型 / 材料 / 斷面</span> <b>${esc(e.type)} / ${e.mat} / ${e.sect}</b></div></div>`;
-  // 舊檔留下來的手動元素:選到它就能刪,不再另外開一張卡片
-  if (e.manual)
-    return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
-      info + `<div class="btns" style="margin-top:9px">
-         <button class="btn d" data-op="medel" data-i="${e.mi}">刪除此元素</button>
-         <button class="btn" data-op="eclr">取消選取</button></div>
-       <div class="hint">這是<b>舊版手動元素</b>。現在同樣的事情用<b>「線」群組的直線段</b>做:
-         把它的<b>起點與終點各指到一個群組的第 k 個節點</b>、分割數填 1,就是同一根元素,
-         而且上游重新分割時會自己跟著走。</div>`, "hot");
   if (!movable)
     return SEC("元素", `<span style="color:var(--accent)">已選取 #${e.num}</span>`,
       info + `<div class="btns" style="margin-top:9px">
@@ -4273,10 +3946,8 @@ function paneFor(g){
     const cards = pcs.map((pc, i) => pieceCard(g, pc, i, r ? r.pieces.find(p => p.pi === i) : null, r)).join("");
     body = SEC("段", `${pcs.length} 段`, (cards || `<div class="hint" style="margin:0">尚無任何段。</div>`) +
       `<div class="btns" style="margin-top:9px">` +
-      Object.entries(PIECES).map(([v,t]) => `<button class="btn" data-op="addpc" data-t="${v}">+ ${t.name}</button>`).join("") +
-      `</div><div class="hint">段與段預設<b>接續前段終點</b>並共用接縫節點;把「起點」改成自訂座標即可斷開。<br>
-        起點與終點都可以指到<b>別的群組的第 k 個節點</b> —— 想在兩個既有節點之間補一根元素,
-        就加一個<b>直線</b>段、兩端各指一個、分割數填 1;想補一個算不出來的點就加<b>節點</b>段。</div>`);
+      Object.entries(PIECES).map(([v,t]) => `<button class="btn${v==="LINE"?" p":""}" data-op="addpc" data-t="${v}">+ ${t.name}</button>`).join("") +
+      `</div><div class="hint">段與段預設<b>接續前段終點</b>並共用接縫節點;把「起點」改成自訂座標即可斷開。</div>`);
   }
   else if (g.type === "OFFSET"){
     body = SEC("放置", "依附另一個群組", `<div class="fields g3">${
@@ -4287,38 +3958,30 @@ function paneFor(g){
   }
   else if (g.type === "LINK2"){
     const pm = pairOf(g);
-    const NA = chainCount(g.a, g.aSide), NB = chainCount(g.b, g.bSide);
-    // 兩個來源群組各自可能有「取哪一側」的選擇;有得選時改排成兩欄,群組與側別上下對齊
-    const aSideF = sideField(g.a, "aSide", g.aSide), bSideF = sideField(g.b, "bSide", g.bSide);
-    const aF = fld("起始群組", "a", g.a, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)] });
-    const bF = fld("目標群組", "b", g.b, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)] });
-    const revF = fld("目標群組反序", "rev", !!g.rev, { check:true });
-    const grpRow = (aSideF || bSideF)
-      ? `<div class="fields g2">${aF + (aSideF || "<span></span>") + bF + (bSideF || "<span></span>")}</div>
-         <div class="fields g3" style="margin-top:8px">${revF}</div>`
-      : `<div class="fields g3">${aF + bF + revF}</div>`;
+    const picking = PICK && PICK.gid === g.id && PICK.mode === "link2";
+    const pickBtn = `<div class="f"><span>&nbsp;</span><button class="btn${picking ? " d" : " p"}" data-op="${
+        picking ? "mecancel" : "lkpick"}">${
+        picking ? (PICK.i ? `已點 #${PICK.i},再點那排的節點` : "點這排的一個節點") : "在視圖上點兩個節點…"}</button></div>`;
     const rangeRow = `<div class="fields g4" style="margin-top:8px">${
-        fld("起始群組:起算節點", "from", idxShow(g.from, NA, 1), { idxMax:NA }) +
-        fld("起始群組:到第幾個", "to", idxShow(g.to, NA, NA), { idxMax:NA }) +
-        fld("每 n 個節點取一次", "every", g.every, { stepMax:NA }) +
+        fld("這排:第幾個起", "from", g.from) +
+        fld("到第幾個(0 = 到底)", "to", g.to) +
+        fld("每 n 個節點", "every", g.every) +
         (pm === "skew" ? fld("錯開幾格", "skew", g.skew) : "")}</div>`;
-    // 自訂連接方式的細節全部搬進小視窗,面板上只留一句摘要和入口
-    const lkPicking = PICK && PICK.gid === g.id && PICK.mode === "link2";
-    const freeRow = lkPicking
-      ? `<div class="btns" style="margin-top:8px">
-          <button class="btn d" data-op="mecancel">${PICK.i
-            ? `已點 #${PICK.i},再點目標群組的節點(按此取消)`
-            : "請點起始群組的一個節點(按此取消)"}</button></div>`
-      : `<div class="btns" style="margin-top:8px">
-          <button class="btn p" data-op="lkfree">編輯連接方式…</button></div>
-        <div class="note" data-ro>${esc(patSummary(g))}</div>`;
-    body = SEC("連接", st.count ? `${st.count} 根` : "逐節點", `${grpRow}
-      ${pickNote(g, "a", "起始群組") + pickNote(g, "b", "目標群組")}
+    const freeRow = `<div class="fields g4" style="margin-top:8px">${
+        fld("這排:第幾個起", "aFrom", g.aFrom) + fld("這排:每 n 個", "aEvery", g.aEvery) +
+        fld("那排:第幾個起", "bFrom", g.bFrom) + fld("那排:每 n 個", "bEvery", g.bEvery)}</div>
+      <div class="fields g4" style="margin-top:8px">${
+        fld("連幾根(0 = 到用完為止)", "count", g.count)}</div>`;
+    body = SEC("連接", st.count ? `${st.count} 根` : "逐節點", `<div class="fields g3">${
+        fld("這排", "a", g.a, { select:[["","(未選)"], ...refOptions(g.id)] }) +
+        fld("那排", "b", g.b, { select:[["","(未選)"], ...refOptions(g.id)] }) +
+        fld("那排反序", "rev", !!g.rev, { check:true })}</div>
       <div class="lbl2">配對方式</div>
       <div class="pcards">${PAIR_MODES.map(([v,t,h]) =>
         `<button type="button" class="${v === pm ? "on" : ""}" data-op="pair" data-v="${v}">
            <span class="ic" style="color:${v === pm ? "currentColor" : colorOfGroup(g)}">${PAIR_ICON[v]}</span>
            <span class="pn">${esc(t)}</span>${h ? `<span class="ph">${esc(h)}</span>` : ""}</button>`).join("")}</div>
+      <div class="fields g3" style="margin-top:8px">${pickBtn}</div>
       ${pm === "free" ? freeRow : rangeRow}
       <div class="hint">${PAIR_HINT[pm] || ""}</div>`);
   }
@@ -4332,24 +3995,18 @@ function paneFor(g){
           fld("沿 X 的坡度(每單位升高)", "sx", g.sx) +
           fld("沿 Y 的坡度(每單位升高)", "sy", g.sy)}</div>`
       : `<div class="fields g4" style="margin-top:8px">${
-          fld("取高程的群組", "zRef", g.zRef, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)], span:2 }) +
-          (sideField(g.zRef, "zRefSide", g.zRefSide) || "")}</div>
-         ${pickNote(g, "zRef", "取高程的群組")}`;
+          fld("取高程的群組", "zRef", g.zRef, { select:[["","(未選)"], ...refOptions(g.id)], span:2 })}</div>`;
     const zHint = { abs:"所有下端落在<b>同一個高程</b>。",
       plane:"下端落在一個<b>斜面</b>上:過指定點,沿 X / Y 各給一個坡度(0.02 = 2%)。坡地上的墩柱、傾斜橋面用這個。",
       ref:"下端的高程取自<b>另一個群組對應的那個節點</b>(第 1 個對第 1 個),X、Y 仍照來源節點 —— 也就是垂直落到另一條線的高度。" }[zm];
-    const NR = chainCount(g.ref, g.refSide);
-    const rSideF = sideField(g.ref, "refSide", g.refSide);
     body = SEC("連接", "垂直投影", `<div class="fields g4">${
-        fld("來源群組", "ref", g.ref, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)], span:rSideF ? 1 : 2 }) +
-        rSideF +
+        fld("來源群組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id)], span:2 }) +
         fld("目標", "zMode", zm, { select:[["abs","固定高程"],["plane","斜面"],["ref","取自另一個群組"]], span:2 })}</div>
-      ${pickNote(g, "ref", "來源群組")}
       ${zRow}
       <div class="fields g4" style="margin-top:8px">${
-        fld("起算節點", "from", idxShow(g.from, NR, 1), { idxMax:NR }) +
-        fld("到第幾個節點", "to", idxShow(g.to, NR, NR), { idxMax:NR }) +
-        fld("每 n 個節點取一次", "every", g.every, { stepMax:NR }) +
+        fld("第幾個節點(起)", "from", g.from) +
+        fld("到第幾個(0 = 到底)", "to", g.to) +
+        fld("每 n 個節點", "every", g.every) +
         fld("下端節點", "bottom", g.bottom, { select:[["new","新增節點"],["snap","貼附既有節點"]] })}</div>
       ${g.bottom === "snap" ? `<div class="fields g4" style="margin-top:8px">${
         fld(`貼附容差 (${UL()})`, "snapTol", g.snapTol)}</div>` : ""}
@@ -4357,27 +4014,20 @@ function paneFor(g){
         來源群組有多段時(例如主索的直線引段),用<b>節點範圍</b>只掛在需要的那一段上。</div>`);
   }
   else if (g.type === "FAN"){
-    const NT = chainCount(g.ref, g.refSide);
     const sm = ["node","gnode"].includes(g.srcMode) ? g.srcMode : "coord";
     body = SEC("起點", "", `<div class="fields g4">${
         fld("來源", "srcMode", sm, { select:[["coord","自訂座標"],
           ["gnode","某群組的第 k 個節點"],["node","既有節點編號(舊)"]], span:2 }) +
         (sm === "node" ? fld("節點編號", "srcNode", g.srcNode)
-          : sm === "gnode" ? fld("群組", "srcG", g.srcG, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)] }) +
-                             sideField(g.srcG, "srcGSide", g.srcGSide) +
-                             fld("第幾個節點", "srcI", idxShow(g.srcI, chainCount(g.srcG, g.srcGSide), 1),
-                                 { idxMax:chainCount(g.srcG, g.srcGSide) })
+          : sm === "gnode" ? fld("群組", "srcG", g.srcG, { select:[["","(未選)"], ...refOptions(g.id)] }) +
+                             fld("第幾個節點", "srcI", g.srcI)
           : "")}</div>
-      ${sm === "gnode" ? pickNote(g, "srcG", "起點群組") : ""}
       ${sm === "coord" ? xyzTable([{ label:"起點", kx:"sx", vx:g.sx, ky:"sy", vy:g.sy, kz:"sz", vz:g.sz }]) : ""}
       ${sm === "node" ? `<div class="hint">節點編號會隨上游重新分割而改變,建議改用<b>某群組的第 k 個節點</b>。</div>` : ""}`) +
       SEC("目標", st.count ? `${st.count} 根` : "", `<div class="fields g4">${
-        fld("目標群組", "ref", g.ref, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)] }) +
-        sideField(g.ref, "refSide", g.refSide) +
-        fld("起算節點", "from", idxShow(g.from, NT, 1), { idxMax:NT }) +
-        fld("到第幾個節點", "to", idxShow(g.to, NT, NT), { idxMax:NT }) +
-        fld("每 n 個節點取一次", "every", g.every, { stepMax:NT })}</div>
-      ${pickNote(g, "ref", "目標群組")}
+        fld("目標群組", "ref", g.ref, { select:[["","(未選)"], ...refOptions(g.id)] }) +
+        fld("第幾個節點(起)", "from", g.from) + fld("第幾個節點(訖)", "to", g.to) +
+        fld("每 n 個", "every", g.every)}</div>
       <div class="fields g4" style="margin-top:8px">${
         fld("每根分割 N", "div", g.div) +
         fld("垂度定義", "fMode", g.fMode, { select:[["abs",`絕對值 (${UL()})`],["ratio","垂跨比"]], disabled:(num(g.div)||1) <= 1 }) +
@@ -4403,7 +4053,7 @@ function paneFor(g){
   } else if (r && r.stat.err) rows.push(["狀態", `<span style="color:var(--err)">${esc(r.stat.err)}</span>`]);
 
   return head + nameSec + body + nodeSec(g, r) + elemPickSec(g, r) +
-    SEC("結果", "", OUT(rows));
+    manualSec(g, r) + SEC("結果", "", OUT(rows));
 }
 
 function paneNumbering(){
@@ -4459,22 +4109,26 @@ function paneImport(){
 function paneMulti(){
   const gs = selGroups();
   const nOn = gs.filter(g => g.on !== false).length;
-  // 清單只認名字:型別看得出圖示、數量在「結果」裡,擠在這裡只是雜訊
-  const rows = gs.map(g =>
-    `<div style="display:flex; align-items:center; gap:7px; padding:3px 0; font-size:12px; color:var(--ink-2)">
+  const rows = gs.map(g => {
+    const r = MODEL.byId ? MODEL.byId.get(g.id) : null;
+    return `<div style="display:flex; align-items:center; gap:7px; padding:3px 0; font-size:12px; color:var(--ink-2)">
       <span style="display:flex; color:${colorOfGroup(g)}">${iconFor(g)}</span>
-      <span>${esc(g.name)}</span></div>`).join("");
+      <span>${esc(g.name)}</span>
+      <span style="color:var(--ink-3); font-size:10.5px">${esc(TYPES[g.type].name)}</span>
+      <span style="margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)">${
+        r ? `${r.nodes.length} 節點 · ${r.elems.length} 元素` : "—"}</span></div>`;
+  }).join("");
   return `<div class="ptitle"><span class="nm">已選 ${gs.length} 個群組</span>
       <span class="fam geo">多選</span><span class="sp"></span>
-      <button class="btn" data-op="mclr">只保留主要群組</button></div>` +
+      <button class="btn" data-op="mclr">只留主要那一個</button></div>` +
     SEC("這些群組", `${nOn} 個啟用中`, rows) +
     SEC("一起做", "", `<div class="btns">
         <button class="btn p" data-op="moffdup">位移複製…</button>
         <button class="btn" data-op="mon">全部啟用</button>
         <button class="btn" data-op="moff">全部停用</button>
         <button class="btn d" data-op="mdel">全部刪除</button></div>
-      <div class="hint">位移複製會把<b>選取的群組當成一套</b>一起複製 ——
-        它們之間互相的參照(例如對接指到的兩個群組)會改指到複本,不會還黏在原來的群組上。
+      <div class="hint">位移複製會把<b>這幾個群組當成一套</b>一起複製 ——
+        它們之間互相的參照(例如對接指到的那兩排)會改指到複本,不會還黏在原來的群組上。
         選「獨立」時連它們共同的上游也一起複製。<br>
         沿線陣列仍然是<b>一次一個群組</b>(每一份要各自的基準點)。</div>`);
 }
@@ -4561,25 +4215,17 @@ function foldHints(root, keyBase){
     const h = el.querySelector(".h");
     attach(el, h, "sec" + (h ? nameOf(h, i) : i));
   });
-  // 不在任何區塊裡的提示(對話框那種):配一顆 i。
-  // 連續相鄰的幾段提示算同一處,合成一顆 i —— 兩顆 i 並排在一起沒有任何意義。
-  const free = [...root.querySelectorAll(".hint")]
-    .filter(h => !claimed.has(h) && !h.classList.contains("keep") && h.textContent.trim());
-  const runs = [];
-  free.forEach(h => {
-    const last = runs[runs.length - 1], prev = last && last[last.length - 1];
-    if (prev && prev.parentNode === h.parentNode && prev.nextElementSibling === h) last.push(h);
-    else runs.push([h]);
-  });
-  runs.forEach((run, i) => {
-    const head = run[0];
-    const wrap = document.createElement("div");
-    wrap.className = "hintbar";
-    head.parentNode.insertBefore(wrap, head);
-    run.forEach(h => wrap.appendChild(h));
-    attach(wrap, wrap, "free" + i);
-    wrap.insertBefore(wrap.lastElementChild, head);
-  });
+  // 不在任何區塊裡的提示(對話框那種):各自配一顆 i
+  [...root.querySelectorAll(".hint")]
+    .filter(h => !claimed.has(h) && !h.classList.contains("keep") && h.textContent.trim())
+    .forEach((h, i) => {
+      const wrap = document.createElement("div");
+      wrap.className = "hintbar";
+      h.parentNode.insertBefore(wrap, h);
+      wrap.appendChild(h);
+      attach(wrap, wrap, "free" + i);
+      wrap.insertBefore(wrap.lastElementChild, h);
+    });
 }
 
 function renderPane(){
@@ -4698,14 +4344,6 @@ document.addEventListener("keydown", e => {
 const nodeEditable = (g, sn) => !!g && g.type === "CURVE" && !!sn && Number.isFinite(sn.ri);
 
 function applyField(root, k, el){
-  // 群組下拉選到「▸ 在畫布上點選…」:不寫進 state,改成進入點選模式,
-  // 下一次在 3D 視圖點到的節點屬於哪個群組,這個欄位就填哪個群組。
-  if (el.tagName === "SELECT" && el.value === PICK_OPT[0]){
-    el.value = String(getPath(root, k) == null ? "" : getPath(root, k));
-    PICK = { gid:root.id, i:0, mode:"group", key:k };
-    SELNODE = null; SELELEM = null;
-    return;
-  }
   if (k[0] === "@"){                                   // 選取節點的座標覆寫
     if (!SELNODE || SELNODE.gid !== root.id) return;
     if (!nodeEditable(root, SELNODE)) return;
@@ -4810,24 +4448,8 @@ $("#pane").addEventListener("input", e => {
   draw();
   syncRO();
 });
-/* 序號 / 步進欄位:離開欄位時把值收斂回合法範圍,並寫回輸入框 —— 畫面上不會再留著
-   一個做不到的數字(例如只有 6 個節點卻寫著「到第 99 個」或「第 −3 個」)。 */
-function normIndexEl(el){
-  if (!el || el.type !== "number") return false;
-  const hasI = el.dataset.idx !== undefined, hasS = el.dataset.step !== undefined;
-  if (!hasI && !hasS) return false;
-  if (el.value === "") return false;
-  const max = +(hasI ? el.dataset.idx : el.dataset.step);
-  const v0 = num(el.value);
-  const n0 = Math.round(Number.isFinite(v0) ? v0 : 1) || 1;
-  const v = hasI ? wrapIndex(v0, max)
-                 : (max >= 1 ? clamp(n0, 1, max) : Math.max(1, n0));
-  if (String(v) === String(el.value)) return false;
-  el.value = v; return true;
-}
 $("#pane").addEventListener("change", e => {
   const el = e.target, k = el.dataset.k; if (!k) return;
-  normIndexEl(el);
   if (k[0] === "$"){ assignFromEl(XFT, k.slice(1), el);
     if (el.tagName === "SELECT") renderPane(); return; }
   const root = rootOf(); if (!root) return;
@@ -4879,13 +4501,7 @@ $("#pane").addEventListener("click", e => {
   if (op === "del"){ state.groups.splice(gi, 1); SEL = state.groups.length ? state.groups[Math.max(0, gi-1)].id : null; }
   if (op === "colauto" && g){ delete g.color; recompute(true); return; }
   if (op === "ontog" && g){ g.on = (g.on === false); recompute(true); return; }
-  if (op === "pair" && g){
-    g.pair = b.dataset.v; recompute(true);
-    // 選「自訂」等同於「我要自己決定怎麼連」—— 直接把連接方式的小視窗開起來
-    if (g.pair === "free") openLinkFreeDlg(g);
-    return;
-  }
-  if (op === "lkfree" && g){ openLinkFreeDlg(g); return; }
+  if (op === "pair" && g){ g.pair = b.dataset.v; recompute(true); return; }
   if (op === "offdup"){ openOffsetDlg(g); return; }
   if (op === "arrdlg" && g){ openArrayDlg(g); return; }
   if (op === "ndel" && g && SELNODE && SELNODE.gid === g.id && nodeEditable(g, SELNODE)){
@@ -4895,7 +4511,19 @@ $("#pane").addEventListener("click", e => {
   if (op === "nrst" && g && SELNODE && g.edits && nodeEditable(g, SELNODE)){
     delete g.edits[SELNODE.ri]; recompute(true); return; }
   if (op === "nclr"){ SELNODE = null; recompute(true); return; }
-  // ---- 舊檔留下來的手動節點 / 元素:只留刪除,新增一律改用「線」群組的 節點 / 直線 段 ----
+  // ---- 手動節點 / 元素 ----
+  if (op === "mnadd" && g){
+    g.addN = Array.isArray(g.addN) ? g.addN : [];
+    // 新點優先生在「目前選取的節點」上(最常見的用法是在某個點旁邊補一個),
+    // 沒選節點時退回本群組的中心 —— 總之不要生在原點、離模型十萬八千里
+    const r0 = MODEL.byId.get(g.id), own = r0 ? r0.nodes.filter(n => n.gid === g.id) : [];
+    const selR = SELNODE && MODEL.byId.get(SELNODE.gid);
+    const selN = selR && selR.nodes.find(n => n.num === SELNODE.num);
+    const c = selN ? { x:selN.x, y:selN.y, z:selN.z }
+                   : (own.length ? xfCenter({ cmode:"center" }, own) : { x:0, y:0, z:0 });
+    g.addN.push({ x:+c.x.toFixed(6), y:+c.y.toFixed(6), z:+c.z.toFixed(6) });
+    recompute(true); return;
+  }
   if (op === "mndel" && g){
     const i = +b.dataset.i;
     const r0 = MODEL.byId.get(g.id);
@@ -4907,6 +4535,7 @@ $("#pane").addEventListener("click", e => {
     if (SELNODE && SELNODE.gid === g.id) SELNODE = null;
     recompute(true); return;
   }
+  if (op === "meadd" && g){ PICK = { gid:g.id, i:0 }; SELNODE = null; SELELEM = null; recompute(true); return; }
   if (op === "lkpick" && g){ PICK = { gid:g.id, i:0, mode:"link2" }; SELNODE = null; SELELEM = null; recompute(true); return; }
   if (op === "refpick" && g){ PICK = { gid:g.id, i:0, mode:"ref", key:b.dataset.k };
     SELNODE = null; SELELEM = null; recompute(true); return; }
@@ -5264,36 +4893,11 @@ document.addEventListener("drop", e => {
 $("#btn-undo").onclick  = undo;
 $("#btn-redo").onclick  = redo;
 // 畫面上已經有東西時,載入範例會蓋掉它 —— 一定要先問過
-/* 範例有三個,按鈕點下去先讓人挑一個 —— 一次全部倒進畫布會看不出誰是誰 */
-function closeDemoMenu(){ const m = $("#demo-menu"); if (m) m.remove(); }
-$("#btn-demo").onclick = ev => {
-  if ($("#demo-menu")){ closeDemoMenu(); return; }
-  const box = ev.currentTarget.getBoundingClientRect();
-  const d = document.createElement("div");
-  d.className = "ctx"; d.id = "demo-menu";
-  d.style.minWidth = "232px";
-  d.innerHTML = `<div class="mh">載入範例(會蓋掉現有內容)</div>` +
-    DEMOS.map(([k, nm, tip]) => `<button data-demo="${k}"><b>${esc(nm)}</b>
-      <span>${esc(tip)}</span></button>`).join("");
-  document.body.appendChild(d);
-  d.style.left = Math.min(box.left, window.innerWidth - d.offsetWidth - 8) + "px";
-  d.style.top  = Math.min(box.bottom + 4, window.innerHeight - d.offsetHeight - 8) + "px";
-  d.addEventListener("click", e2 => {
-    const b2 = e2.target.closest("[data-demo]"); if (!b2) return;
-    const item = DEMOS.find(o => o[0] === b2.dataset.demo);
-    closeDemoMenu();
-    if (!item) return;
-    if (state.groups && state.groups.length &&
-        !confirm(`載入「${item[1]}」會蓋掉畫布上現有的內容,確定嗎?`)) return;
-    loadState(item[3]());
-  });
-  setTimeout(() => document.addEventListener("click", function away(e3){
-    if (!e3.target.closest("#demo-menu") && e3.target !== ev.currentTarget){
-      closeDemoMenu(); document.removeEventListener("click", away);
-    }
-  }), 0);
+$("#btn-demo").onclick  = () => {
+  const has = state.groups && state.groups.length;
+  if (has && !confirm("載入範例會蓋掉畫布上現有的內容,確定嗎?")) return;
+  loadState(demoState());
 };
-window.addEventListener("keydown", e => { if (e.key === "Escape") closeDemoMenu(); });
 $("#btn-clear").onclick = () => {
   if (!(state.groups && state.groups.length)) return;
   if (confirm("清空畫布上的所有內容?")) loadState(DEF_STATE());
@@ -5338,8 +4942,7 @@ function renderChecks(){
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
     ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${
-        (selR.g.pieces || []).length} 段,各段用<b>同色系的深淺</b>分開,
-        圖上的<b>圓形編號</b>就是那一段的顏色</span>`
+        (selR.g.pieces || []).length} 段,圖上的<b>圓形編號</b>標在各段中間</span>`
     : "";
   $("#legend").innerHTML = MODEL.groups.map(r =>
     `<span><i style="background:${r.color}"></i>${esc(r.g.name)}</span>`).join("") + segLeg +
@@ -5603,7 +5206,7 @@ function drawPieceTags(r){
     placed.push({ x:sc.x, y:sy });
     const txt = String(pi + 1), rad = txt.length > 1 ? 9.5 : 8;
     ctx.save();
-    ctx.fillStyle = pieceColor(r.color, pi, (r.g.pieces || []).length);
+    ctx.fillStyle = r.color;
     ctx.beginPath(); ctx.arc(sc.x, sy, rad, 0, 7); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke();
     ctx.fillStyle = "#fff";
@@ -5639,13 +5242,10 @@ function draw(){
       r.elems.forEach(e => { const a = toS(e.a), b = toS(e.b); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); });
       ctx.stroke(); ctx.globalAlpha = 1;
     } else {
-      // 正在編輯的多段曲線:每一段用群組色的不同深淺,和編號徽章同色
-      const np = pcOn(r) ? (r.g.pieces || []).length : 0;
-      const pcCol = pi => np ? pieceColor(col, pi, np) : col;
       // 參考:原始參數曲線(淡)
       ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = col;
       curvePolys(r).forEach(pl => {
-        ctx.strokeStyle = pcCol(pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
@@ -5653,8 +5253,8 @@ function draw(){
       ctx.globalAlpha = anySel && !on ? .8 : 1;
       // 實際元素(節點被移動或刪除後,線會跟著走)
       ctx.lineWidth = on ? 2.8 : 1.4;
+      ctx.strokeStyle = col;
       elemPolysBy(r).forEach(pl => {
-        ctx.strokeStyle = pcCol(pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
@@ -5669,10 +5269,9 @@ function draw(){
         r.nodes.forEach(n => {
           const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+1.4,0,7); ctx.fill(); });
       }
-      const npN = pcOn(r) ? (r.g.pieces || []).length : 0;
+      ctx.fillStyle = col;
       ctx.globalAlpha = on ? 1 : (anySel ? .75 : 1);
       r.nodes.forEach(n => {
-        ctx.fillStyle = (npN && Number.isFinite(n.pi) && n.pi >= 0) ? pieceColor(col, n.pi, npN) : col;
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.globalAlpha = 1;
       // v3.16:起點 / 終點不再特別標記 —— 同一個群組的節點一律長一樣
@@ -5692,17 +5291,6 @@ function draw(){
   // 段的編號徽章:畫在整個群組迴圈之後,才不會被後面畫的組蓋住(立面視角很容易重疊)
   MODEL.groups.forEach(r => { if (pcOn(r)) drawPieceTags(r); });
 
-  if (hoverE){                                        // 點選群組模式:整組一起亮
-    const rr = MODEL.byId.get(hoverE.gid);
-    if (rr){
-      ctx.save();
-      ctx.strokeStyle = "#0f62fe";
-      ctx.lineWidth = 4; ctx.globalAlpha = .38; ctx.lineCap = "round";
-      rr.elems.forEach(e2 => { const a2 = toS(e2.a), b2 = toS(e2.b);
-        ctx.beginPath(); ctx.moveTo(a2.x,a2.y); ctx.lineTo(b2.x,b2.y); ctx.stroke(); });
-      ctx.restore();
-    }
-  }
   if (SELELEM){
     const rr = MODEL.byId.get(SELELEM.gid);
     const ee = rr && rr.elems.find(e => e.num === SELELEM.num);
@@ -5751,37 +5339,24 @@ function camTo(az, el){
   if (!view.locked) fitView();
   syncViewUI(); draw();
 }
-// Z 已被放大時「1:1」才點得有意義 —— 這時把它點亮,平常保持安靜
-function syncZfit(){
-  const f = $("#zauto"); if (f) f.classList.toggle("on", Math.abs(+view.zEx - 1) > 1e-9);
-}
 function syncViewUI(){
   const a = $("#vaz"), b = $("#vel"), z = $("#zsc");
   if (a && document.activeElement !== a) a.value = +view.az.toFixed(1);
   if (b && document.activeElement !== b) b.value = +view.el.toFixed(1);
   if (z && document.activeElement !== z) z.value = +(+view.zEx).toFixed(4);
-  syncZfit();
   const hitK = (viewHit() || {}).k;
   $("#vcube").querySelectorAll("button").forEach(btn =>
     btn.classList.toggle("on", btn.dataset.k === hitK));
 }
 function syncReadout(){
   const hv = viewHit();
-  if (PICK && PICK.mode === "group"){
-    const el0 = $("#ro");
-    if (el0) el0.textContent = hoverE
-      ? `會選到:${hoverE.name}(元素 #${hoverE.num})`
-      : "點一根元素,就會選到畫出它的那個群組;按 Esc 取消";
-    return;
-  }
   const l1 = hover
     ? `${hoverG ? hoverG.g.name : ""} #${hover.num}  X ${hover.x.toFixed(3)}  Y ${hover.y.toFixed(3)}  Z ${hover.z.toFixed(3)}` +
       (Number.isFinite(hover.s) ? `  ${fmtSta(hover.s)}` : "")
     : (curW ? `X ${curW.x.toFixed(3)}   Y ${curW.y.toFixed(3)}   (地面 Z ${fmtN(curW.z)} ${UL()})` : "");
-  // 方位角 / 仰角 / Z 放大都由左上角工具列那一排欄位顯示,這裡不再重覆寫一次;
-  // 只留工具列講不出來的東西 —— 目前落在哪一個九宮格視角。
-  const l2 = hv ? hv.t : "";
-  const el = $("#ro"); if (el) el.textContent = (l1 && l2) ? l1 + "\n" + l2 : (l1 || l2);
+  const l2 = `方位角 ${view.az.toFixed(0)}°  仰角 ${view.el.toFixed(0)}°` +
+    (hv ? `  ${hv.t}` : "") + (Math.abs(view.zEx - 1) > 1e-9 ? `  Z 放大 ×${+(+view.zEx).toFixed(3)}` : "");
+  const el = $("#ro"); if (el) el.textContent = (l1 ? l1 + "\n" : "") + l2;
 }
 
 /* ---------- 選取 ---------- */
@@ -5854,69 +5429,27 @@ cv.addEventListener("mousemove", e => {
     }
     view.locked = true; draw(); return;
   }
-  // 要選群組時滑鼠掃到的是元素,先把它高亮起來,按下去之前就知道會選到誰
-  if (PICK && PICK.mode === "group"){
-    const pe = pickElemAt(e.offsetX, e.offsetY, 12);
-    hoverE = pe ? { num:pe.e.num, gid:pe.r.g.id, name:pe.r.g.name } : null;
-    hover = null; hoverG = null; curW = null; draw(); return;
-  }
-  hoverE = null;
   const hit = pickNodeAt(e.offsetX, e.offsetY, 24);
   hover = hit ? hit.n : null; hoverG = hit ? hit.r : null;
   curW = hover ? null : toW(e.offsetX, e.offsetY, undefined);
   draw();
 });
 cv.addEventListener("mouseleave", () => {
-  if (!drag){ hover = null; hoverG = null; hoverE = null; curW = null; draw(); }
+  if (!drag){ hover = null; hoverG = null; curW = null; draw(); }
 });
-// 點選模式一律用 Esc 取消(面板上也有一顆取消鈕)—— 不再用「點空白處」,
-// 因為點空了最常見的原因是沒點準,把它當成取消只會讓人以為功能壞了。
-window.addEventListener("keydown", e => {
-  if (e.key === "Escape" && PICK && !document.querySelector(".mask")){
-    PICK = null; hoverE = null; recompute(true);
-  }
-});
-/* ---------- 在圖上點東西 ----------
-   點選模式(PICK)進行中時,**畫面上的選取狀態一律不動** —— 以前點不到節點就把
-   PICK 清掉、下一下就變成「選到別的群組」,使用者看到的現象是「圖上點起點根本點不成功,
-   反而跳去編輯別的群組」。現在:點不到就什麼都不做,取消一律走 Esc 或面板上的取消鈕。
-
-   節點只有幾個像素、又常常被好幾個群組共用(重合節點更是同一顆),所以:
-   - 要「一個群組」時只認**元素** —— 元素是誰畫的沒有歧義,點起來也好點得多。
-   - 要「一個節點」時先認節點,點不到就退而求其次,取元素上**離游標比較近的那一端**。   */
-function pickNodeLoose(sx, sy){
-  const hit = pickNodeAt(sx, sy, 14);
-  if (hit) return hit;
-  const pe = pickElemAt(sx, sy, 12);
-  if (!pe) return null;
-  const a = toS(pe.e.a), b = toS(pe.e.b);
-  const near = Math.hypot(a.x-sx, a.y-sy) <= Math.hypot(b.x-sx, b.y-sy) ? pe.e.a : pe.e.b;
-  const own = MODEL.byId.get(near.gid);
-  return { n:near, r:own || pe.r };
-}
 cv.addEventListener("click", e => {
   if (dragMoved) return;
+  const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
+  // 新增手動元素:連點兩個節點決定 i–j,點空白處等於放棄
   if (PICK){
     const g0 = state.groups.find(x => x.id === PICK.gid);
     if (!g0){ PICK = null; recompute(true); return; }
-
-    if (PICK.mode === "group"){                        // 點一根元素 = 選到畫出它的那個群組
-      const pe = pickElemAt(e.offsetX, e.offsetY, 12);
-      if (!pe) return;                                 // 沒點到就當作沒發生,維持點選模式
-      if (pe.r.g.id === g0.id){ alert("不能選到這個群組自己 —— 請點另一個群組的元素。"); return; }
-      snapshot("gpick:" + Date.now());
-      setPath(g0, PICK.key, pe.r.g.id);
-      PICK = null; SEL = g0.id;
-      recompute(true); focusHot(); return;
-    }
-
-    const hit = pickNodeLoose(e.offsetX, e.offsetY);
-    if (!hit) return;                                  // 同上:點空了就靜靜等下一次
-
+    if (!hit){ PICK = null; recompute(true); focusHot(); return; }
     if (PICK.mode === "ref"){                          // 只要點一個節點就結束
       const q = locateNode(hit.n.num);
       if (!q){ alert("找不到這個節點屬於哪一個群組,請再點一次。"); return; }
-      if (q.gid === g0.id){ alert("要指到「別的」群組的節點;同一個群組裡的段請用「段 N」那幾個選項。"); return; }
+      if (q.gid === g0.id){ alert("要指到<別的>群組的節點;同一個群組裡的段請用「段 N」那幾個選項。"
+        .replace(/[<>]/g, "「")); return; }
       snapshot("refpick:" + Date.now());
       setPath(g0, PICK.key, "@" + q.gid + ":" + (q.idx + 1));
       PICK = null; SEL = g0.id;
@@ -5927,20 +5460,26 @@ cv.addEventListener("click", e => {
     if (PICK.mode === "link2"){
       const p = locateNode(PICK.i), q = locateNode(hit.n.num);
       if (!p || !q){ alert("找不到這個節點屬於哪一組,請再點一次。"); PICK = null; recompute(true); return; }
-      if (p.gid === q.gid){ alert("兩點要落在不同的群組上 —— 對接是把兩個群組的節點連起來。"); return; }
+      if (p.gid === q.gid){ alert("兩點要落在不同的組上 —— 對接是把兩排節點連起來。"); return; }
       if (p.gid === g0.id || q.gid === g0.id){ alert("不能接到這個對接組自己產生的節點。"); return; }
       snapshot("lkpick:" + Date.now());
       g0.pair = "free";
       g0.a = p.gid; g0.aFrom = p.idx + 1;
       g0.b = q.gid; g0.bFrom = q.idx + 1;
       g0.rev = false;
-      g0.pattern = [[0, 0]];              // 點兩個節點 = 最單純的樣式單元:一條直連
       PICK = null; SEL = g0.id;
       recompute(true); focusHot(); return;
     }
-    PICK = null; recompute(true); focusHot(); return;   // 沒有其他兩點模式了
+    snapshot("meadd:" + Date.now());
+    g0.addE = Array.isArray(g0.addE) ? g0.addE : [];
+    // 記「群組 + 第幾個節點」,上游重新分割也不會跑掉;找不到就退回存編號
+    const pa = locateNode(PICK.i), pb = locateNode(hit.n.num);
+    g0.addE.push({ i:PICK.i, j:hit.n.num,
+      ...(pa ? { ai:"@" + pa.gid + ":" + (pa.idx + 1) } : {}),
+      ...(pb ? { bi:"@" + pb.gid + ":" + (pb.idx + 1) } : {}) });
+    PICK = null; SEL = g0.id;
+    recompute(true); focusHot(); return;
   }
-  const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
   if (hit){
     SEL = hit.r.g.id; SELNODE = { gid:hit.r.g.id, ri:hit.n.ri, num:hit.n.num }; SELELEM = null;
   } else {
@@ -5987,8 +5526,6 @@ function syncNodesBtn(){
 }
 $("#btn-nodes").onclick = () => { showNodes = !showNodes; syncNodesBtn(); draw(); };
 syncNodesBtn();
-/* 方位角 / 仰角:打字時就照循環規則收斂到合法範圍,離開欄位再把收斂後的值寫回去,
-   輸入框裡才不會留著 400° 這種畫面上根本不存在的角度。 */
 $("#vaz").addEventListener("input", e => {
   const a = num(e.target.value); if (!Number.isFinite(a)) return;
   view.az = norm360(a); camUpdate(); camPush(); syncViewUI(); draw();
@@ -5997,20 +5534,12 @@ $("#vel").addEventListener("input", e => {
   const a = num(e.target.value); if (!Number.isFinite(a)) return;
   view.el = norm180(a); camUpdate(); camPush(); syncViewUI(); draw();
 });
-const viewWriteBack = () => { const a = $("#vaz"), b = $("#vel");
-  if (a) a.value = +view.az.toFixed(1);
-  if (b) b.value = +view.el.toFixed(1); };
-$("#vaz").addEventListener("change", viewWriteBack);
-$("#vel").addEventListener("change", viewWriteBack);
-$("#vaz").addEventListener("blur", viewWriteBack);
-$("#vel").addEventListener("blur", viewWriteBack);
 $("#zsc").addEventListener("input", e => {
   const z = num(e.target.value);
   view.zEx = (z > 0) ? z : 1; camPush();
   if (!view.locked) fitView();
-  draw(); syncZfit();
+  draw();
 });
-$("#zsc").addEventListener("change", () => { const z = $("#zsc"); if (z) z.value = +(+view.zEx).toFixed(4); });
 $("#zauto").onclick = () => { view.zEx = 1; camPush(); if (!view.locked) fitView(); syncViewUI(); draw(); };
 window.addEventListener("resize", () => { if (!view.locked) fitView(); draw(); });
 
@@ -6247,7 +5776,7 @@ function runTests(){
   chk("H1","對接:元素數 = ⌈11/2⌉", XM.elems.length, 6, 0, "");
   chk("H1","對接:不新增節點", XM.nodes.length, 0, 0, "");
   chk("H1","對接:跨距", XM.elems[0].len3d, 8, 1e-9, "m");
-  // v3.14:節點數不同不再是錯誤 —— 連到目標群組用完為止,對不到的出警告
+  // v3.14:節點數不同不再是錯誤 —— 連到那排用完為止,對不到的出警告
   const MM = build([
     { id:"a2", type:"LINE", name:"A", x1:0,y1:0,z1:0, x2:100,y2:0,z2:0, split:{ ...SPLIT_DEF, count:10 } },
     { id:"b2", type:"LINE", name:"B", x1:0,y1:8,z1:0, x2:100,y2:8,z2:0, split:{ ...SPLIT_DEF, count:8 } },
@@ -6280,7 +5809,7 @@ function runTests(){
       `A${aIdx(at(cr,1))}–B${bIdx(at(cr,1))}`, "A2–B1");
 
     const ra = two({ pair:"ratio" }, 10, 5).md.byId.get("px");   // A 11 節點、B 6 節點
-    chk("H5","依比例對應:根數 = 起始群組節點數", ra.elems.length, 11, 0, "");
+    chk("H5","依比例對應:根數 = 這排節點數", ra.elems.length, 11, 0, "");
     yes("H5","依比例對應:頭尾對到頭尾",
       bIdx(at(ra,0)) === 1 && bIdx(at(ra, ra.elems.length-1)) === 6,
       `B${bIdx(at(ra,0))}…B${bIdx(at(ra, ra.elems.length-1))}`, "B1…B6");
@@ -6293,42 +5822,16 @@ function runTests(){
 
     const fr = two({ pair:"free", aFrom:2, bFrom:3, aEvery:1, bEvery:1, count:0 }).md.byId.get("px");
     chk("H5","自訂偏移:A 從 2、B 從 3 → 9 根", fr.elems.length, 9, 0, "");
-    yes("H5","自訂偏移:第一根是 A2–B3(起始群組第 2 對目標群組第 3)",
+    yes("H5","自訂偏移:第一根是 A2–B3(這排第 2 對那排第 3)",
       aIdx(at(fr,0)) === 2 && bIdx(at(fr,0)) === 3, `A${aIdx(at(fr,0))}–B${bIdx(at(fr,0))}`, "A2–B3");
     const fr2 = two({ pair:"free", aFrom:1, bFrom:1, aEvery:1, bEvery:2, count:0 }).md.byId.get("px");
-    chk("H5","自訂步進:目標群組每 2 個 → 6 根", fr2.elems.length, 6, 0, "");
+    chk("H5","自訂步進:那排每 2 個 → 6 根", fr2.elems.length, 6, 0, "");
     const fr3 = two({ pair:"free", aFrom:1, bFrom:1, aEvery:1, bEvery:1, count:4 }).md.byId.get("px");
     chk("H5","自訂根數:連 4 根", fr3.elems.length, 4, 0, "");
 
-    /* v3.23:自訂連接方式 = 一個「樣式單元」沿兩個群組重複 */
-    const px4 = two({ pair:"free", aFrom:1, bFrom:1, aEvery:2, bEvery:2, count:0,
-      pattern:[[0,0],[0,1],[1,0],[1,1]] }).md.byId.get("px");
-    // A、B 各 11 個節點,單元寬 2、步進 2 → 重複 5 次 × 4 條 = 20 根
-    chk("H6","四點交叉樣式:根數 = 重複 5 次 × 4 條", px4.elems.length, 20, 0, "");
-    yes("H6","四點交叉樣式:前四根是 A1–B1 / A1–B2 / A2–B1 / A2–B2",
-      aIdx(at(px4,0)) === 1 && bIdx(at(px4,0)) === 1 &&
-      aIdx(at(px4,1)) === 1 && bIdx(at(px4,1)) === 2 &&
-      aIdx(at(px4,2)) === 2 && bIdx(at(px4,2)) === 1 &&
-      aIdx(at(px4,3)) === 2 && bIdx(at(px4,3)) === 2,
-      `A${aIdx(at(px4,3))}–B${bIdx(at(px4,3))}`, "A2–B2");
-    const pxX = two({ pair:"free", aFrom:1, bFrom:1, aEvery:1, bEvery:1, count:0,
-      pattern:[[0,1],[1,0]] }).md.byId.get("px");
-    chk("H6","X 形樣式(步進 1):根數 = 10 次 × 2 條", pxX.elems.length, 20, 0, "");
-    const px1 = two({ pair:"free", aFrom:1, bFrom:1, aEvery:1, bEvery:1, count:0,
-      pattern:[] }).md.byId.get("px");
-    chk("H6","樣式留空 = 退回一對一(舊檔行為不變)", px1.elems.length, 11, 0, "");
-    // 序號欄位的 1..max 規則:超過上限停在上限,0 / 負值從上限往回扣
-    chk("V5","序號 99 → 上限 53", wrapIndex(99, 53), 53, 0, "");
-    chk("V5","序號 0 → 53(從上限往回扣)", wrapIndex(0, 53), 53, 0, "");
-    chk("V5","序號 −1 → 52", wrapIndex(-1, 53), 52, 0, "");
-    chk("V5","序號 −3 → 50", wrapIndex(-3, 53), 50, 0, "");
-    chk("V5","序號 −53 → 53(繞一圈回到上限)", wrapIndex(-53, 53), 53, 0, "");
-    chk("V5","序號 7 不動", wrapIndex(7, 53), 7, 0, "");
-    chk("V5","不知道上限時只擋住 0 與負值", wrapIndex(-5, 0), 1, 0, "");
-
     const rv = two({ pair:"same", rev:true }).md.byId.get("px");
-    chk("H5","目標群組反序:根數不變", rv.elems.length, 11, 0, "");
-    yes("H5","目標群組反序:第一根對到 B 的最後一個", bIdx(at(rv,0)) === 11, `B${bIdx(at(rv,0))}`, "B11");
+    chk("H5","那排反序:根數不變", rv.elems.length, 11, 0, "");
+    yes("H5","那排反序:第一根對到 B 的最後一個", bIdx(at(rv,0)) === 11, `B${bIdx(at(rv,0))}`, "B11");
 
     const same = two({}).md.byId.get("px");
     yes("H5","沒填配對方式 = 一對一(舊檔行為不變)",
@@ -6403,124 +5906,6 @@ function runTests(){
     const MZ = build([{ id:"m3", type:"LINE", name:"鏡Z", x1:0, y1:0, z1:10, x2:100, y2:0, z2:10,
         split:{ ...SPLIT_DEF, mode:"count", count:2 }, xf:{ ...XF_DEF(), mir:"Z", mirAt:50 } }]).md.byId.get("m3");
     chk("T3","對 Z = 50 鏡射:10 → 90", nAt(MZ, 0).z, 90, 1e-9, "m");
-  }
-  {
-    /* v3.23:參照一個群組時可以指定「取哪些節點」——
-       兩組垂落要互相對接時,連上端(元素起點端)和連下端(元素終點端)都要做得到。 */
-    const deck = c => ({ type:"LINE", split:{ ...SPLIT_DEF, mode:"count", count:c || 4 } });
-    const SB = build([
-      { id:"w1", ...deck(4), name:"頂西", x1:0, y1:0, z1:60, x2:100, y2:0, z2:60 },
-      { id:"e1", ...deck(4), name:"頂東", x1:0, y1:20, z1:60, x2:100, y2:20, z2:60 },
-      { id:"w2", type:"LINKZ", name:"吊西", ref:"w1", targetZ:0, every:1 },
-      { id:"e2", type:"LINKZ", name:"吊東", ref:"e1", targetZ:0, every:1 },
-      { id:"x1", type:"LINK2", name:"下繫", a:"w2", b:"e2", aSide:"own", bSide:"own" },
-      { id:"x2", type:"LINK2", name:"上繫", a:"w2", b:"e2", aSide:"i",   bSide:"i" }
-    ]);
-    const rw = SB.md.byId.get("w2");
-    chk("T5","垂落:自有節點 = 下端那一票", nodeSetOf(rw, "own").length, 5, 0, "");
-    chk("T5","垂落:元素起點端在上面(Z = 60)", nodeSetOf(rw, "i")[0].z, 60, 1e-9, "m");
-    chk("T5","垂落:元素終點端在下面(Z = 0)", nodeSetOf(rw, "j")[0].z, 0, 1e-9, "m");
-    chk("T5","垂落:全部端點 = 上 5 + 下 5", nodeSetOf(rw, "all").length, 10, 0, "");
-    yes("T5","垂落的自有節點與元素端點不一致 → 面板要問取哪一側", sideful(rw), sideful(rw), true);
-    const lo = SB.md.byId.get("x1"), hi = SB.md.byId.get("x2");
-    chk("T5","兩組垂落對接:下側 5 根", lo.elems.length, 5, 0, "");
-    chk("T5","兩組垂落對接:下側接在 Z = 0", eAt(lo, 0).a.z, 0, 1e-9, "m");
-    chk("T5","兩組垂落對接:上側 5 根", hi.elems.length, 5, 0, "");
-    chk("T5","兩組垂落對接:上側接在 Z = 60", eAt(hi, 0).a.z, 60, 1e-9, "m");
-    yes("T5","上側接的是來源線上的既有節點,不另生節點",
-      eAt(hi, 0).a.gid === "w1" && eAt(hi, 0).b.gid === "e1",
-      `${eAt(hi,0).a.gid}–${eAt(hi,0).b.gid}`, "w1–e1");
-    // 線群組自有節點就是元素端點,沒有兩側可分 —— 不該冒出這個選項
-    yes("T5","線群組不需要問取哪一側", !sideful(SB.md.byId.get("w1")), sideful(SB.md.byId.get("w1")), false);
-    chk("T5","沒指定就是自有節點(舊檔行為不變)",
-      nodeSetOf(rw, undefined).length, chainOf(rw).length, 0, "");
-  }
-  {
-    /* v3.23:手動節點 / 元素已由「節點段」與「直線段」完全取代 —— 這裡把等價性釘死 */
-    const row = (id, y) => ({ id, type:"LINE", name:id, x1:0, y1:y, z1:0, x2:30, y2:y, z2:0,
-                              split:{ ...SPLIT_DEF, mode:"count", count:3 } });
-    const one = { ...SPLIT_DEF, mode:"count", count:1 };
-    // (a) 直線段兩端各指一個群組的第 k 個節點 = 一根元素,且端點就是那兩個既有節點
-    const EQ = build([ row("ma", 0), row("mb", 10),
-      { id:"mc", type:"CURVE", name:"補一根", pieces:[{ ...defaultPiece("LINE"),
-          sRef:"@ma:2", eRef:"@mb:4", endMode:"point", split:one }] }]);
-    const rc = EQ.md.byId.get("mc"), ra = EQ.md.byId.get("ma"), rb = EQ.md.byId.get("mb");
-    chk("M1","直線段補元素:只產生 1 根", rc.elems.length, 1, 0, "");
-    chk("M1","直線段補元素:自己不留節點(兩端都併掉了)", rc.nodes.length, 0, 0, "");
-    yes("M1","直線段補元素:端點就是 ma 的第 2 點與 mb 的第 4 點",
-      rc.elems[0].a.num === ra.nodes[1].num && rc.elems[0].b.num === rb.nodes[3].num,
-      `${rc.elems[0].a.num}–${rc.elems[0].b.num}`, `${ra.nodes[1].num}–${rb.nodes[3].num}`);
-    yes("M1","直線段補元素:沒有錯誤", EQ.errs.length === 0, EQ.errs.join("|") || "無", 0);
-    // (b) 同一個群組的兩個節點也連得起來(輔助群組指同一個群組兩次)
-    const SG = build([ row("na", 0),
-      { id:"nb", type:"CURVE", name:"弦", pieces:[{ ...defaultPiece("LINE"),
-          sRef:"@na:1", eRef:"@na:4", endMode:"point", split:one }] }]);
-    const rs = SG.md.byId.get("nb"), rn = SG.md.byId.get("na");
-    chk("M1","同群組兩點也連得起來:1 根", rs.elems.length, 1, 0, "");
-    yes("M1","同群組兩點也連得起來:兩端都在 na 上",
-      rs.elems[0].a.gid === "na" && rs.elems[0].b.gid === "na",
-      `${rs.elems[0].a.gid}–${rs.elems[0].b.gid}`, "na–na");
-    yes("M1","同群組兩點也連得起來:端點是第 1 與第 4 點",
-      rs.elems[0].a.num === rn.nodes[0].num && rs.elems[0].b.num === rn.nodes[3].num,
-      `${rs.elems[0].a.num}–${rs.elems[0].b.num}`, `${rn.nodes[0].num}–${rn.nodes[3].num}`);
-    // (c) 節點段 = 一個孤立的點,沒有元素(取代手動節點)
-    const PT = build([{ id:"p1", type:"POINT", name:"孤點", cont:false, x2:7, y2:8, z2:9 }]);
-    const rp = PT.md.byId.get("p1");
-    chk("M1","節點段:1 個節點", rp.nodes.length, 1, 0, "");
-    chk("M1","節點段:0 根元素", rp.elems.length, 0, 0, "");
-    chk("M1","節點段:座標就是填進去的", rp.nodes[0].x + rp.nodes[0].y + rp.nodes[0].z, 24, 1e-9, "");
-    // (d) 舊檔的手動節點 / 元素仍然照建 —— 只是不再有新增的入口
-    const OLD = build([ row("oa", 0),
-      { id:"ob", type:"LINE", name:"ob", x1:0,y1:5,z1:0, x2:30,y2:5,z2:0,
-        split:{ ...SPLIT_DEF, mode:"count", count:3 },
-        addN:[{ x:99, y:99, z:9 }], addE:[{ i:0, j:0, ai:"@oa:1", bi:"@ob:1" }] }]);
-    const ro = OLD.md.byId.get("ob");
-    yes("M1","舊檔的手動節點照樣建得出來", ro.nodes.some(n => n.manual && n.x === 99),
-      ro.nodes.filter(n => n.manual).length, 1);
-    yes("M1","舊檔的手動元素照樣建得出來", ro.elems.some(e => e.manual),
-      ro.elems.filter(e => e.manual).length, 1);
-    yes("M1","舊檔的手動元素帶得出索引(選到才刪得掉)",
-      (ro.elems.find(e => e.manual) || {}).mi === 0,
-      String((ro.elems.find(e => e.manual) || {}).mi), "0");
-  }
-  /* ---- 三個範例都要建得起來、而且不能有錯誤 ---- */
-  {
-    DEMOS.forEach(([k, nm, , fn]) => {
-      const st = fn();
-      normState(st);
-      const e2 = [], w2 = [];
-      const md = buildModel(st, e2, w2);
-      yes("N1", `範例「${nm}」沒有錯誤`, e2.length === 0, e2.join(" | ") || "無", 0);
-      yes("N1", `範例「${nm}」每個群組都算得出東西`,
-        md.groups.every(r => !r.stat.err && (r.nodes.length || r.elems.length)),
-        md.groups.filter(r => r.stat.err).map(r => r.g.name).join(",") || "全部正常", "全部正常");
-      yes("N1", `範例「${nm}」元素的材料 / 斷面都填過`,
-        md.groups.every(r => r.elems.every(e3 => e3.mat > 0 && e3.sect > 0)), "已填", "已填");
-    });
-    // 吊橋:吊索下端要貼到邊樑既有節點,不另外生一票重疊的節點
-    const SUS = (() => { const st = demoSuspension(); normState(st);
-      return buildModel(st, [], []); })();
-    const hw = SUS.groups.find(r => r.g.name === "吊索西");
-    chk("N1","吊橋:吊索自己不產生節點(下端貼附既有節點)", hw.nodes.length, 0, 0, "");
-    yes("N1","吊橋:吊索下端落在橋面高程", hw.elems.every(e3 => Math.abs(e3.b.z - 10) < 1e-6),
-      hw.elems[0].b.z, 10);
-    // 公路橋:平面五段(直線 + 緩和 + 圓弧 + 緩和 + 直線)、縱斷面有一個豎曲線
-    const HW = (() => { const st = demoHighway(); normState(st);
-      return buildModel(st, [], []); })();
-    const ch = HW.groups[0].pieces[0].chain;
-    chk("N1","公路橋:平面 5 段", ch.segs.length, 5, 0, "");
-    yes("N1","公路橋:第 2、4 段是緩和曲線",
-      ch.segs[1].type === "SPIRAL" && ch.segs[3].type === "SPIRAL",
-      `${ch.segs[1].type}/${ch.segs[3].type}`, "SPIRAL/SPIRAL");
-    chk("N1","公路橋:縱斷面 1 個豎曲線", ch.prof.curves.length, 1, 0, "");
-    // 螺旋步道:繞 2.5 圈、爬升 = 圈數 × 螺距
-    const SPR = (() => { const st = demoSpiral(); normState(st);
-      return buildModel(st, [], []); })();
-    const rp = SPR.groups[0];
-    chk("N1","螺旋步道:總爬升 = 2.5 圈 × 5 m", rp.nodes[rp.nodes.length-1].z, 12.5, 1e-6, "m");
-    const stay = SPR.groups.find(r => r.g.name === "吊索");
-    yes("N1","螺旋步道:斜索都從柱頂拉出來",
-      stay.elems.every(e3 => Math.abs(e3.a.z - 16) < 1e-6), stay.elems[0].a.z, 16);
   }
   {
     // 垂落:斜面 / 取自另一群組
@@ -7344,24 +6729,7 @@ function runTests(){
   yes("S6","兩段 → 兩條分段折線", sp.length === 2, sp.length, 2);
   yes("S6","分段折線帶著段序號", sp.map(x => x.pi).join(",") === "0,1", sp.map(x => x.pi).join(","), "0,1");
   chk("S6","接縫兩邊共用同一個點", Math.hypot(sp[0].pts[sp[0].pts.length-1].x - sp[1].pts[0].x, 0, 0), 0, 1e-12, "m");
-  yes("S6","群組的基準色仍然是一個(段只在它上面調深淺)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
-  // v3.23:段的顏色 = 群組色的深淺變化 —— 色相不動,段與段之間看得出界線
-  {
-    const B = "#1c5d99";
-    yes("S6","只有一段時就是群組色本身", pieceColor(B, 0, 1) === B, pieceColor(B, 0, 1), B);
-    yes("S6","三段:第一段比群組色深", pieceColor(B, 0, 3) < B, pieceColor(B, 0, 3), "< " + B);
-    yes("S6","三段:正中間那一段就是群組色", pieceColor(B, 1, 3) === B, pieceColor(B, 1, 3), B);
-    yes("S6","三段:最後一段比群組色淺", pieceColor(B, 2, 3) > B, pieceColor(B, 2, 3), "> " + B);
-    const cs = [0,1,2,3].map(i => pieceColor(B, i, 4));
-    yes("S6","四段全部不同色", new Set(cs).size === 4, cs.join(" "), "4 種");
-    // 只動明度不動色相:R:G:B 的相對關係不能亂掉(深的那一側)
-    const dk = hex2rgb(pieceColor(B, 0, 3)), bs = hex2rgb(B);
-    yes("S6","變深只是等比例縮 —— 色相不變",
-      Math.abs(dk[0]/bs[0] - dk[2]/bs[2]) < 0.02, (dk[0]/bs[0]).toFixed(3), (dk[2]/bs[2]).toFixed(3));
-    yes("S6","往淺的幅度比往深小(白底上太淡會看不見)",
-      Math.abs(255 - hex2rgb(pieceColor(B, 2, 3))[2]) > 0,
-      pieceColor(B, 2, 3), "不到全白");
-  }
+  yes("S6","段一律用群組色(不再各段分色)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
 
   /* ---- 復原 / 重做 ---- */
   const savedHist = { past:HIST.past.slice(), future:HIST.future.slice(), key:HIST.key, t:HIST.t };
@@ -7569,7 +6937,7 @@ function runTests(){
       { ...defaultPiece("LINE"), sRef:"prev", x2:200,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"prev", x2:300,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } }] }] });
     const rC = buildModel(st0, [], []).groups[0];
-    yes("R2","群組的基準色只有一個", colOf(rC) === rC.color, colOf(rC), rC.color);
+    yes("R2","整個群組同一個顏色", colOf(rC) === rC.color, colOf(rC), rC.color);
     yes("R2","段的身分靠 pi 帶到折線上",
       elemPolysBy(rC).map(x => x.pi).join(",") === "0,1,2",
       elemPolysBy(rC).map(x => x.pi).join(","), "0,1,2");

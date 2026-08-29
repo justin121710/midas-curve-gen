@@ -373,11 +373,6 @@
   .ctx button:hover{background:var(--bg-2)}
   .ctx button.d{color:var(--err)}
   .ctx .sep{height:1px; background:var(--line-2); margin:4px 2px}
-  .ctx .mh{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); font-weight:700; padding:5px 10px 4px}
-  /* 範例選單:一行標題 + 一行說明 */
-  .ctx button > b{display:block; font-size:12.5px; font-weight:650; color:var(--ink)}
-  .ctx button > span{display:block; font-size:10.5px; color:var(--ink-3); margin-top:1px}
-  .ctx button:hover > b{color:var(--accent)}
   #tree .it .kebab{margin-left:4px; opacity:0; border:0; background:none; cursor:pointer;
     color:var(--ink-3); font-size:13px; line-height:1; padding:0 3px; border-radius:2px}
   #tree .it:hover .kebab, #tree .it.on .kebab{opacity:1}
@@ -397,7 +392,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.24</span>
+  <span class="stage">群組架構 v3.23</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -1396,27 +1391,6 @@ const isHex = v => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
 const groupColor = (g, idx) => isHex(g && g.color) ? g.color : GCOLORS[idx % GCOLORS.length];
 // 沒建模結果時(例如剛開檔),清單也要能給出同一個顏色
 const colorOfGroup = g => groupColor(g, Math.max(0, state.groups.indexOf(g)));
-
-/* ---- 段的顏色:群組色的深淺變化 ----
-   v3.11 曾經把「各段分色」拿掉,因為換色相會跟別組的主題色撞在一起、分不出誰是誰。
-   但整組同一個顏色時,段與段之間也看不出界線 —— 尤其接縫節點共用的時候。
-   折衷:**色相不動、只動明度**。群組還是一眼認得出來,段與段之間有明顯落差,
-   而且面板上的編號徽章與圖上那一段用的是同一個顏色,對得起來。                    */
-const hex2rgb = h => [1,3,5].map(i => parseInt(h.slice(i, i+2), 16));
-const rgb2hex = c => "#" + c.map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0")).join("");
-function shade(hex, t){                     // t < 0 變深、t > 0 變淺
-  if (!isHex(hex)) return hex;
-  const c = hex2rgb(hex);
-  return rgb2hex(t >= 0 ? c.map(v => v + (255 - v)*t) : c.map(v => v*(1 + t)));
-}
-/* 第 pi 段(共 n 段)的顏色:以群組色為中心,往深、往淺兩邊分開。
-   往淺的幅度刻意小一點 —— 白底上太淡的線會看不見,往深不會。
-   段數是奇數時,正中間那一段剛好就是群組色本身。                              */
-const pieceColor = (base, pi, n) => {
-  if (n <= 1) return base;
-  const t = (pi % n) / (n - 1) - 0.5;
-  return shade(base, t < 0 ? t * 0.9 : t * 0.62);
-};
 // 編輯中的曲線組:各段分色(其他組維持自己的主題色)
 const ELEM_TYPES = [["BEAM","BEAM 梁"], ["TRUSS","TRUSS 桁架"], ["CABLE","CABLE 纜索"]];
 // 只受拉元素(TENSTR)的設定,依實機樣本:
@@ -2801,137 +2775,51 @@ function scaleModel(st, k){
 }
 
 /* ---------- 範例 ---------- */
-/* ==========================================================================
-   範例模型(三個,各自完整)
-   一個是「把整套流程走一遍」的樣品,所以每個都做到可以直接匯出:
-   線 → 偏置 → 對接 → 垂落 / 扇出,元素類型、材料、斷面全部填好。
-   ========================================================================== */
-const DEMO_G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
-  pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p,
-    sRef:i === 0 ? "" : (p.cont === false ? "" : "prev") })), ...o });
-const DEMO_D = (t, o) => ({ type:t, ...o });
-const SPL = o => ({ ...SPLIT_DEF, ...o });
-
-/* ---- 一、人行吊橋 ----
-   跨徑 80 m、垂跨比 0.12 的懸索人行橋。主索走「錨碇 → 塔頂 → 懸鏈線 → 塔頂 → 錨碇」
-   三段一組;吊索由主索垂落到橋面邊樑,下端直接貼附既有節點,不另生節點。      */
-function demoSuspension(){
+function demoState(){
   const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const Y = 1.2, ZD = 10, ZT = 22, ZA = 6, L = 80, SP = 2.5;
+  const G = (name, pieces, o) => ({ ...defaultGroup("CURVE"), name,
+    pieces:pieces.map((p, i) => ({ ...defaultPiece(p.type), ...p,
+      sRef:i === 0 ? "" : (p.cont === false ? "" : "prev") })), ...o });
+  const D = (t, o) => ({ type:t, ...o });
 
-  // 橋面中心線 → 兩側邊樑 → 橫梁
-  const deck = G("橋面中心線", [D("LINE", { x1:0, y1:0, z1:ZD, endMode:"point",
-    x2:L, y2:0, z2:ZD, split:SPL({ mode:"spacing", spacing:SP, rem:"keep" }) })],
-    { etype:"BEAM", mat:1, sect:1 });
-  const edW = { ...defaultGroup("OFFSET"), name:"邊樑西", ref:deck.id, d:-Y, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const edE = { ...defaultGroup("OFFSET"), name:"邊樑東", ref:deck.id, d:Y,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:edW.id, b:edE.id,
-                pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
+  // 主曲線:線形鏈(含縱斷面)
+  const chain = G("主曲線", [D("CHAIN", { x1:0, y1:0, z1:100, az:90, sta:0,
+    segments:[{ type:"LINE", L:50 }, { type:"ARC", R:100, dir:1, defBy:"delta", delta:90 }, { type:"LINE", L:50 }],
+    profile:[{ sta:0, z:100, L:0 }, { sta:128.54, z:105.1416, L:100 }, { sta:257.08, z:100, L:0 }],
+    split:{ ...SPLIT_DEF, mode:"spacing", spacing:5, rem:"keep" } })], { etype:"BEAM", mat:1, sect:1 });
+  const off = { ...defaultGroup("OFFSET"), name:"左緣", ref:chain.id, d:-5, h:0, etype:"BEAM", mat:1, sect:1 };
+  const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:chain.id, b:off.id, every:2, etype:"BEAM", mat:1, sect:9 };
 
-  // 主索(每側三段:引索 → 懸鏈線 → 引索),接縫節點共用
-  const cable = (nm, y, sect) => G(nm, [
-    D("LINE", { x1:-15, y1:y, z1:ZA, endMode:"point", x2:0, y2:y, z2:ZT, split:SPL({ count:3 }) }),
-    D("SAG",  { x2:L, y2:y, z2:ZT, curve:"catenary", fMode:"ratio", f:0.12,
-                split:SPL({ count:32 }) }),
-    D("LINE", { endMode:"point", x2:L+15, y2:y, z2:ZA, split:SPL({ count:3 }) })
-  ], { etype:"CABLE", mat:2, sect });
-  const cW = cable("主索西", -Y, 11), cE = cable("主索東", Y, 11);
+  // 主索:塔頂直線 → 懸鏈線 → 支承直線,三段一組、接縫共用節點
+  const cable = (nm, y) => G(nm, [
+    D("LINE",  { cont:false, x1:380, y1:y, z1:100, endMode:"point", x2:400, y2:y, z2:130,
+                 split:{ ...SPLIT_DEF, count:2 } }),
+    D("SAG",   { x2:650, y2:y, z2:130, curve:"catenary", fMode:"ratio", f:0.1,
+                 split:{ ...SPLIT_DEF, count:25 } }),
+    D("LINE",  { endMode:"point", x2:670, y2:y, z2:100, split:{ ...SPLIT_DEF, count:2 } })
+  ], { etype:"CABLE", mat:2, sect:11 });
+  const cw = cable("主索西", -8), ce = cable("主索東", 8);
+  const hw = { ...defaultGroup("LINKZ"), name:"吊索西", ref:cw.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
+  const he = { ...defaultGroup("LINKZ"), name:"吊索東", ref:ce.id, targetZ:100, from:4, to:28, every:1, etype:"CABLE", mat:2, sect:12 };
 
-  // 吊索:主索第 5..35 個節點垂落到橋面高程,下端貼附邊樑既有節點
-  const hang = (nm, ref) => ({ ...defaultGroup("LINKZ"), name:nm, ref, targetZ:ZD,
-    from:5, to:35, every:1, bottom:"snap", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
-  const hW = hang("吊索西", cW.id), hE = hang("吊索東", cE.id);
-
-  // 塔架:兩根立柱 + 頂橫梁,一組三段
-  const tower = (nm, x) => G(nm, [
-    D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) })
+  // 螺旋匝道:直線引道 → 螺旋 → 直線
+  const hx = G("螺旋匝道", [
+    D("LINE",  { cont:false, x1:-260, y1:0, z1:100, endMode:"point", x2:-210, y2:0, z2:100,
+                 split:{ ...SPLIT_DEF, count:5 } }),
+    D("HELIX", { R:50, R2:"", az0:90, turns:2, pitch:12, dir:1, split:{ ...SPLIT_DEF, count:72 } }),
+    D("LINE",  { endMode:"polar", len:60, az:90, el:0, split:{ ...SPLIT_DEF, count:6 } })
   ], { etype:"BEAM", mat:3, sect:4 });
 
-  s.groups = [deck, edW, edE, xb, cW, cE, hW, hE, tower("塔架西", 0), tower("塔架東", L)];
+  // 拱肋:鉛直平面圓弧 + 兩端錨碇節點
+  const arc = G("拱肋", [
+    D("POINT", { cont:false, x2:400, y2:30, z2:100 }),
+    D("ARC",   { arcMode:"endpoints", plane:"V", dir:1, major:false,
+                 x2:650, y2:30, z2:100, R:180, split:{ ...SPLIT_DEF, count:24 } })
+  ], { etype:"BEAM", mat:1, sect:7 });
+
+  s.groups = [chain, off, xb, cw, ce, hw, he, hx, arc];
   return s;
 }
-
-/* ---- 二、公路橋梁 ----
-   平面「直線 → 緩和曲線 → 圓弧 → 緩和曲線 → 直線」、縱斷面用 VPI + 對稱豎曲線,
-   全長 340 m。橋面 10.5 m 寬,每 20 m 一組橫隔梁,墩柱落在傾斜的地面上。   */
-function demoHighway(){
-  const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const HW = 5.25;                                     // 橋面半寬
-
-  const main = G("主線", [D("CHAIN", { x1:0, y1:0, z1:40, az:90, sta:0,
-    segments:[
-      { type:"LINE",   L:60 },
-      { type:"SPIRAL", R0inf:true, R1:250, dir:1, defBy:"Ls", Ls:60 },
-      { type:"ARC",    R:250, dir:1, defBy:"delta", delta:50 },
-      { type:"SPIRAL", R0:250, R1inf:true, dir:1, defBy:"Ls", Ls:60 },
-      { type:"LINE",   L:60 }
-    ],
-    profile:[{ sta:0, z:40, L:0 }, { sta:170, z:46.8, L:160 }, { sta:458.2, z:40, L:0 }],
-    split:SPL({ mode:"spacing", spacing:5, rem:"keep" }) })],
-    { etype:"BEAM", mat:1, sect:1 });
-  const edL = { ...defaultGroup("OFFSET"), name:"左緣", ref:main.id, d:-HW, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const edR = { ...defaultGroup("OFFSET"), name:"右緣", ref:main.id, d:HW,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const dia = { ...defaultGroup("LINK2"), name:"橫隔梁", a:edL.id, b:edR.id,
-                pair:"same", from:1, to:0, every:4, etype:"BEAM", mat:1, sect:3 };
-  // 墩柱:每 8 個節點(= 每 40 m)一支,下端落在沿 X 每 100 m 降 3 m 的地面上
-  const pier = { ...defaultGroup("LINKZ"), name:"墩柱", ref:main.id, zMode:"plane",
-                 px:0, py:0, pz:20, sx:-0.03, sy:0, from:9, to:85, every:8,
-                 etype:"BEAM", mat:3, sect:5 };
-
-  s.groups = [main, edL, edR, dia, pier];
-  return s;
-}
-
-/* ---- 三、螺旋人行上升步道 ----
-   繞中央柱 2.5 圈、每圈爬升 5 m 的螺旋坡道。踏面兩側偏置成內外緣,
-   外緣再往上偏置 1.1 m 當扶手;柱頂用扇出拉吊索撐住外緣。            */
-function demoSpiral(){
-  const s = DEF_STATE();
-  const G = DEMO_G, D = DEMO_D;
-  const R = 12, W = 1.1, TURNS = 2.5, PITCH = 5, ZTOP = 16;
-
-  const ramp = G("坡道中心線", [
-    D("LINE",  { x1:R + 18, y1:0, z1:0, endMode:"point", x2:R, y2:0, z2:0,
-                 split:SPL({ count:6 }) }),
-    D("HELIX", { R, R2:"", az0:90, turns:TURNS, pitch:PITCH, dir:1,
-                 split:SPL({ count:90 }) }),
-    D("LINE",  { endMode:"polar", len:16, az:90, el:0, split:SPL({ count:5 }) })
-  ], { etype:"BEAM", mat:1, sect:1 });
-
-  const inn = { ...defaultGroup("OFFSET"), name:"內緣", ref:ramp.id, d:-W, h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const out = { ...defaultGroup("OFFSET"), name:"外緣", ref:ramp.id, d:W,  h:0,
-                etype:"BEAM", mat:1, sect:2 };
-  const tread = { ...defaultGroup("LINK2"), name:"踏面橫梁", a:inn.id, b:out.id,
-                  pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
-  const rail = { ...defaultGroup("OFFSET"), name:"外側扶手", ref:out.id, d:0, h:1.1,
-                 etype:"BEAM", mat:3, sect:6 };
-  const post = { ...defaultGroup("LINK2"), name:"欄杆立柱", a:out.id, b:rail.id,
-                 pair:"same", from:1, to:0, every:4, etype:"BEAM", mat:3, sect:7 };
-  const mast = G("中央柱", [D("LINE", { x1:0, y1:0, z1:0, endMode:"point",
-    x2:0, y2:0, z2:ZTOP, split:SPL({ count:8 }) })], { etype:"BEAM", mat:3, sect:4 });
-  // 柱頂(第 9 個節點 = 頂端)拉吊索到外緣,每 6 個節點一根
-  const stay = { ...defaultGroup("FAN"), name:"吊索", srcMode:"gnode", srcG:mast.id, srcI:9,
-                 ref:out.id, from:9, to:95, every:6, div:1, etype:"CABLE", mat:2, sect:12 };
-
-  s.groups = [ramp, inn, out, tread, rail, post, mast, stay];
-  return s;
-}
-
-const DEMOS = [
-  ["susp",  "人行吊橋",       "主索 + 吊索 + 塔架,跨徑 80 m", demoSuspension],
-  ["road",  "公路橋梁",       "緩和曲線 + 豎曲線 + 墩柱,全長 340 m", demoHighway],
-  ["ramp",  "螺旋人行步道",   "螺旋坡道 + 扶手 + 中央柱斜索,2.5 圈", demoSpiral]
-];
-const demoState = () => demoSuspension();          // 舊入口(參數檔還原等)仍指向第一個
 
 /* ==========================================================================
    8. UI — 樹
@@ -3608,8 +3496,7 @@ const PICK_OPT = ["@pick", "▸ 在畫布上點選…"];
 const pickingKey = (g, key) => PICK && PICK.mode === "group" && PICK.gid === g.id && PICK.key === key;
 const pickNote = (g, key, label) => pickingKey(g, key)
   ? `<div class="hint keep" style="margin-top:7px; color:var(--accent)">
-       請在 3D 視圖上<b>點一根元素</b>,<b>${esc(label)}</b>就會設成畫出它的那個群組
-       —— 點元素比點節點準,重合節點也不會選錯。按 <b>Esc</b> 或下面的取消鈕結束。</div>`
+       請在 3D 視圖上點一個節點,<b>${esc(label)}</b>就會設成它所屬的群組;點空白處取消。</div>`
   : "";
 
 /* ---- 自訂連接方式(對接的 free 模式)----
@@ -3838,7 +3725,7 @@ function chainTables(pc, k, info){
       <th>參數<span style="font-weight:400;color:var(--ink-3)">(直線 L / 圓弧 R·偏向·Δ / 緩和 R0·R1·偏向·Ls)</span></th>
       <th>起訖樁號</th><th></th></tr></thead><tbody>${segRows}</tbody></table>
     <div class="btns" style="margin-top:7px">
-      <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="LINE">+ 直線</button>
+      <button class="btn p" data-op="addseg" data-p="${pc._i}" data-t="LINE">+ 直線</button>
       <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="ARC">+ 圓弧</button>
       <button class="btn" data-op="addseg" data-p="${pc._i}" data-t="SPIRAL">+ 緩和曲線</button></div>
     <div class="lbl" style="margin:12px 0 5px">縱斷面(選用)${P.length ? "" : " — 無,整段維持起點高程"}</div>
@@ -3888,13 +3775,8 @@ function pieceCard(g, pc, pi, info, r){
       (gr ? fld("第幾個節點", k + key + "I", gr.idx, { min:1 })
           : r ? fld("位置", k + key + "A", r.at, { select:atOpts }) : "") +
       `<div class="f"><span>&nbsp;</span><button class="btn${picking ? " d" : ""}" data-op="${
-        picking ? "mecancel" : "refpick"}" data-k="${k + key}" title="${picking
-          ? "點畫面上的節點或線,按這裡(或 Esc)取消"
-          : `在 3D 視圖上點一個節點(點線也可以,會取比較近的那一端),當作這一段的${esc(label)}`}">${
-        picking ? `點選中… 按此取消` : `圖上點${esc(label)}`}</button></div>` +
-      (picking ? `<div class="hint keep" style="grid-column:1/-1; margin-top:0; color:var(--accent)">
-        在 3D 視圖上點<b>別的群組</b>的節點就設定完成;<b>點線也可以</b>,會取離游標比較近的那一端。
-        點空了不會取消 —— 要結束請按 <b>Esc</b> 或上面那顆鈕。</div>` : "");
+        picking ? "mecancel" : "refpick"}" data-k="${k + key}" title="在 3D 視圖上點一個節點,當作這一段的${esc(label)}">${
+        picking ? `點${esc(label)}…` : `圖上點${esc(label)}`}</button></div>`;
   };
   const ec = endRefOn(pc);
   const endSel = END_CONT_T[pc.type]
@@ -4080,7 +3962,7 @@ function pieceCard(g, pc, pi, info, r){
         旋轉中心預設是<b>本段起點</b>,所以單純轉方向不會把接縫扯開。</div></div></details>`;
 
   return `<details class="pc" data-pi="${pi}">
-    <summary><span class="idx" style="background:${pieceColor(colorOfGroup(g), pi, (g.pieces || []).length)}">${pi+1}</span>
+    <summary><span class="idx" style="background:${TYPES[g.type].color}">${pi+1}</span>
       <select data-k="${k}type" onclick="event.stopPropagation()">${
         Object.entries(PIECES).map(([v,t]) => `<option value="${v}"${v===pc.type?" selected":""}>${t.name}</option>`).join("")}</select>
       <span class="st" data-ro>${stat}</span>
@@ -4176,7 +4058,6 @@ function cableFields(g){
 /* ---- 在 3D 視圖上點節點 ---- */
 // PICK 不進 state、不進復原堆疊 —— 它只是「現在正在點第幾個端點」的暫時狀態。
 let PICK = null;                       // { gid, i, mode } i = 已點到的第一個節點編號
-let hoverE = null;                     // 點選群組時滑鼠掃到的那根元素 { num, gid, name }
 // 節點編號 → 它屬於哪一組、在該組的節點串裡排第幾個(0 起算)。
 // 存的是「第幾個」而不是節點編號:上游的線之後重新分割,對接關係才不會錯位。
 function locateNode(numv){
@@ -5264,36 +5145,11 @@ document.addEventListener("drop", e => {
 $("#btn-undo").onclick  = undo;
 $("#btn-redo").onclick  = redo;
 // 畫面上已經有東西時,載入範例會蓋掉它 —— 一定要先問過
-/* 範例有三個,按鈕點下去先讓人挑一個 —— 一次全部倒進畫布會看不出誰是誰 */
-function closeDemoMenu(){ const m = $("#demo-menu"); if (m) m.remove(); }
-$("#btn-demo").onclick = ev => {
-  if ($("#demo-menu")){ closeDemoMenu(); return; }
-  const box = ev.currentTarget.getBoundingClientRect();
-  const d = document.createElement("div");
-  d.className = "ctx"; d.id = "demo-menu";
-  d.style.minWidth = "232px";
-  d.innerHTML = `<div class="mh">載入範例(會蓋掉現有內容)</div>` +
-    DEMOS.map(([k, nm, tip]) => `<button data-demo="${k}"><b>${esc(nm)}</b>
-      <span>${esc(tip)}</span></button>`).join("");
-  document.body.appendChild(d);
-  d.style.left = Math.min(box.left, window.innerWidth - d.offsetWidth - 8) + "px";
-  d.style.top  = Math.min(box.bottom + 4, window.innerHeight - d.offsetHeight - 8) + "px";
-  d.addEventListener("click", e2 => {
-    const b2 = e2.target.closest("[data-demo]"); if (!b2) return;
-    const item = DEMOS.find(o => o[0] === b2.dataset.demo);
-    closeDemoMenu();
-    if (!item) return;
-    if (state.groups && state.groups.length &&
-        !confirm(`載入「${item[1]}」會蓋掉畫布上現有的內容,確定嗎?`)) return;
-    loadState(item[3]());
-  });
-  setTimeout(() => document.addEventListener("click", function away(e3){
-    if (!e3.target.closest("#demo-menu") && e3.target !== ev.currentTarget){
-      closeDemoMenu(); document.removeEventListener("click", away);
-    }
-  }), 0);
+$("#btn-demo").onclick  = () => {
+  const has = state.groups && state.groups.length;
+  if (has && !confirm("載入範例會蓋掉畫布上現有的內容,確定嗎?")) return;
+  loadState(demoState());
 };
-window.addEventListener("keydown", e => { if (e.key === "Escape") closeDemoMenu(); });
 $("#btn-clear").onclick = () => {
   if (!(state.groups && state.groups.length)) return;
   if (confirm("清空畫布上的所有內容?")) loadState(DEF_STATE());
@@ -5338,8 +5194,7 @@ function renderChecks(){
   const selR = MODEL.byId.get(SEL);
   const segLeg = (selR && pcOn(selR))
     ? `<span style="color:var(--ink-3)">│ 編輯中「${esc(selR.g.name)}」共 ${
-        (selR.g.pieces || []).length} 段,各段用<b>同色系的深淺</b>分開,
-        圖上的<b>圓形編號</b>就是那一段的顏色</span>`
+        (selR.g.pieces || []).length} 段,圖上的<b>圓形編號</b>標在各段中間</span>`
     : "";
   $("#legend").innerHTML = MODEL.groups.map(r =>
     `<span><i style="background:${r.color}"></i>${esc(r.g.name)}</span>`).join("") + segLeg +
@@ -5603,7 +5458,7 @@ function drawPieceTags(r){
     placed.push({ x:sc.x, y:sy });
     const txt = String(pi + 1), rad = txt.length > 1 ? 9.5 : 8;
     ctx.save();
-    ctx.fillStyle = pieceColor(r.color, pi, (r.g.pieces || []).length);
+    ctx.fillStyle = r.color;
     ctx.beginPath(); ctx.arc(sc.x, sy, rad, 0, 7); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke();
     ctx.fillStyle = "#fff";
@@ -5639,13 +5494,10 @@ function draw(){
       r.elems.forEach(e => { const a = toS(e.a), b = toS(e.b); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); });
       ctx.stroke(); ctx.globalAlpha = 1;
     } else {
-      // 正在編輯的多段曲線:每一段用群組色的不同深淺,和編號徽章同色
-      const np = pcOn(r) ? (r.g.pieces || []).length : 0;
-      const pcCol = pi => np ? pieceColor(col, pi, np) : col;
       // 參考:原始參數曲線(淡)
       ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = col;
       curvePolys(r).forEach(pl => {
-        ctx.strokeStyle = pcCol(pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
@@ -5653,8 +5505,8 @@ function draw(){
       ctx.globalAlpha = anySel && !on ? .8 : 1;
       // 實際元素(節點被移動或刪除後,線會跟著走)
       ctx.lineWidth = on ? 2.8 : 1.4;
+      ctx.strokeStyle = col;
       elemPolysBy(r).forEach(pl => {
-        ctx.strokeStyle = pcCol(pl.pi);
         ctx.beginPath();
         pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
         ctx.stroke();
@@ -5669,10 +5521,9 @@ function draw(){
         r.nodes.forEach(n => {
           const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+1.4,0,7); ctx.fill(); });
       }
-      const npN = pcOn(r) ? (r.g.pieces || []).length : 0;
+      ctx.fillStyle = col;
       ctx.globalAlpha = on ? 1 : (anySel ? .75 : 1);
       r.nodes.forEach(n => {
-        ctx.fillStyle = (npN && Number.isFinite(n.pi) && n.pi >= 0) ? pieceColor(col, n.pi, npN) : col;
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.globalAlpha = 1;
       // v3.16:起點 / 終點不再特別標記 —— 同一個群組的節點一律長一樣
@@ -5692,17 +5543,6 @@ function draw(){
   // 段的編號徽章:畫在整個群組迴圈之後,才不會被後面畫的組蓋住(立面視角很容易重疊)
   MODEL.groups.forEach(r => { if (pcOn(r)) drawPieceTags(r); });
 
-  if (hoverE){                                        // 點選群組模式:整組一起亮
-    const rr = MODEL.byId.get(hoverE.gid);
-    if (rr){
-      ctx.save();
-      ctx.strokeStyle = "#0f62fe";
-      ctx.lineWidth = 4; ctx.globalAlpha = .38; ctx.lineCap = "round";
-      rr.elems.forEach(e2 => { const a2 = toS(e2.a), b2 = toS(e2.b);
-        ctx.beginPath(); ctx.moveTo(a2.x,a2.y); ctx.lineTo(b2.x,b2.y); ctx.stroke(); });
-      ctx.restore();
-    }
-  }
   if (SELELEM){
     const rr = MODEL.byId.get(SELELEM.gid);
     const ee = rr && rr.elems.find(e => e.num === SELELEM.num);
@@ -5767,13 +5607,6 @@ function syncViewUI(){
 }
 function syncReadout(){
   const hv = viewHit();
-  if (PICK && PICK.mode === "group"){
-    const el0 = $("#ro");
-    if (el0) el0.textContent = hoverE
-      ? `會選到:${hoverE.name}(元素 #${hoverE.num})`
-      : "點一根元素,就會選到畫出它的那個群組;按 Esc 取消";
-    return;
-  }
   const l1 = hover
     ? `${hoverG ? hoverG.g.name : ""} #${hover.num}  X ${hover.x.toFixed(3)}  Y ${hover.y.toFixed(3)}  Z ${hover.z.toFixed(3)}` +
       (Number.isFinite(hover.s) ? `  ${fmtSta(hover.s)}` : "")
@@ -5854,69 +5687,36 @@ cv.addEventListener("mousemove", e => {
     }
     view.locked = true; draw(); return;
   }
-  // 要選群組時滑鼠掃到的是元素,先把它高亮起來,按下去之前就知道會選到誰
-  if (PICK && PICK.mode === "group"){
-    const pe = pickElemAt(e.offsetX, e.offsetY, 12);
-    hoverE = pe ? { num:pe.e.num, gid:pe.r.g.id, name:pe.r.g.name } : null;
-    hover = null; hoverG = null; curW = null; draw(); return;
-  }
-  hoverE = null;
   const hit = pickNodeAt(e.offsetX, e.offsetY, 24);
   hover = hit ? hit.n : null; hoverG = hit ? hit.r : null;
   curW = hover ? null : toW(e.offsetX, e.offsetY, undefined);
   draw();
 });
 cv.addEventListener("mouseleave", () => {
-  if (!drag){ hover = null; hoverG = null; hoverE = null; curW = null; draw(); }
+  if (!drag){ hover = null; hoverG = null; curW = null; draw(); }
 });
-// 點選模式一律用 Esc 取消(面板上也有一顆取消鈕)—— 不再用「點空白處」,
-// 因為點空了最常見的原因是沒點準,把它當成取消只會讓人以為功能壞了。
-window.addEventListener("keydown", e => {
-  if (e.key === "Escape" && PICK && !document.querySelector(".mask")){
-    PICK = null; hoverE = null; recompute(true);
-  }
-});
-/* ---------- 在圖上點東西 ----------
-   點選模式(PICK)進行中時,**畫面上的選取狀態一律不動** —— 以前點不到節點就把
-   PICK 清掉、下一下就變成「選到別的群組」,使用者看到的現象是「圖上點起點根本點不成功,
-   反而跳去編輯別的群組」。現在:點不到就什麼都不做,取消一律走 Esc 或面板上的取消鈕。
-
-   節點只有幾個像素、又常常被好幾個群組共用(重合節點更是同一顆),所以:
-   - 要「一個群組」時只認**元素** —— 元素是誰畫的沒有歧義,點起來也好點得多。
-   - 要「一個節點」時先認節點,點不到就退而求其次,取元素上**離游標比較近的那一端**。   */
-function pickNodeLoose(sx, sy){
-  const hit = pickNodeAt(sx, sy, 14);
-  if (hit) return hit;
-  const pe = pickElemAt(sx, sy, 12);
-  if (!pe) return null;
-  const a = toS(pe.e.a), b = toS(pe.e.b);
-  const near = Math.hypot(a.x-sx, a.y-sy) <= Math.hypot(b.x-sx, b.y-sy) ? pe.e.a : pe.e.b;
-  const own = MODEL.byId.get(near.gid);
-  return { n:near, r:own || pe.r };
-}
 cv.addEventListener("click", e => {
   if (dragMoved) return;
+  const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
+  // 新增手動元素:連點兩個節點決定 i–j,點空白處等於放棄
   if (PICK){
     const g0 = state.groups.find(x => x.id === PICK.gid);
     if (!g0){ PICK = null; recompute(true); return; }
-
-    if (PICK.mode === "group"){                        // 點一根元素 = 選到畫出它的那個群組
-      const pe = pickElemAt(e.offsetX, e.offsetY, 12);
-      if (!pe) return;                                 // 沒點到就當作沒發生,維持點選模式
-      if (pe.r.g.id === g0.id){ alert("不能選到這個群組自己 —— 請點另一個群組的元素。"); return; }
+    if (!hit){ PICK = null; recompute(true); focusHot(); return; }
+    if (PICK.mode === "group"){                        // 點一個節點 = 選到它所屬的群組
+      const q = locateNode(hit.n.num);
+      if (!q){ alert("找不到這個節點屬於哪一個群組,請再點一次。"); return; }
+      if (q.gid === g0.id){ alert("不能選到這個群組自己 —— 請點另一個群組的節點。"); return; }
       snapshot("gpick:" + Date.now());
-      setPath(g0, PICK.key, pe.r.g.id);
+      setPath(g0, PICK.key, q.gid);
       PICK = null; SEL = g0.id;
       recompute(true); focusHot(); return;
     }
-
-    const hit = pickNodeLoose(e.offsetX, e.offsetY);
-    if (!hit) return;                                  // 同上:點空了就靜靜等下一次
-
     if (PICK.mode === "ref"){                          // 只要點一個節點就結束
       const q = locateNode(hit.n.num);
       if (!q){ alert("找不到這個節點屬於哪一個群組,請再點一次。"); return; }
-      if (q.gid === g0.id){ alert("要指到「別的」群組的節點;同一個群組裡的段請用「段 N」那幾個選項。"); return; }
+      if (q.gid === g0.id){ alert("要指到<別的>群組的節點;同一個群組裡的段請用「段 N」那幾個選項。"
+        .replace(/[<>]/g, "「")); return; }
       snapshot("refpick:" + Date.now());
       setPath(g0, PICK.key, "@" + q.gid + ":" + (q.idx + 1));
       PICK = null; SEL = g0.id;
@@ -5940,7 +5740,6 @@ cv.addEventListener("click", e => {
     }
     PICK = null; recompute(true); focusHot(); return;   // 沒有其他兩點模式了
   }
-  const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
   if (hit){
     SEL = hit.r.g.id; SELNODE = { gid:hit.r.g.id, ri:hit.n.ri, num:hit.n.num }; SELELEM = null;
   } else {
@@ -6482,45 +6281,6 @@ function runTests(){
     yes("M1","舊檔的手動元素帶得出索引(選到才刪得掉)",
       (ro.elems.find(e => e.manual) || {}).mi === 0,
       String((ro.elems.find(e => e.manual) || {}).mi), "0");
-  }
-  /* ---- 三個範例都要建得起來、而且不能有錯誤 ---- */
-  {
-    DEMOS.forEach(([k, nm, , fn]) => {
-      const st = fn();
-      normState(st);
-      const e2 = [], w2 = [];
-      const md = buildModel(st, e2, w2);
-      yes("N1", `範例「${nm}」沒有錯誤`, e2.length === 0, e2.join(" | ") || "無", 0);
-      yes("N1", `範例「${nm}」每個群組都算得出東西`,
-        md.groups.every(r => !r.stat.err && (r.nodes.length || r.elems.length)),
-        md.groups.filter(r => r.stat.err).map(r => r.g.name).join(",") || "全部正常", "全部正常");
-      yes("N1", `範例「${nm}」元素的材料 / 斷面都填過`,
-        md.groups.every(r => r.elems.every(e3 => e3.mat > 0 && e3.sect > 0)), "已填", "已填");
-    });
-    // 吊橋:吊索下端要貼到邊樑既有節點,不另外生一票重疊的節點
-    const SUS = (() => { const st = demoSuspension(); normState(st);
-      return buildModel(st, [], []); })();
-    const hw = SUS.groups.find(r => r.g.name === "吊索西");
-    chk("N1","吊橋:吊索自己不產生節點(下端貼附既有節點)", hw.nodes.length, 0, 0, "");
-    yes("N1","吊橋:吊索下端落在橋面高程", hw.elems.every(e3 => Math.abs(e3.b.z - 10) < 1e-6),
-      hw.elems[0].b.z, 10);
-    // 公路橋:平面五段(直線 + 緩和 + 圓弧 + 緩和 + 直線)、縱斷面有一個豎曲線
-    const HW = (() => { const st = demoHighway(); normState(st);
-      return buildModel(st, [], []); })();
-    const ch = HW.groups[0].pieces[0].chain;
-    chk("N1","公路橋:平面 5 段", ch.segs.length, 5, 0, "");
-    yes("N1","公路橋:第 2、4 段是緩和曲線",
-      ch.segs[1].type === "SPIRAL" && ch.segs[3].type === "SPIRAL",
-      `${ch.segs[1].type}/${ch.segs[3].type}`, "SPIRAL/SPIRAL");
-    chk("N1","公路橋:縱斷面 1 個豎曲線", ch.prof.curves.length, 1, 0, "");
-    // 螺旋步道:繞 2.5 圈、爬升 = 圈數 × 螺距
-    const SPR = (() => { const st = demoSpiral(); normState(st);
-      return buildModel(st, [], []); })();
-    const rp = SPR.groups[0];
-    chk("N1","螺旋步道:總爬升 = 2.5 圈 × 5 m", rp.nodes[rp.nodes.length-1].z, 12.5, 1e-6, "m");
-    const stay = SPR.groups.find(r => r.g.name === "吊索");
-    yes("N1","螺旋步道:斜索都從柱頂拉出來",
-      stay.elems.every(e3 => Math.abs(e3.a.z - 16) < 1e-6), stay.elems[0].a.z, 16);
   }
   {
     // 垂落:斜面 / 取自另一群組
@@ -7344,24 +7104,7 @@ function runTests(){
   yes("S6","兩段 → 兩條分段折線", sp.length === 2, sp.length, 2);
   yes("S6","分段折線帶著段序號", sp.map(x => x.pi).join(",") === "0,1", sp.map(x => x.pi).join(","), "0,1");
   chk("S6","接縫兩邊共用同一個點", Math.hypot(sp[0].pts[sp[0].pts.length-1].x - sp[1].pts[0].x, 0, 0), 0, 1e-12, "m");
-  yes("S6","群組的基準色仍然是一個(段只在它上面調深淺)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
-  // v3.23:段的顏色 = 群組色的深淺變化 —— 色相不動,段與段之間看得出界線
-  {
-    const B = "#1c5d99";
-    yes("S6","只有一段時就是群組色本身", pieceColor(B, 0, 1) === B, pieceColor(B, 0, 1), B);
-    yes("S6","三段:第一段比群組色深", pieceColor(B, 0, 3) < B, pieceColor(B, 0, 3), "< " + B);
-    yes("S6","三段:正中間那一段就是群組色", pieceColor(B, 1, 3) === B, pieceColor(B, 1, 3), B);
-    yes("S6","三段:最後一段比群組色淺", pieceColor(B, 2, 3) > B, pieceColor(B, 2, 3), "> " + B);
-    const cs = [0,1,2,3].map(i => pieceColor(B, i, 4));
-    yes("S6","四段全部不同色", new Set(cs).size === 4, cs.join(" "), "4 種");
-    // 只動明度不動色相:R:G:B 的相對關係不能亂掉(深的那一側)
-    const dk = hex2rgb(pieceColor(B, 0, 3)), bs = hex2rgb(B);
-    yes("S6","變深只是等比例縮 —— 色相不變",
-      Math.abs(dk[0]/bs[0] - dk[2]/bs[2]) < 0.02, (dk[0]/bs[0]).toFixed(3), (dk[2]/bs[2]).toFixed(3));
-    yes("S6","往淺的幅度比往深小(白底上太淡會看不見)",
-      Math.abs(255 - hex2rgb(pieceColor(B, 2, 3))[2]) > 0,
-      pieceColor(B, 2, 3), "不到全白");
-  }
+  yes("S6","段一律用群組色(不再各段分色)", colOf(SEGP) === SEGP.color, colOf(SEGP), SEGP.color);
 
   /* ---- 復原 / 重做 ---- */
   const savedHist = { past:HIST.past.slice(), future:HIST.future.slice(), key:HIST.key, t:HIST.t };
@@ -7569,7 +7312,7 @@ function runTests(){
       { ...defaultPiece("LINE"), sRef:"prev", x2:200,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } },
       { ...defaultPiece("LINE"), sRef:"prev", x2:300,y2:0,z2:0, split:{ ...SPLIT_DEF, count:2 } }] }] });
     const rC = buildModel(st0, [], []).groups[0];
-    yes("R2","群組的基準色只有一個", colOf(rC) === rC.color, colOf(rC), rC.color);
+    yes("R2","整個群組同一個顏色", colOf(rC) === rC.color, colOf(rC), rC.color);
     yes("R2","段的身分靠 pi 帶到折線上",
       elemPolysBy(rC).map(x => x.pi).join(",") === "0,1,2",
       elemPolysBy(rC).map(x => x.pi).join(","), "0,1,2");
