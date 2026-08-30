@@ -397,7 +397,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.30</span>
+  <span class="stage">群組架構 v3.31</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -2836,29 +2836,41 @@ function demoSuspension(){
                 etype:"BEAM", mat:1, sect:2 };
   const edR = { ...defaultGroup("OFFSET"), name:"邊樑右", ref:deck.id, d:Y,  h:0,
                 etype:"BEAM", mat:1, sect:2 };
+  /* 橫梁每個節點一根(2.5 m)—— 吊索也是每 2.5 m 一根,一根吊索正對一根橫梁,
+     載重才有地方交:吊索吊住邊樑節點,橫梁就在同一個節點把力橫過去。 */
   const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:edL.id, b:edR.id,
-                pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
+                pair:"same", from:1, to:0, every:1, etype:"BEAM", mat:1, sect:3 };
 
   /* ---- 橋面下的桁架 ----
-     兩側邊樑就是上弦,各自往下偏置 TD 得下弦;每 2 個節點(= 5 m)一根豎桿,
-     再用「錯開 2 個節點」拉斜桿 —— 一格一根,就是標準的 N 型腹桿。
-     兩條下弦之間再加橫梁與斜撐,和橋面上的橫梁合起來是一個封閉的箱型桁架,
-     這也才有東西可以承抗風支索拉進來的橫向力。                                 */
+     兩側邊樑就是上弦,各自往下偏置 TD 得下弦,每個節點(2.5 m)一根豎桿 ——
+     每一根橫梁 / 吊索底下都正好有一組豎桿接著,節點就是桁架的格點。
+     三個面的斜撐一律是 **X 型**,用「對接」的**交叉**配對做:
+     相鄰兩個格點拉一對來回(A[j]–B[j+1] 與 A[j+1]–B[j]),一格兩根、正好交叉。
+       兩側面:上弦 ↔ 同側下弦     底面:下弦左 ↔ 下弦右
+       橫隔面:上弦 ↔ **對側**下弦(同一個 x,兩根在斷面內交叉)
+     橫隔斜撐每 2 個節點(5 m)一組就夠 —— 它是把斷面撐成矩形用的,
+     不像側面 / 底面要一路跟著格點走。三個面都封起來才是真正的箱型桁架,
+     也才有東西承抗風支索拉進來的橫向力。                                       */
   const TD = 1.6;                                      // 桁架深度(下弦在橋面下 1.6 m)
   const bot = (nm, ref) => ({ ...defaultGroup("OFFSET"), name:nm, ref, d:0, h:-TD,
                               etype:"BEAM", mat:1, sect:13 });
   const blL = bot("下弦左", edL.id), blR = bot("下弦右", edR.id);
   const web = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
-    pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:3, sect:14 });
+    pair:"same", from:1, to:0, every:1, etype:"BEAM", mat:3, sect:14 });
   const wbL = web("桁架豎桿左", edL.id, blL.id), wbR = web("桁架豎桿右", edR.id, blR.id);
-  // 斜桿錯開 2 個節點,所以起算節點只能走到「倒數第 3 個」(33 − 2),再往後就沒有對象了
-  const dia = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
-    pair:"skew", skew:2, from:1, to:31, every:2, etype:"TRUSS", mat:3, sect:15 });
-  const dgL = dia("桁架斜桿左", edL.id, blL.id), dgR = dia("桁架斜桿右", edR.id, blR.id);
+  /* 交叉配對:相鄰兩格拉一對來回 —— 一格兩根、方向相反,就是 X。
+     每一根的兩端仍分屬上下弦,所以不會有「對不到節點」的漏根問題。 */
+  const dia = (nm, a, b, ev) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
+    pair:"cross", from:1, to:0, every:ev || 1, etype:"TRUSS", mat:3, sect:15 });
+  const dgL = dia("桁架斜撐左", edL.id, blL.id), dgR = dia("桁架斜撐右", edR.id, blR.id);
   const xbB = { ...defaultGroup("LINK2"), name:"下弦橫梁", a:blL.id, b:blR.id,
-                pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:3, sect:16 };
+                pair:"same", from:1, to:0, every:1, etype:"BEAM", mat:3, sect:16 };
   const brB = { ...defaultGroup("LINK2"), name:"下弦斜撐", a:blL.id, b:blR.id,
-                pair:"skew", skew:2, from:1, to:31, every:2, etype:"TRUSS", mat:3, sect:17 };
+                pair:"cross", from:1, to:0, every:1, etype:"TRUSS", mat:3, sect:17 };
+  // 橫隔面的 X:同一個 x 上「上弦 ↔ 對側下弦」兩根,在斷面內交叉
+  const crs = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
+    pair:"same", from:1, to:0, every:2, etype:"TRUSS", mat:3, sect:20 });
+  const crA = crs("橫隔斜撐左上", edL.id, blR.id), crB = crs("橫隔斜撐右上", edR.id, blL.id);
 
   // 主索(每側三段:引索 → 懸鏈線 → 引索),接縫節點共用
   const cable = (nm, y, sect) => G(nm, [
@@ -2905,7 +2917,7 @@ function demoSuspension(){
     D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) })
   ], { etype:"BEAM", mat:3, sect:4 });
 
-  s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB,
+  s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB, crA, crB,
               cL, cR, hL, hR, wcL, wcR, wsL, wsR, tower("塔架西", 0), tower("塔架東", L)];
   return s;
 }
@@ -3139,6 +3151,17 @@ document.addEventListener("click", e => {
   if (!e.target.closest("#add-menu") && !e.target.closest("#add-btn")) closeAddMenu();
 });
 window.addEventListener("keydown", e => { if (e.key === "Escape") closeAddMenu(); });
+
+/* 清單上滑過一列 = 那一組在 3D 視圖裡整組打亮(和滑過圖上的元素同一種效果)——
+   群組多起來之後,光看名字對不上圖上是哪一條。 */
+$("#tree").addEventListener("mouseover", e => {
+  const it = e.target.closest(".it");
+  const id = it && !it.dataset.id.startsWith("_") ? it.dataset.id : null;
+  if (id !== hoverTree){ hoverTree = id; draw(); }
+});
+$("#tree").addEventListener("mouseleave", () => {
+  if (hoverTree){ hoverTree = null; draw(); }
+});
 
 $("#tree").addEventListener("click", e => {
   const ab = e.target.closest("#add-btn");
@@ -5495,6 +5518,9 @@ const cv = $("#cv"), ctx = cv.getContext("2d");
 const view = { az:90, el:90, zEx:1, cx:0, cy:0, cz:0, scale:1, locked:false };
 const CAM = { r:{ x:1, y:0, z:0 }, u:{ x:0, y:1, z:0 }, f:{ x:0, y:0, z:-1 } };
 let showNodes = true, hover = null, hoverG = null, curW = null;
+// v3.31:游標掃到的元素 { gid, num, r, e } —— 節點沒掃到時才找元素(節點優先)
+let hoverEl = null;
+let hoverTree = null;                  // 左邊清單上滑到的群組 id(整組打亮用)
 
 const allPts = () => MODEL.groups.flatMap(r => r.nodes);
 // 由「實際元素」串出折線 —— 這才是會匯出到 midas 的東西
@@ -5522,7 +5548,12 @@ function elemPolysBy(r){
 /* 參數曲線的取樣(只作為淡色參考底線)。
    節點被手動移動或刪除之後,這條線還停在原本的位置 —— 留著會看到「舊的那一條」的殘影,
    所以動過的段就整段不畫,畫面上只剩實際元素串出來的折線。 */
+/* 「原始參數曲線」= 段的數學曲線本身,畫成淡線讓人看得出節點串(弦線)差多少。
+   v3.31:整組套過平移 / 旋轉 / 鏡射的群組**不畫** —— 那條曲線是變換**之前**的位置,
+   節點早就轉走了,留在圖上就是一條對不上任何元素的鬼影(抗風索繞橋軸轉 45° 就會這樣)。
+   段層級的變換不受影響:那是在建曲線的當下就套進去的,曲線本來就在對的位置。      */
 function curvePolys(r){
+  if (r.xfOn) return [];
   if (!r.pieces || !r.pieces.length) return r.nodes.length ? [{ pi:-1, pts:r.nodes }] : [];
   const out = [];
   r.pieces.forEach(info => {
@@ -5839,6 +5870,42 @@ function draw(){
       ctx.restore();
     }
   }
+  /* v3.31:游標掃到節點或元素時,**它所屬的整個群組**一起打亮(淡),
+     掃到的那一根再單獨加一層(濃)。和點選群組模式(hoverE)用同一種視覺語言,
+     差別只在那個模式是「按下去會選到誰」,這裡是「現在指著誰」。            */
+  const hoverGid = hoverEl ? hoverEl.gid
+                 : (hover && hoverG) ? hoverG.g.id
+                 : hoverTree;
+  if (hoverGid && !hoverE){
+    const rr = MODEL.byId.get(hoverGid);
+    if (rr){
+      ctx.save();
+      ctx.strokeStyle = "#0f62fe"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.lineWidth = 4.5; ctx.globalAlpha = .3;
+      ctx.beginPath();
+      rr.elems.forEach(e2 => { const a2 = toS(e2.a), b2 = toS(e2.b);
+        ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); });
+      ctx.stroke();
+      // 連接族(對接 / 垂落 / 扇出)自己不產生節點,打亮時就借用兩端的既有節點
+      const pts = rr.nodes.length ? rr.nodes
+                : rr.elems.flatMap(e2 => [e2.a, e2.b]);
+      ctx.fillStyle = "#0f62fe"; ctx.globalAlpha = .32;
+      const rr2 = Math.min(4.5, Math.max(2.2, nodeRad(pts.length, true) + 1.6));
+      pts.forEach(n => { const s2 = toS(n);
+        ctx.beginPath(); ctx.arc(s2.x, s2.y, rr2, 0, 7); ctx.fill(); });
+      ctx.restore();
+    }
+    const he = hoverEl && MODEL.byId.get(hoverEl.gid)
+             && MODEL.byId.get(hoverEl.gid).elems.find(e2 => e2.num === hoverEl.num);
+    if (he){                                          // 指著的那一根:濃一層
+      ctx.save();
+      const a2 = toS(he.a), b2 = toS(he.b);
+      ctx.strokeStyle = "#0f62fe"; ctx.lineWidth = 5; ctx.globalAlpha = .45;
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+      ctx.restore();
+    }
+  }
   if (SELELEM){
     const rr = MODEL.byId.get(SELELEM.gid);
     const ee = rr && rr.elems.find(e => e.num === SELELEM.num);
@@ -5916,6 +5983,9 @@ function syncReadout(){
   const l1 = hover
     ? `${hoverG ? hoverG.g.name : ""} #${hover.num}  X ${hover.x.toFixed(3)}  Y ${hover.y.toFixed(3)}  Z ${hover.z.toFixed(3)}` +
       (Number.isFinite(hover.s) ? `  ${fmtSta(hover.s)}` : "")
+    : hoverEl
+    ? `${hoverEl.r.g.name}  元素 #${hoverEl.num}  ${hoverEl.e.a.num} → ${hoverEl.e.b.num}` +
+      `  長 ${fmtN(hoverEl.e.len3d)} ${UL()}`
     : (curW ? `X ${curW.x.toFixed(3)}   Y ${curW.y.toFixed(3)}   (地面 Z ${fmtN(curW.z)} ${UL()})` : "");
   // 方位角 / 仰角 / Z 放大都由左上角工具列那一排欄位顯示,這裡不再重覆寫一次;
   // 只留工具列講不出來的東西 —— 目前落在哪一個九宮格視角。
@@ -5997,16 +6067,22 @@ cv.addEventListener("mousemove", e => {
   if (PICK && PICK.mode === "group"){
     const pe = pickElemAt(e.offsetX, e.offsetY, 12);
     hoverE = pe ? { num:pe.e.num, gid:pe.r.g.id, name:pe.r.g.name } : null;
-    hover = null; hoverG = null; curW = null; draw(); return;
+    hover = null; hoverG = null; hoverEl = null; curW = null; draw(); return;
   }
   hoverE = null;
-  const hit = pickNodeAt(e.offsetX, e.offsetY, 24);
+  /* 容差和「點下去」完全一樣(節點 14 px、元素 12 px)—— 舊版滑過時用 24 px 找節點,
+     結果是「亮起來的是節點、按下去卻選到元素」。看到什麼就會選到什麼,才不會誤導。 */
+  const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
   hover = hit ? hit.n : null; hoverG = hit ? hit.r : null;
-  curW = hover ? null : toW(e.offsetX, e.offsetY, undefined);
+  const pe = hit ? null : pickElemAt(e.offsetX, e.offsetY, 12);
+  hoverEl = pe ? { gid:pe.r.g.id, num:pe.e.num, r:pe.r, e:pe.e } : null;
+  curW = (hover || hoverEl) ? null : toW(e.offsetX, e.offsetY, undefined);
+  cv.style.cursor = (hover || hoverEl) ? "pointer" : "";
   draw();
 });
 cv.addEventListener("mouseleave", () => {
-  if (!drag){ hover = null; hoverG = null; hoverE = null; curW = null; draw(); }
+  if (!drag){ hover = null; hoverG = null; hoverE = null; hoverEl = null;
+              curW = null; cv.style.cursor = ""; draw(); }
 });
 // 點選模式一律用 Esc 取消(面板上也有一顆取消鈕)—— 不再用「點空白處」,
 // 因為點空了最常見的原因是沒點準,把它當成取消只會讓人以為功能壞了。
@@ -6721,10 +6797,42 @@ function runTests(){
       yes("N2","吊橋:桁架豎桿都是鉛直的",
         byN(SUS, "桁架豎桿左").elems.every(e3 =>
           Math.hypot(e3.a.x - e3.b.x, e3.a.y - e3.b.y) < 1e-9), "鉛直", "鉛直");
-      yes("N2","吊橋:桁架斜桿一端在上弦、一端在下弦(而且是斜的)",
-        byN(SUS, "桁架斜桿左").elems.every(e3 =>
+      yes("N2","吊橋:桁架斜撐一端在上弦、一端在下弦(而且是斜的)",
+        byN(SUS, "桁架斜撐左").elems.every(e3 =>
           e3.a.gid === edA.g.id && e3.b.gid === blA.g.id && Math.abs(e3.a.x - e3.b.x) > 1e-9),
         "上弦→下弦", "上弦→下弦");
+      /* X 型斜撐:同一格裡要有**兩根、方向相反**的斜桿(一根順著走、一根逆著走),
+         兩根共用同一對 x 才會真的交叉。只數根數是抓不到「兩根同向」這種錯的。 */
+      const isX = nm => {
+        const es = byN(SUS, nm).elems;
+        if (!es.length) return false;
+        const cell = new Map();
+        const kx = v => (+v.toFixed(4)).toFixed(4);      // 先轉回數字,−0 才不會自成一格
+        es.forEach(e3 => {
+          const k = kx(Math.min(e3.a.x, e3.b.x)) + "|" + kx(Math.max(e3.a.x, e3.b.x));
+          const c = cell.get(k) || { fwd:0, bwd:0 };
+          (e3.a.x < e3.b.x ? c.fwd++ : c.bwd++); cell.set(k, c);
+        });
+        return [...cell.values()].every(c => c.fwd === 1 && c.bwd === 1);
+      };
+      ["桁架斜撐左","桁架斜撐右","下弦斜撐"].forEach(nm =>
+        yes("N2",`吊橋:${nm}是 X 型(每格兩根、方向相反)`, isX(nm),
+          byN(SUS, nm).elems.length + " 根", "每格一對"));
+      // 橫隔斜撐:同一個 x 上「上弦 ↔ 對側下弦」,兩根在斷面內交叉
+      yes("N2","吊橋:橫隔斜撐在同一個斷面內交叉(兩端同 x、左右互換)",
+        byN(SUS, "橫隔斜撐左上").elems.every(e3 =>
+          Math.abs(e3.a.x - e3.b.x) < 1e-9 && e3.a.y*e3.b.y < 0 && e3.a.z > e3.b.z) &&
+        byN(SUS, "橫隔斜撐右上").elems.every(e3 =>
+          Math.abs(e3.a.x - e3.b.x) < 1e-9 && e3.a.y*e3.b.y < 0 && e3.a.z > e3.b.z),
+        "斷面內交叉", "斷面內交叉");
+      // 橫梁要跟吊索同節奏:每一根吊索的下端節點,都要正好有一根橫梁接在上面
+      {
+        const xbE = byN(SUS, "橫梁").elems, hgE = byN(SUS, "吊索左").elems;
+        const xbX = new Set(xbE.map(e3 => e3.a.x.toFixed(4)));
+        yes("N2","吊橋:每一根吊索的落點都有一根橫梁接著",
+          hgE.every(e3 => xbX.has(e3.b.x.toFixed(4))),
+          `橫梁 ${xbE.length} 根 / 吊索 ${hgE.length} 根`, "每根吊索都對得到");
+      }
       yes("N2","吊橋:下弦橫梁是水平橫向的",
         byN(SUS, "下弦橫梁").elems.every(e3 =>
           Math.abs(e3.a.z - e3.b.z) < 1e-9 && Math.abs(e3.a.x - e3.b.x) < 1e-9), "水平", "水平");
