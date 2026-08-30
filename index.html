@@ -399,7 +399,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.32</span>
+  <span class="stage">群組架構 v3.33</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -2979,7 +2979,8 @@ function demoHighway(){
 }
 
 /* ---- 三、螺旋人行上升步道 ----
-   模擬繞塔身上升的步道:半徑 3 m、坡度 8%、繞 6⅙ 圈,**進出口在平面上夾 120°**。
+   模擬繞塔身上升的步道:半徑 5.5 m、坡度 8%、繞 6⅙ 圈(層間淨高 2.77 m),
+   **進出口在平面上夾 120°**。
    踏面兩側偏置成內外緣,內外各一道護欄。支撐分兩路:
    **內緣**由柱頂拉吊索吊住(拉在內側才不會穿過人行空間),
    **外緣**用外柱撐 —— 外柱是**從地面一路連到最高一圈的連續柱**,坡道每繞到那個角度就接一次。 */
@@ -2987,7 +2988,11 @@ function demoSpiral(){
   const s = DEF_STATE();
   s.view = DEMO_VIEW();
   const G = DEMO_G, D = DEMO_D;
-  const R = 3, W = 1.1, SLOPE = 0.08;
+  /* 半徑由**層間淨高**反推,不是隨便給的:螺距 = 坡度 × 2πR,坡度一定(8%)時
+     半徑就是唯一的旋鈕。要層間至少 2.5 m 淨高(1.5 m 走起來很壓迫),
+     R = 3 只有 1.51 m —— 至少要 R ≈ 4.97;取 **5.5 m** 讓螺距到 2.77 m,
+     扣掉踏面結構(中心線模型沒畫厚度)還有 2.5 m 以上的實際淨高。          */
+  const R = 5.5, W = 1.1, SLOPE = 0.08;
   /* 進出口的夾角:俯視時兩條直線段要**像斗笠一樣把圓夾在中間**(不是交叉成 X)。
      兩段都與圓相切,切線交於一點 P,四邊形 OAPB 在 A、B 是直角
      → ∠APB = 180° − ∠AOB。要 ∠APB = 120°,兩個切點的圓心角就是 60°。
@@ -2997,8 +3002,8 @@ function demoSpiral(){
        轉 300°(mod 360):兩段都**穿過 P** 再往外跑 → 平面上交叉成 X。
      所以圈數的小數部分必須是 **⅙**(轉 60°),不是 ⅚。取 6⅙ 圈滿足「至少 6 圈」。 */
   const TURNS = 37/6;                  // 6⅙ 圈(要求至少 6 圈)
-  const PITCH = SLOPE*2*Math.PI*R;     // 螺距 = 坡度 × 一圈的周長 ≈ 1.508 m
-  const ZTOP = PITCH*TURNS;            // 總爬升 ≈ 9.30 m
+  const PITCH = SLOPE*2*Math.PI*R;     // 螺距 = 坡度 × 一圈的周長 ≈ 2.765 m = 層間淨高
+  const ZTOP = PITCH*TURNS;            // 總爬升 ≈ 17.05 m
   const SWEEP = 360*TURNS, EXIT_AZ = norm360(180 + SWEEP);   // = 240°
   const MAST_Z = ZTOP + 2;             // 中央柱要高過最高一圈,吊索才拉得住
   const NT = 36;                       // 每圈的節點數(10° 一個)
@@ -3009,12 +3014,13 @@ function demoSpiral(){
      **三種柱段都用同一組角度**,疊起來才是一根從地面連到頂的柱子 ——
      柱子不可能架在兩圈中間的空中。
 
-     半徑 3 m 時外緣半徑 4.1 m **大於** R,引道那條切線(x = R)因此會切進外緣圓:
-     外緣上 φ ∈ (297.6°, 360°) 這一段的平面位置,正落在引道路面的 2.2 m 寬帶裡。
-     這個禁區有 62.4° 寬,比舊版 60° 的柱距還寬 —— 也就是**半徑縮到 3 m 之後,
-     每 60° 一根一定會有一根插在引道上**,所以柱距改成 90°(CS = 9 個節點)。
-     相位取 C0 = H0+2 → 柱子在 φ = 20°/110°/200°/290°:離引道路面最近 1.6 m、
-     離出口路面 2.6 m,都閃得開。
+     外緣半徑(R + W)一定**大於** R,引道那條切線(x = R)因此會切進外緣圓:
+     外緣上 φ ∈ (311.8°, 360°) 這一段的平面位置,正落在引道路面的 2.2 m 寬帶裡。
+     R = 5.5 時禁區是 48.2° 寬(R = 3 時是 62.4°),看起來 60° 柱距塞得下,
+     其實不行 —— 60° 一根時柱子的角度**固定**落在 {10, 70, …, 310},
+     310° 那根離引道路面只有 0.16 m,擦邊。所以柱距維持 90°(CS = 9 個節點)。
+     相位取 C0 = H0+2 → 柱子在 φ = 20°/110°/200°/290°:離引道路面最近 2.4 m、
+     出口那一圈的高程根本碰不到出口路面,都閃得開。
      C0 = H0+2 仍在接縫節點之後,方位角不受直線段影響,柱子照樣鉛直。            */
   const CS = 9, C0 = H0 + 2, C1 = C0 + NT - CS;        // 第一圈的最後一個柱位
 
@@ -3044,10 +3050,11 @@ function demoSpiral(){
   const psI = post("內側欄杆立柱", inn.id, rlI.id), psO = post("外側欄杆立柱", out.id, rlO.id);
 
   /* 外柱下段:第一圈的外緣落到地面 Z = 0。
-     8% 坡度下第一圈爬得很慢,前兩根(φ = 20°、110°)只離地 8 cm 與 46 cm,
-     等於直接坐在地上 —— 生出來只會是兩個超短元素,所以從第三根(φ = 200°)才開始。 */
+     第一根(φ = 20°)略過 —— 那裡坡道才離地 15 cm,等於直接坐在地上,
+     硬生一根 15 cm 的柱子只會在模型裡留下一個超短元素。
+     (螺距回到 2.77 m 之後,第二根 φ = 110° 已經離地 0.85 m,不必再跳過。)      */
   const colGnd = { ...defaultGroup("LINKZ"), name:"外柱(落地段)", ref:out.id, targetZ:0,
-                   from:C0 + 2*CS, to:C1, every:CS, etype:"BEAM", mat:3, sect:5 };
+                   from:C0 + CS, to:C1, every:CS, etype:"BEAM", mat:3, sect:5 };
   /* 外柱上段:外緣的第 j 個節點接第 j + 一圈 個 —— 同角度、剛好差一個螺距,鉛直。
      範圍一路吃到「還接得到下一圈」為止,所以同一個角度會一段接一段疊上去,
      和落地段接起來就是一根從地面連到最高一圈的連續柱。                        */
@@ -3070,7 +3077,7 @@ function demoSpiral(){
 const DEMOS = [
   ["susp",  "人行吊橋",       "跨徑 80 m,橋面下桁架 + 抗風索系統", demoSuspension],
   ["road",  "公路橋梁",       "緩和曲線 + 豎曲線 + 雙柱橋墩,全長 458 m", demoHighway],
-  ["ramp",  "螺旋人行步道",   "半徑 3 m、坡度 8%、6⅙ 圈,進出口夾 120°", demoSpiral]
+  ["ramp",  "螺旋人行步道",   "半徑 5.5 m、坡度 8%、6⅙ 圈,進出口夾 120°", demoSpiral]
 ];
 const demoState = () => demoSuspension();          // 舊入口(參數檔還原等)仍指向第一個
 
@@ -6784,7 +6791,7 @@ function runTests(){
       ch.segs[1].type === "SPIRAL" && ch.segs[3].type === "SPIRAL",
       `${ch.segs[1].type}/${ch.segs[3].type}`, "SPIRAL/SPIRAL");
     chk("N1","公路橋:縱斷面 1 個豎曲線", ch.prof.curves.length, 1, 0, "");
-    // 螺旋步道:半徑 3 m、坡度 8%、6⅙ 圈,爬升 = 圈數 × 螺距
+    // 螺旋步道:半徑 5.5 m、坡度 8%、6⅙ 圈,爬升 = 圈數 × 螺距
     const SPR = (() => { const st = demoSpiral(); normState(st);
       return buildModel(st, [], []); })();
     // 圈數 / 螺距 / 柱高都從模型自己讀,測試才不會被範例的參數調整弄假
@@ -6795,7 +6802,11 @@ function runTests(){
     chk("N1","螺旋步道:坡度 8%",
       num(hxq.pitch)/(2*Math.PI*num(hxq.R))*100, 8, 1e-9, "%");
     yes("N1","螺旋步道:至少 6 圈", num(hxq.turns) >= 6, num(hxq.turns).toFixed(3) + " 圈", "≥ 6 圈");
-    chk("N1","螺旋步道:半徑 3 m", num(hxq.R), 3, 1e-9, "m");
+    chk("N1","螺旋步道:半徑 5.5 m", num(hxq.R), 5.5, 1e-9, "m");
+    /* 層間淨高 = 螺距(中心線模型沒有踏面厚度)。1.5 m 走起來會壓迫,至少要 2.5 m。
+       坡度鎖 8% 時這條就是在管半徑:螺距 = 0.08 × 2πR ≥ 2.5 → R ≥ 4.97 m。   */
+    yes("N1","螺旋步道:層間淨高(螺距)≥ 2.5 m", num(hxq.pitch) >= 2.5,
+      num(hxq.pitch).toFixed(3) + " m", "≥ 2.5 m");
     const stay = SPR.groups.find(r => r.g.name === "吊索");
     const mastTop = Math.max(...SPR.groups.find(r => r.g.name === "中央柱").nodes.map(n => n.z));
     yes("N1","螺旋步道:斜索都從柱頂拉出來",
