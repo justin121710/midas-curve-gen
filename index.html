@@ -397,7 +397,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.29</span>
+  <span class="stage">群組架構 v3.30</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -2817,7 +2817,10 @@ const DEMO_VIEW = () => ({ az:135, el:CORNER_EL, zEx:1 });
 
 /* ---- 一、人行吊橋 ----
    跨徑 80 m、垂跨比 0.12 的懸索人行橋。主索走「錨碇 → 塔頂 → 懸鏈線 → 塔頂 → 錨碇」
-   三段一組;吊索由主索垂落到橋面邊樑,下端直接貼附既有節點,不另生節點。      */
+   三段一組;吊索由主索垂落到橋面邊樑,下端直接貼附既有節點,不另生節點。
+   橋面下掛一組**箱型桁架**(邊樑當上弦 + 下弦 + 豎桿 / 斜桿 + 下弦橫梁 / 斜撐);
+   兩側再各一條**抗風索**(兩端錨在岩壁、向內傾斜 45°、頂點朝橋面板),
+   由**抗風支索**把桁架下弦拉到抗風索上。                                        */
 function demoSuspension(){
   const s = DEF_STATE();
   s.view = DEMO_VIEW();
@@ -2836,6 +2839,27 @@ function demoSuspension(){
   const xb  = { ...defaultGroup("LINK2"), name:"橫梁", a:edL.id, b:edR.id,
                 pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:1, sect:3 };
 
+  /* ---- 橋面下的桁架 ----
+     兩側邊樑就是上弦,各自往下偏置 TD 得下弦;每 2 個節點(= 5 m)一根豎桿,
+     再用「錯開 2 個節點」拉斜桿 —— 一格一根,就是標準的 N 型腹桿。
+     兩條下弦之間再加橫梁與斜撐,和橋面上的橫梁合起來是一個封閉的箱型桁架,
+     這也才有東西可以承抗風支索拉進來的橫向力。                                 */
+  const TD = 1.6;                                      // 桁架深度(下弦在橋面下 1.6 m)
+  const bot = (nm, ref) => ({ ...defaultGroup("OFFSET"), name:nm, ref, d:0, h:-TD,
+                              etype:"BEAM", mat:1, sect:13 });
+  const blL = bot("下弦左", edL.id), blR = bot("下弦右", edR.id);
+  const web = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
+    pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:3, sect:14 });
+  const wbL = web("桁架豎桿左", edL.id, blL.id), wbR = web("桁架豎桿右", edR.id, blR.id);
+  // 斜桿錯開 2 個節點,所以起算節點只能走到「倒數第 3 個」(33 − 2),再往後就沒有對象了
+  const dia = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b,
+    pair:"skew", skew:2, from:1, to:31, every:2, etype:"TRUSS", mat:3, sect:15 });
+  const dgL = dia("桁架斜桿左", edL.id, blL.id), dgR = dia("桁架斜桿右", edR.id, blR.id);
+  const xbB = { ...defaultGroup("LINK2"), name:"下弦橫梁", a:blL.id, b:blR.id,
+                pair:"same", from:1, to:0, every:2, etype:"BEAM", mat:3, sect:16 };
+  const brB = { ...defaultGroup("LINK2"), name:"下弦斜撐", a:blL.id, b:blR.id,
+                pair:"skew", skew:2, from:1, to:31, every:2, etype:"TRUSS", mat:3, sect:17 };
+
   // 主索(每側三段:引索 → 懸鏈線 → 引索),接縫節點共用
   const cable = (nm, y, sect) => G(nm, [
     D("LINE", { x1:-15, y1:y, z1:ZA, endMode:"point", x2:0, y2:y, z2:ZT, split:SPL({ count:3 }) }),
@@ -2850,6 +2874,30 @@ function demoSuspension(){
     from:5, to:35, every:1, bottom:"snap", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
   const hL = hang("吊索左", cL.id), hR = hang("吊索右", cR.id);
 
+  /* ---- 抗風索 ----
+     兩端錨在橋兩側的岩壁上(x = 10 / 70、y = ±WY、z = WZ),跨 60 m,比主索短一截。
+     索身是一條**拋物線,但垂度給負值** → 往弦線的另一邊鼓起來(頂點在上,不是下垂);
+     整組再繞**橋軸(X)**轉 ±45°,鼓起的方向就從正上方轉成「朝內上方 45°」。
+     旋轉中心取在兩端錨碇的連線上(cy/cz = 錨碇),所以**錨碇不動**,只有頂點轉向。
+     結果:錨碇在外下方、頂點在內上方(朝橋面板),
+     縱視圖看左側是左下右上、右側是右下左上,兩側鏡像。                          */
+  const WX1 = 10, WX2 = 70, WY = 8, WZ = 2, WF = 0.10, WN = 24;
+  const wind = (nm, sgn) => G(nm, [
+    D("SAG", { x1:WX1, y1:sgn*WY, z1:WZ, x2:WX2, y2:sgn*WY, z2:WZ,
+               curve:"parabola", fMode:"ratio", f:-WF, split:SPL({ count:WN }) })
+  ], { etype:"CABLE", mat:2, sect:18,
+       xf:{ ...XF_DEF(), rot:sgn*45, axis:"X", cmode:"custom", cx:0, cy:sgn*WY, cz:WZ } });
+  const wcL = wind("抗風索左", 1), wcR = wind("抗風索右", -1);
+
+  /* 抗風支索:桁架下弦 → 抗風索,每 5 m 一根,而且兩端要落在**同一個 x** 上
+     (純橫向的支索才擋得住側向風)。下弦節點間距 2.5 m、抗風索也切成 2.5 m,
+     但兩者起點差 10 m —— 所以用「自訂連接方式」各自指定起算節點與步進:
+     下弦第 7 個(x = 15)配抗風索第 3 個(x = 15),兩邊都每 2 個節點前進。
+     重複 11 次停在 x = 65,兩端的錨碇節點留空不接。                             */
+  const wstay = (nm, a, b) => ({ ...defaultGroup("LINK2"), name:nm, a, b, pair:"free",
+    aFrom:7, aEvery:2, bFrom:3, bEvery:2, count:11, etype:"CABLE", mat:2, sect:19 });
+  const wsL = wstay("抗風支索左", blL.id, wcL.id), wsR = wstay("抗風支索右", blR.id, wcR.id);
+
   // 塔架:兩根立柱 + 頂橫梁,一組三段
   const tower = (nm, x) => G(nm, [
     D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:6 }) }),
@@ -2857,7 +2905,8 @@ function demoSuspension(){
     D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) })
   ], { etype:"BEAM", mat:3, sect:4 });
 
-  s.groups = [deck, edL, edR, xb, cL, cR, hL, hR, tower("塔架西", 0), tower("塔架東", L)];
+  s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB,
+              cL, cR, hL, hR, wcL, wcR, wsL, wsR, tower("塔架西", 0), tower("塔架東", L)];
   return s;
 }
 
@@ -2915,7 +2964,7 @@ function demoHighway(){
 }
 
 /* ---- 三、螺旋人行上升步道 ----
-   模擬繞塔身快速上升的步道:半徑 3 m、繞 6⅚ 圈爬升 18 m,**進出口在平面上夾 120°**。
+   模擬繞塔身上升的步道:半徑 3 m、坡度 8%、繞 6⅙ 圈,**進出口在平面上夾 120°**。
    踏面兩側偏置成內外緣,內外各一道護欄。支撐分兩路:
    **內緣**由柱頂拉吊索吊住(拉在內側才不會穿過人行空間),
    **外緣**用外柱撐 —— 外柱是**從地面一路連到最高一圈的連續柱**,坡道每繞到那個角度就接一次。 */
@@ -2923,21 +2972,24 @@ function demoSpiral(){
   const s = DEF_STATE();
   s.view = DEMO_VIEW();
   const G = DEMO_G, D = DEMO_D;
-  const R = 3, W = 1.1, ZTOP = 18;
-  /* 圈數決定進出口的夾角。夾角量的是**兩支都指向螺旋的射線**:
-     引道口 → 螺旋起點、出口 → 螺旋終點。
-     引道的行進方位固定 180°(起點切線),所以第一支射線 = 180°;
-     出口段的行進方位 = 180° + 轉過的總角度,第二支射線是它掉頭 = 總角度 (mod 360)。
-     取 6⅚ 圈 → 轉 2460° ≡ 300°,180° 與 300° 剛好夾 120°。
-     ⅙ 圈的餘數(60°)也可以,夾角一樣是 120°,但那樣螺距更陡,所以取 ⅚。      */
-  const TURNS = 41/6;                  // 6⅚ 圈(要求至少 6 圈)
-  const PITCH = ZTOP/TURNS;            // 螺距 ≈ 2.634 m —— 圈數爬滿剛好 18 m
-  const SWEEP = 360*TURNS, EXIT_AZ = norm360(180 + SWEEP);   // = 120°
+  const R = 3, W = 1.1, SLOPE = 0.08;
+  /* 進出口的夾角:俯視時兩條直線段要**像斗笠一樣把圓夾在中間**(不是交叉成 X)。
+     兩段都與圓相切,切線交於一點 P,四邊形 OAPB 在 A、B 是直角
+     → ∠APB = 180° − ∠AOB。要 ∠APB = 120°,兩個切點的圓心角就是 60°。
+
+     光有 60° 還不夠 —— 走的方向決定 P 落在哪一邊:
+       轉 60°(mod 360):引道與出口從切點往**外**發散,P 在圓的另一側 → 斗笠。
+       轉 300°(mod 360):兩段都**穿過 P** 再往外跑 → 平面上交叉成 X。
+     所以圈數的小數部分必須是 **⅙**(轉 60°),不是 ⅚。取 6⅙ 圈滿足「至少 6 圈」。 */
+  const TURNS = 37/6;                  // 6⅙ 圈(要求至少 6 圈)
+  const PITCH = SLOPE*2*Math.PI*R;     // 螺距 = 坡度 × 一圈的周長 ≈ 1.508 m
+  const ZTOP = PITCH*TURNS;            // 總爬升 ≈ 9.30 m
+  const SWEEP = 360*TURNS, EXIT_AZ = norm360(180 + SWEEP);   // = 240°
   const MAST_Z = ZTOP + 2;             // 中央柱要高過最高一圈,吊索才拉得住
   const NT = 36;                       // 每圈的節點數(10° 一個)
-  const NH = NT*TURNS;                 // 螺旋的分割數 = 246
+  const NH = NT*TURNS;                 // 螺旋的分割數 = 222
   const H0 = 7;                        // 螺旋第一個節點在整串裡的序號(1 起算)
-  const HE = H0 + NH;                  // 螺旋最後一個節點 = 253
+  const HE = H0 + NH;                  // 螺旋最後一個節點 = 229
   /* 外柱的角度位置:第一圈的第 C0、C0+CS、… 個節點,每 CS 個節點(= 90°)一根。
      **三種柱段都用同一組角度**,疊起來才是一根從地面連到頂的柱子 ——
      柱子不可能架在兩圈中間的空中。
@@ -2946,8 +2998,8 @@ function demoSpiral(){
      外緣上 φ ∈ (297.6°, 360°) 這一段的平面位置,正落在引道路面的 2.2 m 寬帶裡。
      這個禁區有 62.4° 寬,比舊版 60° 的柱距還寬 —— 也就是**半徑縮到 3 m 之後,
      每 60° 一根一定會有一根插在引道上**,所以柱距改成 90°(CS = 9 個節點)。
-     相位取 C0 = H0+2(φ = 20°):落地柱在 110°/200°/290°,離引道路面最近 1.6 m;
-     頂圈那根層間柱落在 290°(= 出口那一圈),離出口路面 1.26 m,都閃得開。
+     相位取 C0 = H0+2 → 柱子在 φ = 20°/110°/200°/290°:離引道路面最近 1.6 m、
+     離出口路面 2.6 m,都閃得開。
      C0 = H0+2 仍在接縫節點之後,方位角不受直線段影響,柱子照樣鉛直。            */
   const CS = 9, C0 = H0 + 2, C1 = C0 + NT - CS;        // 第一圈的最後一個柱位
 
@@ -2977,10 +3029,10 @@ function demoSpiral(){
   const psI = post("內側欄杆立柱", inn.id, rlI.id), psO = post("外側欄杆立柱", out.id, rlO.id);
 
   /* 外柱下段:第一圈的外緣落到地面 Z = 0。
-     第一根(相位 20°)略過 —— 那裡坡道才離地 15 cm,等於直接坐在地上,
-     硬生一根 15 cm 的柱子只會在模型裡留下一個超短元素。                        */
+     8% 坡度下第一圈爬得很慢,前兩根(φ = 20°、110°)只離地 8 cm 與 46 cm,
+     等於直接坐在地上 —— 生出來只會是兩個超短元素,所以從第三根(φ = 200°)才開始。 */
   const colGnd = { ...defaultGroup("LINKZ"), name:"外柱(落地段)", ref:out.id, targetZ:0,
-                   from:C0 + CS, to:C1, every:CS, etype:"BEAM", mat:3, sect:5 };
+                   from:C0 + 2*CS, to:C1, every:CS, etype:"BEAM", mat:3, sect:5 };
   /* 外柱上段:外緣的第 j 個節點接第 j + 一圈 個 —— 同角度、剛好差一個螺距,鉛直。
      範圍一路吃到「還接得到下一圈」為止,所以同一個角度會一段接一段疊上去,
      和落地段接起來就是一根從地面連到最高一圈的連續柱。                        */
@@ -3001,9 +3053,9 @@ function demoSpiral(){
 }
 
 const DEMOS = [
-  ["susp",  "人行吊橋",       "主索 + 吊索 + 塔架,跨徑 80 m", demoSuspension],
+  ["susp",  "人行吊橋",       "跨徑 80 m,橋面下桁架 + 抗風索系統", demoSuspension],
   ["road",  "公路橋梁",       "緩和曲線 + 豎曲線 + 雙柱橋墩,全長 458 m", demoHighway],
-  ["ramp",  "螺旋人行步道",   "半徑 3 m、6⅚ 圈爬 18 m,進出口夾 120°", demoSpiral]
+  ["ramp",  "螺旋人行步道",   "半徑 3 m、坡度 8%、6⅙ 圈,進出口夾 120°", demoSpiral]
 ];
 const demoState = () => demoSuspension();          // 舊入口(參數檔還原等)仍指向第一個
 
@@ -6621,15 +6673,16 @@ function runTests(){
       ch.segs[1].type === "SPIRAL" && ch.segs[3].type === "SPIRAL",
       `${ch.segs[1].type}/${ch.segs[3].type}`, "SPIRAL/SPIRAL");
     chk("N1","公路橋:縱斷面 1 個豎曲線", ch.prof.curves.length, 1, 0, "");
-    // 螺旋步道:半徑 3 m、6⅚ 圈,爬升 = 圈數 × 螺距 = 18 m
+    // 螺旋步道:半徑 3 m、坡度 8%、6⅙ 圈,爬升 = 圈數 × 螺距
     const SPR = (() => { const st = demoSpiral(); normState(st);
       return buildModel(st, [], []); })();
     // 圈數 / 螺距 / 柱高都從模型自己讀,測試才不會被範例的參數調整弄假
     const rp = SPR.groups[0], hxq = rp.g.pieces[1];
     chk("N1","螺旋步道:總爬升 = 圈數 × 螺距",
       rp.nodes[rp.nodes.length-1].z, num(hxq.turns)*num(hxq.pitch), 1e-6, "m");
-    // 規格:半徑約 3 m、至少 6 圈、總爬升 18 m
-    chk("N1","螺旋步道:總爬升 18 m", rp.nodes[rp.nodes.length-1].z, 18, 1e-6, "m");
+    // 規格:半徑約 3 m、至少 6 圈、坡度 8%
+    chk("N1","螺旋步道:坡度 8%",
+      num(hxq.pitch)/(2*Math.PI*num(hxq.R))*100, 8, 1e-9, "%");
     yes("N1","螺旋步道:至少 6 圈", num(hxq.turns) >= 6, num(hxq.turns).toFixed(3) + " 圈", "≥ 6 圈");
     chk("N1","螺旋步道:半徑 3 m", num(hxq.R), 3, 1e-9, "m");
     const stay = SPR.groups.find(r => r.g.name === "吊索");
@@ -6658,6 +6711,58 @@ function runTests(){
       byN(SUS, "主索左").nodes[0].y, byN(SUS, "邊樑左").nodes[0].y);
     yes("N2","吊橋:吊索左的下端接在邊樑左上",
       byN(SUS, "吊索左").elems.every(e3 => e3.b.gid === byN(SUS, "邊樑左").g.id), "邊樑左", "邊樑左");
+    /* v3.30:橋面下的箱型桁架 + 抗風索系統 */
+    {
+      const edA = byN(SUS, "邊樑左"), blA = byN(SUS, "下弦左");
+      chk("N2","吊橋:下弦在邊樑下方 1.6 m", edA.nodes[0].z - blA.nodes[0].z, 1.6, 1e-9, "m");
+      yes("N2","吊橋:下弦就在邊樑正下方(平面位置一樣)",
+        blA.nodes.every((n, i) => Math.hypot(n.x - edA.nodes[i].x, n.y - edA.nodes[i].y) < 1e-9),
+        "正下方", "正下方");
+      yes("N2","吊橋:桁架豎桿都是鉛直的",
+        byN(SUS, "桁架豎桿左").elems.every(e3 =>
+          Math.hypot(e3.a.x - e3.b.x, e3.a.y - e3.b.y) < 1e-9), "鉛直", "鉛直");
+      yes("N2","吊橋:桁架斜桿一端在上弦、一端在下弦(而且是斜的)",
+        byN(SUS, "桁架斜桿左").elems.every(e3 =>
+          e3.a.gid === edA.g.id && e3.b.gid === blA.g.id && Math.abs(e3.a.x - e3.b.x) > 1e-9),
+        "上弦→下弦", "上弦→下弦");
+      yes("N2","吊橋:下弦橫梁是水平橫向的",
+        byN(SUS, "下弦橫梁").elems.every(e3 =>
+          Math.abs(e3.a.z - e3.b.z) < 1e-9 && Math.abs(e3.a.x - e3.b.x) < 1e-9), "水平", "水平");
+
+      /* 抗風索:兩端錨在岩壁(同 y 同 z),中間往「內上方 45°」鼓出來,頂點朝橋面板。
+         鼓起方向要靠**頂點相對錨碇連線**的偏移量測,Δ 向內 = Δ 向上 才是 45°。   */
+      const wcA = byN(SUS, "抗風索左"), wn = wcA.nodes;
+      const an0 = wn[0], an1 = wn[wn.length-1];
+      const vtx = wn.reduce((m, n) => n.z > m.z ? n : m);          // 轉完之後最高點 = 頂點
+      const dDeck = n => Math.hypot(n.y - 1.2, n.z - 10);          // 到橋面邊樑的橫斷面距離
+      yes("N3","抗風索:兩端錨碇在岩壁上、同高同側",
+        Math.abs(an0.y - an1.y) < 1e-9 && Math.abs(an0.z - an1.z) < 1e-9,
+        `y ${an0.y}/${an1.y} z ${an0.z}/${an1.z}`, "同 y 同 z");
+      chk("N3","抗風索:頂點在跨中", vtx.x, 40, 1e-6, "m");
+      yes("N3","抗風索:頂點朝橋面板(全索最靠近橋面的就是頂點)",
+        wn.every(n => dDeck(n) >= dDeck(vtx) - 1e-9), dDeck(vtx).toFixed(2) + " m", "最小");
+      yes("N3","抗風索:頂點比錨碇更內側、更高",
+        vtx.y < an0.y - 1e-6 && vtx.z > an0.z + 1e-6,
+        `y ${vtx.y.toFixed(2)} < ${an0.y} · z ${vtx.z.toFixed(2)} > ${an0.z}`, "向內且向上");
+      chk("N3","抗風索:向內傾斜 45°(內移量 = 上升量)",
+        (an0.y - vtx.y) - (vtx.z - an0.z), 0, 1e-6, "m");
+      yes("N3","抗風索:比主索短(錨在岩壁,不是拉到錨碇塊)",
+        wcA.stat.len3d < byN(SUS, "主索左").stat.len3d,
+        wcA.stat.len3d.toFixed(1) + " m", "< " + byN(SUS, "主索左").stat.len3d.toFixed(1) + " m");
+      const wcB = byN(SUS, "抗風索右");
+      yes("N3","抗風索:左右鏡像(y 反號、z 一樣)",
+        wcB.nodes.every((n, i) => Math.abs(n.y + wn[i].y) < 1e-9 && Math.abs(n.z - wn[i].z) < 1e-9),
+        "鏡像", "鏡像");
+      // 抗風支索:桁架下弦 → 抗風索,而且要是純橫向的(兩端同一個 x)
+      const wsA = byN(SUS, "抗風支索左");
+      yes("N3","抗風支索:一端接桁架下弦、一端接抗風索",
+        wsA.elems.length > 0 && wsA.elems.every(e3 => e3.a.gid === blA.g.id && e3.b.gid === wcA.g.id),
+        wsA.elems.length + " 根", "下弦→抗風索");
+      yes("N3","抗風支索:純橫向(兩端在同一個 x)",
+        wsA.elems.every(e3 => Math.abs(e3.a.x - e3.b.x) < 1e-9), "同 x", "同 x");
+      yes("N3","抗風支索:自己不產生節點(兩端都接既有節點)",
+        wsA.nodes.length === 0, wsA.nodes.length, 0);
+    }
     // 公路橋:護欄與雙柱橋墩
     ["左","右"].forEach(sd => {
       const ed = byN(HW, sd + "緣"), rl = byN(HW, sd + "護欄扶手");
@@ -6689,6 +6794,18 @@ function runTests(){
        所以第二支要從最後一個節點反向量回螺旋終點,不是量出口的行進方位。       */
     chk("N3","螺旋:進出口在平面上夾 120°",
       Math.abs(norm180(azOf(rn[rn.length-1], rn[s1]) - azOf(rn[s0-1], rn[s0]))), 120, 0.5, "°");
+    /* v3.30:光有 120° 還不夠 —— 兩條直線段必須**像斗笠一樣把圓夾在中間**。
+       轉 60° 與轉 300° 的切點位置完全一樣、夾角量起來也都是 120°,
+       差別只在後者兩段會**穿過切線交點**、在平面上交叉成 X。所以直接測「不相交」。 */
+    {
+      const seg = (A, B, C, D) => {          // 兩線段是否真的相交(平面)
+        const cr = (o, a, b) => (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x);
+        const d1 = cr(A,B,C), d2 = cr(A,B,D), d3 = cr(C,D,A), d4 = cr(C,D,B);
+        return ((d1>0) !== (d2>0)) && ((d3>0) !== (d4>0));
+      };
+      yes("N3","螺旋:引道與出口在平面上不交叉(斗笠,不是 X)",
+        !seg(rn[0], rn[s0], rn[s1], rn[rn.length-1]), "不交叉", "不交叉");
+    }
     const byS = nm => SPR.groups.find(r => r.g.name === nm);
     const innR = byS("內緣"), outR = byS("外緣"), stayR = byS("吊索");
     // 吊索拉內緣:拉外緣的話索會從柱頂橫穿整個踏面
