@@ -297,6 +297,8 @@
   .cvtools .tag input:focus{outline:1px solid var(--accent-soft); border-radius:2px}
   .cvtools button svg{flex:0 0 auto}
   .cvtools button.off{color:var(--ink-3)}
+  .cvtools > button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+  .cvtools > button.on:hover{color:#fff}
   .readout{position:absolute; left:6px; bottom:6px; background:rgba(255,255,255,.94);
     border:1px solid var(--line); border-radius:2px; padding:3px 7px; font-family:var(--mono);
     font-size:10.5px; color:var(--ink-2); pointer-events:none; white-space:pre}
@@ -397,7 +399,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.31</span>
+  <span class="stage">群組架構 v3.32</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -428,12 +430,13 @@
     <div id="msgs"></div>
     <div class="lbl" style="display:flex; align-items:center">3D 視圖
       <button type="button" class="ibtn" id="vhelp" title="操作說明">i</button>
-      <span id="vhelptext" hidden style="font-weight:400;color:var(--ink-3);letter-spacing:0;margin-left:7px">中鍵拖曳平移 · Ctrl+中鍵旋轉 · Shift+中鍵縮放 · 滾輪縮放 · 左鍵點選節點/元素</span></div>
+      <span id="vhelptext" hidden style="font-weight:400;color:var(--ink-3);letter-spacing:0;margin-left:7px">中鍵拖曳平移 · Ctrl+中鍵旋轉 · Shift+中鍵縮放 · 滾輪縮放 · 左鍵點選群組(工具列「選取」打開才點得到節點 / 元素)</span></div>
     <div class="cvwrap">
       <canvas id="cv"></canvas>
       <div class="cvtools">
         <button id="btn-fit">重新框選</button>
         <button id="btn-nodes" title="顯示 / 隱藏節點"></button>
+        <button id="btn-pick"></button>
         <span class="tag">方位角<input type="number" step="5" id="vaz" title="方位角(°):0–360 循環,超出自動繞回"></span>
         <span class="tag">仰角<input type="number" step="5" id="vel" title="仰角(°):90 = 俯視,0 = 立面;超出自動繞回"></span>
         <span class="tag zbox">Z ×<input type="number" step="any" id="zsc" title="Z 軸放大倍率"><button type="button" id="zauto" class="zfit" title="回到 Z 不放大(1:1)">1:1</button></span>
@@ -4153,7 +4156,7 @@ function pieceCard(g, pc, pi, info, r){
       ${fb === "z" ? `<div class="btns" style="margin-top:8px">
          <button class="btn" data-op="sagz" data-p="${pi}"${selNode ? "" : " disabled"}>${
            selNode ? `用選取節點 #${selNode.num} 的高程(${selNode.z.toFixed(3)} ${UL()})`
-                   : "先在 3D 視圖點一個節點,再按這裡帶入它的高程"}</button></div>` : ""}
+                   : "先在 3D 視圖點一個節點(工具列的「選取」要打開),再按這裡帶入它的高程"}</button></div>` : ""}
       <div class="hint">跨距取兩端點的<b>平面</b>距離。垂度基準決定 f 從哪裡往下量:
         <b>弦線</b>= 自兩端連線量垂距(傳統作法);<b>高側 / 低側端點</b>與<b>指定高程</b>
         = 自那個<b>水平面</b>往下量到<b>曲線最低點</b>。兩端不等高時這幾種差很多,
@@ -4288,7 +4291,9 @@ function nodeSec(g, r){
         —— 要移動它請改<b>來源群組</b>,或用整個群組的「平移與旋轉」。
         它仍然可以拿來當<b>手動元素</b>的端點。</div>`;
   } else {
-    body = `<div class="hint" style="margin:0">在 <b>3D 視圖</b>上用<b>左鍵</b>點任一節點即可編輯座標、刪除或平移旋轉;
+    body = `<div class="hint" style="margin:0">先打開 3D 視圖工具列上的<b>「選取」</b>
+      —— 它<b>預設是關的</b>,關著時在圖上點任何東西都只會切換到<b>畫出它的那個群組</b>。
+      打開之後用<b>左鍵</b>點任一節點即可編輯座標、刪除或平移旋轉;
       點<b>兩節點之間的線</b>則是選取整根元素。被擋住時用 <b>Ctrl+中鍵</b>轉個角度比較好點。</div>`;
   }
   if (nEdit || nDel)
@@ -4749,7 +4754,8 @@ function renderPane(){
     // 這一頁通常是看不到的(沒選群組時整個編輯區會收起來),留一份給極窄版面用
     el.innerHTML = `<div class="ptitle"><span class="nm">線形建模器</span></div>` +
       SEC("目前沒有選取任何群組", "", `<div class="hint keep" style="margin:0;font-size:12.5px;line-height:1.7">
-        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點節點 / 元素,就會切到那個群組。</div>`);
+        圖面上<b>每個群組都顯示自己的顏色</b>。點左邊的清單、或直接在圖上點任一根線,就會切到那個群組。
+        要點到<b>單一節點 / 元素</b>(改座標、看單根資訊)請先打開視圖工具列上的<b>「選取」</b>。</div>`);
     return;
   }
   const openKeys = FORCE_OPEN || captureOpen(el);
@@ -5521,6 +5527,7 @@ let showNodes = true, hover = null, hoverG = null, curW = null;
 // v3.31:游標掃到的元素 { gid, num, r, e } —— 節點沒掃到時才找元素(節點優先)
 let hoverEl = null;
 let hoverTree = null;                  // 左邊清單上滑到的群組 id(整組打亮用)
+let selPick = false;                   // 3D 視圖上點得到節點 / 元素嗎(預設只選群組)
 
 const allPts = () => MODEL.groups.flatMap(r => r.nodes);
 // 由「實際元素」串出折線 —— 這才是會匯出到 midas 的東西
@@ -6156,11 +6163,17 @@ cv.addEventListener("click", e => {
     PICK = null; recompute(true); focusHot(); return;   // 沒有其他兩點模式了
   }
   const hit = pickNodeAt(e.offsetX, e.offsetY, 14);
+  const pe0 = hit ? null : pickElemAt(e.offsetX, e.offsetY, 12);
+  if (!selPick){                        // 只選群組:節點 / 元素都只當成「誰畫的」
+    const own = hit ? hit.r : (pe0 ? pe0.r : null);
+    SEL = own ? own.g.id : null;        // 點空白處 = 什麼都不選
+    SELNODE = null; SELELEM = null;
+    recompute(true); focusHot(); return;
+  }
   if (hit){
     SEL = hit.r.g.id; SELNODE = { gid:hit.r.g.id, ri:hit.n.ri, num:hit.n.num }; SELELEM = null;
   } else {
-    const pe = pickElemAt(e.offsetX, e.offsetY, 12);
-    if (pe){ SEL = pe.r.g.id; SELELEM = { gid:pe.r.g.id, num:pe.e.num }; SELNODE = null; }
+    if (pe0){ SEL = pe0.r.g.id; SELELEM = { gid:pe0.r.g.id, num:pe0.e.num }; SELNODE = null; }
     // 點空白處 = 什麼都不選:清單不高亮,圖面上每個群組都回到自己的顏色
     else { SEL = null; SELNODE = null; SELELEM = null; }
   }
@@ -6202,6 +6215,28 @@ function syncNodesBtn(){
 }
 $("#btn-nodes").onclick = () => { showNodes = !showNodes; syncNodesBtn(); draw(); };
 syncNodesBtn();
+/* v3.32:圖上「點得到節點 / 元素」改成一顆開關,**預設關**。
+   平常在圖上點來點去多半只是要換看哪一個群組,舊版每一下都會順手選到節點或元素,
+   面板就跳去展開那一區,還得再按一次「取消選取」才看得到群組本身的欄位。
+   關著時:點到什麼都只選「畫出它的那個群組」;打開才選得到節點 / 元素。
+   圖上點起點 / 點兩個節點那種**點選模式(PICK)不受影響**,照樣點得到。 */
+const PICK_IC = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+  stroke-width="1.4" stroke-linejoin="round"><path d="M3.4 2.2 12.6 7.4 8.5 8.5 7.4 12.6Z"/></svg>`;
+function syncPickBtn(){
+  const b = $("#btn-pick"); if (!b) return;
+  b.innerHTML = `選取${PICK_IC}`;
+  b.classList.toggle("off", !selPick);
+  b.classList.toggle("on", selPick);
+  b.title = selPick
+    ? "圖上點得到節點 / 元素(會展開那一區的欄位)。關掉 = 只選群組"
+    : "圖上目前只選群組 —— 點到節點 / 元素也只會選到畫出它的那一組。打開才點得到節點 / 元素";
+}
+$("#btn-pick").onclick = () => {
+  selPick = !selPick;
+  if (!selPick){ SELNODE = null; SELELEM = null; }     // 關掉就順手把選取收乾淨
+  syncPickBtn(); recompute(true);
+};
+syncPickBtn();
 /* 方位角 / 仰角:打字時就照循環規則收斂到合法範圍,離開欄位再把收斂後的值寫回去,
    輸入框裡才不會留著 400° 這種畫面上根本不存在的角度。 */
 $("#vaz").addEventListener("input", e => {
