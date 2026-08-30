@@ -397,7 +397,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.28</span>
+  <span class="stage">群組架構 v3.29</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -2915,7 +2915,7 @@ function demoHighway(){
 }
 
 /* ---- 三、螺旋人行上升步道 ----
-   模擬繞山壁快速上升的步道:繞中央柱 2⅓ 圈、每圈爬升 5 m,**進出口在平面上夾 120°**。
+   模擬繞塔身快速上升的步道:半徑 3 m、繞 6⅚ 圈爬升 18 m,**進出口在平面上夾 120°**。
    踏面兩側偏置成內外緣,內外各一道護欄。支撐分兩路:
    **內緣**由柱頂拉吊索吊住(拉在內側才不會穿過人行空間),
    **外緣**用外柱撐 —— 外柱是**從地面一路連到最高一圈的連續柱**,坡道每繞到那個角度就接一次。 */
@@ -2923,35 +2923,42 @@ function demoSpiral(){
   const s = DEF_STATE();
   s.view = DEMO_VIEW();
   const G = DEMO_G, D = DEMO_D;
-  const R = 9, W = 1.1, PITCH = 5, ZTOP = 15;
-  /* 圈數決定進出口的夾角:轉過的總角度 = 360 × 圈數,
-     入口段的方位固定是 180°(起點切線),出口段就是 180° + 總角度。
-     取 2⅓ 圈 → 轉 840° ≡ 120°(mod 360),兩段剛好夾 120°。          */
-  const TURNS = 7/3, SWEEP = 360*TURNS, EXIT_AZ = norm360(180 + SWEEP);   // = 300°
-  const NT = 36;                       // 每圈的節點數
-  const NH = NT*TURNS;                 // 螺旋的分割數 = 84
+  const R = 3, W = 1.1, ZTOP = 18;
+  /* 圈數決定進出口的夾角。夾角量的是**兩支都指向螺旋的射線**:
+     引道口 → 螺旋起點、出口 → 螺旋終點。
+     引道的行進方位固定 180°(起點切線),所以第一支射線 = 180°;
+     出口段的行進方位 = 180° + 轉過的總角度,第二支射線是它掉頭 = 總角度 (mod 360)。
+     取 6⅚ 圈 → 轉 2460° ≡ 300°,180° 與 300° 剛好夾 120°。
+     ⅙ 圈的餘數(60°)也可以,夾角一樣是 120°,但那樣螺距更陡,所以取 ⅚。      */
+  const TURNS = 41/6;                  // 6⅚ 圈(要求至少 6 圈)
+  const PITCH = ZTOP/TURNS;            // 螺距 ≈ 2.634 m —— 圈數爬滿剛好 18 m
+  const SWEEP = 360*TURNS, EXIT_AZ = norm360(180 + SWEEP);   // = 120°
+  const MAST_Z = ZTOP + 2;             // 中央柱要高過最高一圈,吊索才拉得住
+  const NT = 36;                       // 每圈的節點數(10° 一個)
+  const NH = NT*TURNS;                 // 螺旋的分割數 = 246
   const H0 = 7;                        // 螺旋第一個節點在整串裡的序號(1 起算)
-  const HE = H0 + NH;                  // 螺旋最後一個節點 = 91
-  /* 外柱的角度位置:第一圈的第 C0、C0+CS、… 個節點,每 CS 個節點(= 60°)一根。
+  const HE = H0 + NH;                  // 螺旋最後一個節點 = 253
+  /* 外柱的角度位置:第一圈的第 C0、C0+CS、… 個節點,每 CS 個節點(= 90°)一根。
      **三種柱段都用同一組角度**,疊起來才是一根從地面連到頂的柱子 ——
      柱子不可能架在兩圈中間的空中。
 
-     C0 決定整圈柱子的**旋轉相位**,不能亂挑:引道是沿 x = R 的一條直線帶
-     (x ∈ R±W、y ≥ 0),柱子站在外緣半徑上,相位沒轉好就會有一根**插進引道的路面**。
-     取 C0 = H0+1(相位 10°)時,六根柱子落在 10°/70°/130°/190°/250°/310°,
-     離引道最近的兩根(10° 與 310°)分別落在引道盡頭的另一側與 1.4 m 外,都不會撞到;
-     舊版的相位 30° 那組會讓 330° 那根正中引道中線 0.25 m —— 就是插在路面上。
-     C0 = H0+1 仍在接縫節點之後,方位角不受直線段影響,柱子照樣鉛直。            */
-  const CS = 6, C0 = H0 + 1, C1 = C0 + NT - CS;        // 第一圈的最後一個柱位
+     半徑 3 m 時外緣半徑 4.1 m **大於** R,引道那條切線(x = R)因此會切進外緣圓:
+     外緣上 φ ∈ (297.6°, 360°) 這一段的平面位置,正落在引道路面的 2.2 m 寬帶裡。
+     這個禁區有 62.4° 寬,比舊版 60° 的柱距還寬 —— 也就是**半徑縮到 3 m 之後,
+     每 60° 一根一定會有一根插在引道上**,所以柱距改成 90°(CS = 9 個節點)。
+     相位取 C0 = H0+2(φ = 20°):落地柱在 110°/200°/290°,離引道路面最近 1.6 m;
+     頂圈那根層間柱落在 290°(= 出口那一圈),離出口路面 1.26 m,都閃得開。
+     C0 = H0+2 仍在接縫節點之後,方位角不受直線段影響,柱子照樣鉛直。            */
+  const CS = 9, C0 = H0 + 2, C1 = C0 + NT - CS;        // 第一圈的最後一個柱位
 
   const ramp = G("坡道中心線", [
     // 引道:切線進入 —— 螺旋起點 (R, 0) 的切線朝南,所以引道從北邊直直開下來
-    D("LINE",  { x1:R, y1:24, z1:0, endMode:"point", x2:R, y2:0, z2:0,
+    D("LINE",  { x1:R, y1:10, z1:0, endMode:"point", x2:R, y2:0, z2:0,
                  split:SPL({ count:6 }) }),
     D("HELIX", { R, R2:"", az0:90, turns:TURNS, pitch:PITCH, dir:1,
                  split:SPL({ count:NH }) }),
     // 出口:切線離開,方位 = 180° + 轉過的總角度
-    D("LINE",  { endMode:"polar", len:20, az:EXIT_AZ, el:0, split:SPL({ count:6 }) })
+    D("LINE",  { endMode:"polar", len:10, az:EXIT_AZ, el:0, split:SPL({ count:6 }) })
   ], { etype:"BEAM", mat:1, sect:1 });
 
   // 螺旋是順時針(dir 1),所以「右正」的偏置指向圓心 —— 內緣是 +W、外緣是 −W
@@ -2970,8 +2977,8 @@ function demoSpiral(){
   const psI = post("內側欄杆立柱", inn.id, rlI.id), psO = post("外側欄杆立柱", out.id, rlO.id);
 
   /* 外柱下段:第一圈的外緣落到地面 Z = 0。
-     第一根(相位 10°)略過 —— 那裡坡道才離地 14 cm,等於直接坐在地上,
-     硬生一根 14 cm 的柱子只會在模型裡留下一個超短元素。                        */
+     第一根(相位 20°)略過 —— 那裡坡道才離地 15 cm,等於直接坐在地上,
+     硬生一根 15 cm 的柱子只會在模型裡留下一個超短元素。                        */
   const colGnd = { ...defaultGroup("LINKZ"), name:"外柱(落地段)", ref:out.id, targetZ:0,
                    from:C0 + CS, to:C1, every:CS, etype:"BEAM", mat:3, sect:5 };
   /* 外柱上段:外緣的第 j 個節點接第 j + 一圈 個 —— 同角度、剛好差一個螺距,鉛直。
@@ -2982,9 +2989,9 @@ function demoSpiral(){
                   etype:"BEAM", mat:3, sect:5 };
 
   const mast = G("中央柱", [D("LINE", { x1:0, y1:0, z1:0, endMode:"point",
-    x2:0, y2:0, z2:ZTOP, split:SPL({ count:8 }) })], { etype:"BEAM", mat:3, sect:4 });
+    x2:0, y2:0, z2:MAST_Z, split:SPL({ count:8 }) })], { etype:"BEAM", mat:3, sect:4 });
   /* 吊索拉在**內緣**:內側整個是空的,索從柱頂拉到內緣只會在端點碰到坡道,
-     不會像拉外緣那樣橫穿人行空間。 */
+     不會像拉外緣那樣橫穿人行空間。每 9 個節點(= 90°)一條。 */
   const stay = { ...defaultGroup("FAN"), name:"吊索", srcMode:"gnode", srcG:mast.id, srcI:9,
                  ref:inn.id, from:H0 + 6, to:HE - 6, every:9, div:1,
                  etype:"CABLE", mat:2, sect:12 };
@@ -2996,7 +3003,7 @@ function demoSpiral(){
 const DEMOS = [
   ["susp",  "人行吊橋",       "主索 + 吊索 + 塔架,跨徑 80 m", demoSuspension],
   ["road",  "公路橋梁",       "緩和曲線 + 豎曲線 + 雙柱橋墩,全長 458 m", demoHighway],
-  ["ramp",  "螺旋人行步道",   "繞山壁上升,2⅓ 圈、進出口夾 120°", demoSpiral]
+  ["ramp",  "螺旋人行步道",   "半徑 3 m、6⅚ 圈爬 18 m,進出口夾 120°", demoSpiral]
 ];
 const demoState = () => demoSuspension();          // 舊入口(參數檔還原等)仍指向第一個
 
@@ -6614,13 +6621,17 @@ function runTests(){
       ch.segs[1].type === "SPIRAL" && ch.segs[3].type === "SPIRAL",
       `${ch.segs[1].type}/${ch.segs[3].type}`, "SPIRAL/SPIRAL");
     chk("N1","公路橋:縱斷面 1 個豎曲線", ch.prof.curves.length, 1, 0, "");
-    // 螺旋步道:繞 2.5 圈、爬升 = 圈數 × 螺距
+    // 螺旋步道:半徑 3 m、6⅚ 圈,爬升 = 圈數 × 螺距 = 18 m
     const SPR = (() => { const st = demoSpiral(); normState(st);
       return buildModel(st, [], []); })();
     // 圈數 / 螺距 / 柱高都從模型自己讀,測試才不會被範例的參數調整弄假
     const rp = SPR.groups[0], hxq = rp.g.pieces[1];
     chk("N1","螺旋步道:總爬升 = 圈數 × 螺距",
       rp.nodes[rp.nodes.length-1].z, num(hxq.turns)*num(hxq.pitch), 1e-6, "m");
+    // 規格:半徑約 3 m、至少 6 圈、總爬升 18 m
+    chk("N1","螺旋步道:總爬升 18 m", rp.nodes[rp.nodes.length-1].z, 18, 1e-6, "m");
+    yes("N1","螺旋步道:至少 6 圈", num(hxq.turns) >= 6, num(hxq.turns).toFixed(3) + " 圈", "≥ 6 圈");
+    chk("N1","螺旋步道:半徑 3 m", num(hxq.R), 3, 1e-9, "m");
     const stay = SPR.groups.find(r => r.g.name === "吊索");
     const mastTop = Math.max(...SPR.groups.find(r => r.g.name === "中央柱").nodes.map(n => n.z));
     yes("N1","螺旋步道:斜索都從柱頂拉出來",
@@ -6674,8 +6685,10 @@ function runTests(){
     yes("N3","螺旋:出口是切線離開(不是折角)",
       Math.abs(norm180(azOf(rn[s1-1], rn[s1]) - azOf(rn[s1], rn[s1+1]))) < 6,
       azOf(rn[s1-1], rn[s1]).toFixed(0) + "° → " + azOf(rn[s1], rn[s1+1]).toFixed(0) + "°", "轉折 < 6°");
+    /* 進出口夾角的定義:**兩支都指向螺旋的射線** —— 引道口 → 螺旋起點、出口 → 螺旋終點。
+       所以第二支要從最後一個節點反向量回螺旋終點,不是量出口的行進方位。       */
     chk("N3","螺旋:進出口在平面上夾 120°",
-      Math.abs(norm180(azOf(rn[s1], rn[s1+1]) - azOf(rn[s0-1], rn[s0]))), 120, 0.5, "°");
+      Math.abs(norm180(azOf(rn[rn.length-1], rn[s1]) - azOf(rn[s0-1], rn[s0]))), 120, 0.5, "°");
     const byS = nm => SPR.groups.find(r => r.g.name === nm);
     const innR = byS("內緣"), outR = byS("外緣"), stayR = byS("吊索");
     // 吊索拉內緣:拉外緣的話索會從柱頂橫穿整個踏面
@@ -6692,8 +6705,10 @@ function runTests(){
       cGn.elems.every(e3 => Math.abs(e3.b.z) < 1e-9), "Z 0", "Z 0");
     yes("N3","螺旋:層間外柱都是鉛直的",
       cUp.elems.every(e3 => Math.hypot(e3.a.x - e3.b.x, e3.a.y - e3.b.y) < 1e-6), "鉛直", "鉛直");
-    yes("N3","螺旋:層間外柱的高度剛好是一個螺距 5 m",
-      cUp.elems.every(e3 => Math.abs(Math.abs(e3.a.z - e3.b.z) - 5) < 1e-6), "5 m", "5 m");
+    const pitch1 = num(hxq.pitch);
+    yes("N3",`螺旋:層間外柱的高度剛好是一個螺距 ${pitch1.toFixed(3)} m`,
+      cUp.elems.every(e3 => Math.abs(Math.abs(e3.a.z - e3.b.z) - pitch1) < 1e-6),
+      pitch1.toFixed(3) + " m", pitch1.toFixed(3) + " m");
     yes("N3","螺旋:層間外柱兩端都在外緣上",
       cUp.elems.every(e3 => e3.a.gid === outR.g.id && e3.b.gid === outR.g.id), "外緣", "外緣");
     {
