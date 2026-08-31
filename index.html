@@ -7230,6 +7230,9 @@ function elemPolysBy(r){
    段層級的變換不受影響:那是在建曲線的當下就套進去的,曲線本來就在對的位置。      */
 function curvePolys(r){
   if (r.xfOn) return [];
+  // 匯入組沒有「參數曲線」可言 —— 它的節點是一份死清單、不是一串沿著曲線的點,
+  // 照節點順序連起來只會在舊模型上疊一團淡淡的鋸齒(而且是用群組自己的顏色)。
+  if (r.g.type === "IMPORT") return [];
   if (!r.pieces || !r.pieces.length) return r.nodes.length ? [{ pi:-1, pts:r.nodes }] : [];
   const out = [];
   r.pieces.forEach(info => {
@@ -7517,14 +7520,22 @@ function draw(){
       // 正在編輯的多段曲線:每一段用群組色的不同深淺,和編號徽章同色
       const np = pcOn(r) ? (r.g.pieces || []).length : 0;
       const pcCol = pi => np ? pieceColor(col, pi, np) : col;
-      // 參考:原始參數曲線(淡)
-      ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
-      curvePolys(r).forEach(pl => {
-        ctx.strokeStyle = pcCol(pl.pi);
-        ctx.beginPath();
-        pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
-        ctx.stroke();
-      });
+      /* 參考:原始參數曲線(淡)。**只有「現在是重點」的群組才畫。**
+         它是用群組自己的顏色畫的,而且畫的是「段的數學曲線」不是元素 ——
+         所以既不受時間軸過濾影響,也不受「其他群組退成淡灰」影響。
+         結果就是:時間軸拉到第 k 階段時,還沒蓋到的群組會在一片淡灰裡露出自己的顏色
+         (使用者回報:匯入舊模型之後新加的群組在灰線中特別顯眼)。
+         規則和 §16.14.1 的淡化一致 —— 淡化中的群組不畫;時間軸在過濾時一律不畫
+         (那個畫面問的是「蓋到哪」,不是「弦線差多少」)。                        */
+      if (!dim && !STAGE_ACT){
+        ctx.globalAlpha = .28; ctx.lineWidth = 1.2;
+        curvePolys(r).forEach(pl => {
+          ctx.strokeStyle = pcCol(pl.pi);
+          ctx.beginPath();
+          pl.pts.forEach((p,i) => { const s = toS(p); i ? ctx.lineTo(s.x,s.y) : ctx.moveTo(s.x,s.y); });
+          ctx.stroke();
+        });
+      }
       ctx.globalAlpha = dim ? DIM_A : 1;
       // 實際元素(節點被移動或刪除後,線會跟著走)
       ctx.lineWidth = on ? 2.8 : (dim ? DIM_W : 2.4);
@@ -7552,8 +7563,9 @@ function draw(){
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad,0,7); ctx.fill(); });
       ctx.globalAlpha = 1;
       // v3.16:起點 / 終點不再特別標記 —— 同一個群組的節點一律長一樣
+      // 座標被改過的記號同樣要吃時間軸過濾,否則還沒蓋到的群組會留下一排琥珀色的點
       ctx.fillStyle = "#8a6116";
-      r.nodes.filter(n => n.edited).forEach(n => {
+      vNodes.filter(n => n.edited).forEach(n => {
         const s = toS(n); ctx.beginPath(); ctx.arc(s.x,s.y,rad+1.4,0,7); ctx.fill(); });
       // 被合併掉的節點:位置還在(只是換成別人的節點),畫一個空心方框標出來
       if (on && r.weldAway && r.weldAway.length){
@@ -10159,6 +10171,59 @@ function runTests(){
     const rBad = buildModel(mk("@A:4"), [], []).byId.get("B");
     chk("W1","合併後的第 4 個其實是 x=75(所以不能拿合併後的序號去存)",
       rBad.elems[0].b.x, 75, 1e-9, "");
+  }
+  {
+    /* ---- v3.44.3:時間軸過濾時,還沒蓋到的群組不可以露出自己的顏色 ----
+       「原始參數曲線」是用群組自己的顏色畫的,而且畫的是段的數學曲線、不是元素,
+       所以它既不吃時間軸過濾也不吃「其他群組退成淡灰」——
+       還沒蓋到的群組會在一片淡灰裡露出自己的顏色。直接攔畫布上的 stroke 檢查。 */
+    const save = { st:clone(state), md:MODEL, sel:SEL, ss:new Set(SELSET), vs:VIEWSTAGE };
+    const LN = (id, y, color) => ({ ...defaultGroup("CURVE"), id, name:id, color, pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:y,z1:0, endMode:"point", x2:100,y2:y,z2:0,
+        split:{ ...SPLIT_DEF, mode:"count", count:4 } }] });
+    state.groups = [LN("SA", 0, "#112233"), LN("SB", 40, "#aabbcc")];   // 匯出群組名 = G_SA / G_SB
+    state.stages = [{ name:"S1", on:["G_SA"] }, { name:"S2", on:["G_SB"] }];
+    normState(state);
+    // 只記「真的畫出線」的 stroke(空路徑的 stroke 什麼都不會畫,不能算)
+    const c2 = cv.getContext("2d");
+    const probe = () => {
+      // draw() 在畫布沒有版面尺寸時會直接 return(視窗很窄、或這一欄還沒排版好),
+      // 所以先用行內樣式撐出一個確定的尺寸,量完再拿掉 —— 否則這個測試會看視窗大小而定。
+      const w0 = cv.style.width, h0 = cv.style.height;
+      cv.style.width = "640px"; cv.style.height = "320px";
+      const oS = c2.stroke.bind(c2), oB = c2.beginPath.bind(c2), oL = c2.lineTo.bind(c2);
+      let segs = 0; const out = [];
+      c2.beginPath = function(){ segs = 0; return oB(); };
+      c2.lineTo = function(x, y){ segs++; return oL(x, y); };
+      c2.stroke = function(){ if (segs) out.push(String(this.strokeStyle)); return oS(); };
+      draw();
+      c2.stroke = oS; c2.beginPath = oB; c2.lineTo = oL;
+      cv.style.width = w0; cv.style.height = h0;
+      return out;
+    };
+    SEL = "_stg"; SELSET = new Set(); VIEWSTAGE = 1; recompute(true);
+    const filt = probe();
+    yes("W2","時間軸過濾:已啟用的群組照樣用自己的顏色",
+      filt.includes("#112233"), filt.filter(s => s === "#112233").length, "≥ 1");
+    yes("W2","時間軸過濾:還沒蓋到的群組完全不露出自己的顏色",
+      !filt.includes("#aabbcc"), filt.filter(s => s === "#aabbcc").length, 0);
+    yes("W2","時間軸過濾:還沒蓋到的部分是用統一的淡灰畫的",
+      filt.includes(DIM_COL), filt.filter(s => s === DIM_COL).length, "≥ 1");
+    // 沒有過濾時參考曲線照舊要畫(不能矯枉過正)
+    SEL = null; SELSET = new Set(); VIEWSTAGE = -1; recompute(true);
+    const all = probe();
+    yes("W2","沒有過濾時兩組都用自己的顏色(參考曲線沒被誤殺)",
+      all.includes("#112233") && all.includes("#aabbcc"),
+      `${all.filter(s => s === "#112233").length} / ${all.filter(s => s === "#aabbcc").length}`,
+      "兩邊都 ≥ 1");
+    // 選到某一組時,其他組同樣不該露出自己的顏色
+    SEL = "SA"; SELSET = new Set(["SA"]); recompute(true);
+    const one = probe();
+    yes("W2","選到某一組時,其他組也不露出自己的顏色",
+      one.includes("#112233") && !one.includes("#aabbcc"),
+      `${one.filter(s => s === "#112233").length} / ${one.filter(s => s === "#aabbcc").length}`,
+      "選到的 ≥ 1、其他 0");
+    state = save.st; MODEL = save.md; SEL = save.sel; SELSET = save.ss; VIEWSTAGE = save.vs;
   }
   {
     // v3.10:懸垂的垂度基準
