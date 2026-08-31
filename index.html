@@ -323,6 +323,23 @@
   .msg{display:flex; gap:6px; padding:5px 9px; border-radius:2px; margin-bottom:4px; font-size:11.5px; align-items:flex-start}
   .msg.err{background:#fff1f1; color:var(--err); border:1px solid #f5c2c0}
   .msg.warn{background:#fdf6e3; color:var(--warn); border:1px solid #ecdcaf}
+  .msg .nw{flex:none; font-size:9.5px; font-weight:700; letter-spacing:.5px; padding:1px 5px;
+    border-radius:2px; background:currentColor; margin-top:1px}
+  .msg .nw span{color:#fff}
+  /* 檢核訊息可以收合:平常只留一條計數列,有沒讀過的訊息才自己攤開(SPEC §16.16) */
+  /* 欄位很窄時中文會被壓成一個字一行、整條變成一百多 px 高 —— 子項一律不斷行,擠不下就換行 */
+  .msghead{font:inherit; font-size:11.5px; display:flex; align-items:center; gap:8px; width:100%;
+    flex-wrap:wrap; text-align:left; background:var(--panel); border:1px solid var(--line);
+    border-radius:3px; padding:4px 9px; margin-bottom:4px; cursor:pointer; color:var(--ink-2)}
+  .msghead > span{white-space:nowrap}
+  .msghead:hover{border-color:var(--accent)}
+  .msghead .cav{font-size:9px; color:var(--ink-3)}
+  .msghead .c{font-weight:600}
+  .msghead .c.e{color:var(--err)}
+  .msghead .c.w{color:var(--warn)}
+  .msghead .sp{flex:1}
+  .msghead .sub{font-size:10.5px; color:var(--ink-3); font-weight:400}
+  /* 清單本身不再自己捲 —— 外層 #msgs 已經有 24% 的上限與捲動,巢狀捲軸只會更難用 */
   #msgs:empty{display:none}
   .legend{display:flex; gap:9px; flex-wrap:wrap; font-size:10.5px; color:var(--ink-2)}
   .legend i{display:inline-block; width:11px; height:3px; border-radius:2px; margin-right:4px; vertical-align:middle}
@@ -7029,10 +7046,42 @@ function loadState(s){
 /* ==========================================================================
    8d. UI — 檢核與預覽
    ========================================================================== */
+/* ---- 檢核訊息:可收合 ----
+   錯誤與警告本來全部攤在 3D 視圖上方,十幾則就把預覽擠掉一大半。改成一條計數列 +
+   可收合的清單:**只有出現「沒讀過的訊息」時才自己攤開**,其餘時候維持使用者上次的選擇。
+   「讀過」的判斷把訊息裡的數字抽掉再比 —— 同一則警告只是數量從 3 變成 4,
+   不算新訊息(不然拖一個數值就會一直彈開);真的換了一種警告才算。          */
+const MSG_SEEN = new Set();
+let MSG_OPEN = true;
+const msgKey = t => String(t).replace(/[0-9]+(\.[0-9]+)?/g, "#");
+
+function renderMsgs(){
+  const all = ERRS.map(t => ({ t, err:true })).concat(WARNS.map(t => ({ t, err:false })));
+  const fresh = new Set(all.map(m => msgKey(m.t)).filter(k => !MSG_SEEN.has(k)));
+  if (fresh.size) MSG_OPEN = true;                   // 有沒讀過的訊息就自己攤開
+  all.forEach(m => MSG_SEEN.add(msgKey(m.t)));
+  const ne = ERRS.length, nw = WARNS.length;
+  $("#msgs").innerHTML = !all.length ? "" :
+    `<button type="button" class="msghead" id="msgtog"
+       title="${MSG_OPEN ? "收起檢核訊息" : "展開檢核訊息"}">
+       <span class="cav">${MSG_OPEN ? "▾" : "▸"}</span>
+       ${ne ? `<span class="c e">✕ ${ne} 個錯誤</span>` : ""}
+       ${nw ? `<span class="c w">⚠ ${nw} 個警告</span>` : ""}
+       <span class="sp"></span>
+       <span class="sub">${MSG_OPEN ? "點一下收起來" : "有新的訊息會自己展開"}</span></button>` +
+    (MSG_OPEN ? `<div class="msglist">` + all.map(m =>
+      `<div class="msg ${m.err ? "err" : "warn"}">${m.err ? "✕" : "⚠"}${
+        fresh.has(msgKey(m.t)) ? ` <b class="nw"><span>新</span></b>` : ""
+      } <span>${esc(m.t)}</span></div>`).join("") + `</div>` : "");
+}
+$("#msgs").addEventListener("click", e => {
+  if (!e.target.closest("#msgtog")) return;
+  MSG_OPEN = !MSG_OPEN;
+  renderMsgs();                                      // 只重畫訊息,不必再掃一次整個模型
+});
+
 function renderChecks(){
-  $("#msgs").innerHTML =
-    ERRS.map(t => `<div class="msg err">✕ <span>${esc(t)}</span></div>`).join("") +
-    WARNS.map(t => `<div class="msg warn">⚠ <span>${esc(t)}</span></div>`).join("");
+  renderMsgs();
   const devs = MODEL.groups.flatMap(r => r.elems.map(e => e.dev));
   const lens = MODEL.groups.flatMap(r => r.elems.map(e => e.len3d));
   const maxDev = devs.length ? Math.max(...devs) : 0;
@@ -10042,6 +10091,25 @@ function runTests(){
       bakeShift({ ...defaultGroup("LINK2"), id:"bl", name:"L" }, D), "true", "true");
   }
   {
+    /* ---- v3.44:檢核訊息可收合,只有沒讀過的訊息才自己攤開(SPEC §16.16)---- */
+    yes("U1","只有數字不同 = 同一則訊息",
+      msgKey("已合併 3 個節點") === msgKey("已合併 41 個節點"),
+      msgKey("已合併 3 個節點"), "數字抽掉之後相同");
+    yes("U1","不同的訊息不會被當成同一則",
+      msgKey("已合併 3 個節點") !== msgKey("已刪掉 3 個節點"), "不同", "不同");
+    MSG_SEEN.clear(); MSG_OPEN = false;
+    ERRS = []; WARNS = ["測試警告甲 1 則"]; renderMsgs();
+    yes("U1","出現沒讀過的訊息 → 自己攤開", MSG_OPEN === true, MSG_OPEN, true);
+    MSG_OPEN = false;                                  // 使用者收起來
+    WARNS = ["測試警告甲 7 則"]; renderMsgs();
+    yes("U1","同一則訊息只有數字變了 → 維持收合", MSG_OPEN === false, MSG_OPEN, false);
+    WARNS = ["測試警告甲 7 則", "測試警告乙"]; renderMsgs();
+    yes("U1","真的多了一種訊息 → 再次自己攤開", MSG_OPEN === true, MSG_OPEN, true);
+    MSG_OPEN = false; WARNS = []; ERRS = []; renderMsgs();
+    yes("U1","沒有任何訊息時整條都不出現", $("#msgs").innerHTML === "", $("#msgs").innerHTML, "(空)");
+    MSG_SEEN.clear(); MSG_OPEN = true;                 // 收尾:交還給啟動流程
+  }
+  {
     // v3.10:懸垂的垂度基準
     const sag = (base, f, fz, curve) => curveSAG({ name:"T", x1:0,y1:0,z1:100, x2:200,y2:0,z2:130,
       curve:curve || "catenary", fMode:"abs", f, fBase:base, ...(fz !== undefined ? { fz } : {}) }, []);
@@ -10570,6 +10638,8 @@ runTests();
 // 驗收測試會借用真正的 state / MODEL 跑一堆模型,途中的 renderTree() / renderPane()
 // 會把最後一個測試模型留在畫面上(state 本身有還原,只是畫面沒跟著回來)。
 // 測完再畫一次,開檔看到的就一定是真正的狀態。
+// 「讀過的檢核訊息」也要一起清掉 —— 測試途中冒出來的警告不算使用者讀過。
+MSG_SEEN.clear(); MSG_OPEN = true;
 recompute(true);
 
 </script>
