@@ -2438,7 +2438,26 @@ function buildOne(g, idx, built, st, inc, prefix, errs, warns){
   }
   addExtElems(g, R, warns);
   if (R.nodes.length) finishStat(R);
+  stampChainIdx(R);
   return R;
+}
+
+/* ---- 「第 k 個節點」的 k 一律以**合併重合節點之前**的節點串為準 ----
+   建模時解析跨群組參照(gRefPt / nodeSetOf)就是在這個時間點 —— 那時 weldNodes() 還沒跑。
+   但面板與圖上點選是看 MODEL,也就是**合併之後**的陣列;上游只要有一個節點被併掉,
+   兩邊的第 k 個就差一格,結果是「點的節點跟實際連到的節點不是同一個」。
+   所以在這裡把序號釘在節點上(n.ci),各側的數量也一起記下來(R.preN),
+   UI 一律用這兩個,不要自己數 MODEL 裡剩下的節點。
+
+   註:被併掉的節點在圖上其實還看得到(留下來的那一顆就畫在同一個位置),
+   所以「合併前的序號」才是使用者照圖數出來的那個序號。                       */
+function stampChainIdx(R){
+  const ch = chainOf(R);
+  ch.forEach((n, i) => { n.ci = i; });
+  R.preN = { own:ch.length };
+  if (sideful(R)) SIDE_OPTS.forEach(([k]) => {
+    if (k !== "own") R.preN[k] = nodeSetOf(R, k).length;
+  });
 }
 
 function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
@@ -4589,7 +4608,11 @@ const P3 = (px, py, pz, lx, ly, lz) => fld(lx, px, undefined) ; // placeholder(�
 // 某個群組在指定側取得到的節點數 —— 序號欄位的上限就是這個
 const chainCount = (id, side) => {
   const r = id && MODEL.byId ? MODEL.byId.get(id) : null;
-  return r ? nodeSetOf(r, side).length : 0;
+  if (!r) return 0;
+  // 合併重合節點之前的數量(見 stampChainIdx):建模時取的就是這一串
+  const k = sideOf(side);
+  const pre = r.preN && r.preN[k];
+  return pre !== undefined ? pre : nodeSetOf(r, side).length;
 };
 // 「取哪些節點」的下拉:只有自有節點與元素端點不一致的群組才需要問
 const sideField = (gid, key, val) => {
@@ -5278,12 +5301,14 @@ let PICK = null;                       // { gid, i, mode } i = 已點到的第�
 let hoverE = null;                     // 點選群組時滑鼠掃到的那根元素 { num, gid, name }
 // 節點編號 → 它屬於哪一組、在該組的節點串裡排第幾個(0 起算)。
 // 存的是「第幾個」而不是節點編號:上游的線之後重新分割,對接關係才不會錯位。
+// 圖上點到的節點 → 它是「哪一組的第幾個節點」。序號用建模當下釘上去的 n.ci,
+// 不能在這裡重數 —— MODEL 已經是合併重合節點之後的陣列了(見 stampChainIdx)。
 function locateNode(numv){
   const rs = (MODEL && MODEL.groups) || [];
   for (const r of rs){
     const ch = chainOf(r);
     const i = ch.findIndex(n => n.num === numv);
-    if (i >= 0) return { gid:r.g.id, idx:i };
+    if (i >= 0) return { gid:r.g.id, idx:(ch[i].ci !== undefined ? ch[i].ci : i) };
   }
   return null;
 }
@@ -10108,6 +10133,32 @@ function runTests(){
     MSG_OPEN = false; WARNS = []; ERRS = []; renderMsgs();
     yes("U1","沒有任何訊息時整條都不出現", $("#msgs").innerHTML === "", $("#msgs").innerHTML, "(空)");
     MSG_SEEN.clear(); MSG_OPEN = true;                 // 收尾:交還給啟動流程
+  }
+  {
+    /* ---- v3.44.2:合併重合節點不可以讓「第 k 個節點」跳號(回歸測試)----
+       P 先建(編號小)佔住 x=50,A 在 x=50 的節點會被併掉。
+       建模時解析參照是在合併之前,面板與圖上點選卻是看合併之後的陣列 ——
+       兩邊不一致的話「點到的節點」和「實際連到的節點」就會差一格。          */
+    const mk = eRef => normState({ ...DEF_STATE(), groups:[
+      { ...defaultGroup("CURVE"), id:"P", name:"P", pieces:[
+        { ...defaultPiece("POINT"), sRef:"", x2:50, y2:0, z2:0 }] },
+      { ...defaultGroup("CURVE"), id:"A", name:"A", pieces:[
+        { ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:100,y2:0,z2:0,
+          split:{ ...SPLIT_DEF, mode:"count", count:4 } }] },
+      { ...defaultGroup("CURVE"), id:"B", name:"B", pieces:[
+        { ...defaultPiece("LINE"), sRef:"", x1:0,y1:50,z1:0, endMode:"point", x2:10,y2:50,z2:0,
+          eRef, split:{ ...SPLIT_DEF, count:1 } }] }] });
+    const rA = buildModel(mk(""), [], []).byId.get("A");
+    yes("W1","A 在 x=50 的節點被 P 併掉,陣列只剩 4 個",
+      rA.nodes.length === 4, rA.nodes.map(n => n.x).join(","), "0,25,75,100");
+    chk("W1","合併前的節點數仍然是 5(序號欄位的上限用這個)", rA.preN.own, 5, 0, "");
+    const n100 = rA.nodes.find(n => Math.abs(n.x - 100) < 1e-9);
+    chk("W1","最右邊那個節點的序號是「合併前的第 5 個」", n100.ci + 1, 5, 0, "");
+    const rB = buildModel(mk("@A:" + (n100.ci + 1)), [], []).byId.get("B");
+    chk("W1","照這個序號接過去,落點就是點到的那一個", rB.elems[0].b.x, 100, 1e-9, "");
+    const rBad = buildModel(mk("@A:4"), [], []).byId.get("B");
+    chk("W1","合併後的第 4 個其實是 x=75(所以不能拿合併後的序號去存)",
+      rBad.elems[0].b.x, 75, 1e-9, "");
   }
   {
     // v3.10:懸垂的垂度基準
