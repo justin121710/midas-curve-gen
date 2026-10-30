@@ -322,6 +322,8 @@ def main_system(mct, cfg, ties, rep, gname):
         f = zc(xs[ns[km]]) - mct.nodes[ns[km]][2]
         H = M0(xs[ns[km]]) / f
         dz = {n: mct.nodes[n][2] - (zc(xs[n]) - M0(xs[n]) / H) for n in ns[s1 + 1:s2]}
+        if it == 0:
+            dz0 = dz                     # 回報原始幾何與索多邊形的差（修正前）
         if not cfg.get("fix_main_z", False):
             break
         if max(abs(v) for v in dz.values()) < 1e-9:
@@ -339,7 +341,7 @@ def main_system(mct, cfg, ties, rep, gname):
         g = next(x for x in cfg["hanger"] if e in mct.group_elems(x))
         rep.append(dict(group=g, elem=e, role="hanger", L=L, Lh=0.0, T=Nh[n],
                         EA=cfg["EA"]["hanger"], ptie=ptie[n]))
-    return dict(H=H, f=f, span=span, dz=dz, n_hang=len(hang), ptie=sum(ptie.values()),
+    return dict(H=H, f=f, span=span, dz=dz0, n_hang=len(hang), ptie=sum(ptie.values()),
                 Wtot=sum(Q.values()))
 
 
@@ -364,16 +366,17 @@ def run_mct(path, roles, prefix):
         dzmax = max(abs(v) for v in r["dz"].values()) * 1000
         print(f"{g}：主跨 {r['span']:.3f}，垂度 {r['f']:.4f}，H = {r['H']:.3f}；"
               f"吊索 {r['n_hang']} 根，繫索向下分力合計 {r['ptie']:.3f}；"
-              f"主纜節點與索多邊形最大差 {dzmax:.1f} mm"
-              + ("（已修正）" if cfg.get("fix_main_z") else ""))
+              f"原始主纜節點與索多邊形最大差 {dzmax:.1f} mm"
+              + ("（已移到索多邊形上）" if cfg.get("fix_main_z") else "（未修正）"))
     for row in rep:
         v = exval(kind, row["L"], row["Lh"], row["T"], row["EA"])
         mct.set_exval(row["elem"], KIND[kind], v)
+    # 檔頭註解用英文：.mct 以 ASCII 寫出（midas 以系統 ANSI 讀取），中文會變成 ?
     hdr = [";",
-           f"; cable_pretension.py：已填入 {len(rep)} 根纜索的 EXVAL"
-           f"（種類 {kind}，EXVAL2 = {KIND[kind]}）",
-           "; 注意：把本檔拖回 midas-curve-gen 會依參數重建幾何，",
-           ";       EXVAL 與修正後的節點座標不會保留",
+           f"; cable_pretension.py: EXVAL filled for {len(rep)} cable elements"
+           f" (kind {kind}, EXVAL2 = {KIND[kind]})",
+           "; NOTE: dropping this file back onto midas-curve-gen rebuilds the geometry",
+           ";       from the parameter block; EXVAL and moved nodes are NOT kept.",
            ";"]
     with open(prefix + ".mct", "w", encoding="ascii", errors="replace", newline=mct.newline) as fo:
         fo.write(mct.text(hdr))
