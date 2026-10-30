@@ -1,0 +1,3461 @@
+;---------------------------------------------------------------------------
+; Alignment Modeler  (alignment-modeler)
+; Generated : 2026-10-30 23:37 +08:00
+; Units     : KN, M   (coordinates exported as entered, no conversion)
+; Groups    : 24
+; Nodes     : 319    Elements : 754    Structure groups : 25
+; Total elem length : 2276.926091
+;
+;   G_DECK (CURVE)  nodes 1001-1033  elements 1001-1032
+;   G_EDGE_L (OFFSET)  nodes 2001-2033  elements 2001-2032
+;   G_EDGE_R (OFFSET)  nodes 3001-3033  elements 3001-3032
+;   G_XBEAM (LINK2)  nodes -  elements 4001-4033
+;   G_BCH_L (OFFSET)  nodes 5001-5033  elements 5001-5032
+;   G_BCH_R (OFFSET)  nodes 6001-6033  elements 6001-6032
+;   G_VERT_L (LINK2)  nodes -  elements 7001-7033
+;   G_VERT_R (LINK2)  nodes -  elements 8001-8033
+;   G_DIAG_L (LINK2)  nodes -  elements 9001-9064
+;   G_DIAG_R (LINK2)  nodes -  elements 10001-10064
+;   G_BXBEAM (LINK2)  nodes -  elements 11001-11033
+;   G_BDIAG (LINK2)  nodes -  elements 12001-12064
+;   G_CROSS_L (LINK2)  nodes -  elements 13001-13017
+;   G_CROSS_R (LINK2)  nodes -  elements 14001-14017
+;   G_CABLE_L (CURVE)  nodes 15001-15039  elements 15001-15038
+;   G_CABLE_R (CURVE)  nodes 16001-16039  elements 16001-16038
+;   G_HANG_L (LINKZ)  nodes -  elements 17001-17031
+;   G_HANG_R (LINKZ)  nodes -  elements 18001-18031
+;   G_WIND_L (CURVE)  nodes 19001-19025  elements 19001-19024
+;   G_WIND_R (CURVE)  nodes 20001-20025  elements 20001-20024
+;   G_WSTAY_L (LINK2)  nodes -  elements 21001-21011
+;   G_WSTAY_R (LINK2)  nodes -  elements 22001-22011
+;   G_TOWER_W (CURVE)  nodes 23002-23016  elements 23001-23014
+;   G_TOWER_E (CURVE)  nodes 24002-24016  elements 24001-24014
+;
+; NOTE: importing an MCT containing *UNIT changes the model's active unit system.
+; NOTE: element beta angle is always 0.
+; The parameter block below restores every input if this file is dropped back
+; onto the generator page.
+;---------------------------------------------------------------------------
+; ==== CURVE-GEN-PARAMS-BEGIN ====
+; {
+;  "formatVersion": 3,
+;  "tool": "alignment-modeler",
+;  "generated": "2026-10-30T23:37:53+08:00",
+;  "state": {
+;   "groups": [
+;    {
+;     "id": "g975",
+;     "type": "CURVE",
+;     "name": "\u6a4b\u9762\u4e2d\u5fc3\u7dda DECK",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 1,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "spacing",
+;        "count": 20,
+;        "spacing": 2.5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "keep",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 10,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": 0,
+;       "z2": 10,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 0
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g976",
+;     "type": "OFFSET",
+;     "name": "\u908a\u6a11\u5de6 EDGE_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 2,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g975",
+;     "d": -1.2,
+;     "h": 0,
+;     "extS": 0,
+;     "extE": 0
+;    },
+;    {
+;     "id": "g977",
+;     "type": "OFFSET",
+;     "name": "\u908a\u6a11\u53f3 EDGE_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 2,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g975",
+;     "d": 1.2,
+;     "h": 0,
+;     "extS": 0,
+;     "extE": 0
+;    },
+;    {
+;     "id": "g978",
+;     "type": "LINK2",
+;     "name": "\u6a6b\u6881 XBEAM",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 3,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g976",
+;     "b": "g977",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g979",
+;     "type": "OFFSET",
+;     "name": "\u4e0b\u5f26\u5de6 BCH_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 13,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g976",
+;     "d": 0,
+;     "h": -1.6,
+;     "extS": 0,
+;     "extE": 0
+;    },
+;    {
+;     "id": "g980",
+;     "type": "OFFSET",
+;     "name": "\u4e0b\u5f26\u53f3 BCH_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 1,
+;     "sect": 13,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g977",
+;     "d": 0,
+;     "h": -1.6,
+;     "extS": 0,
+;     "extE": 0
+;    },
+;    {
+;     "id": "g981",
+;     "type": "LINK2",
+;     "name": "\u6841\u67b6\u8c4e\u687f\u5de6 VERT_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 3,
+;     "sect": 14,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g976",
+;     "b": "g979",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g982",
+;     "type": "LINK2",
+;     "name": "\u6841\u67b6\u8c4e\u687f\u53f3 VERT_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 3,
+;     "sect": 14,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g977",
+;     "b": "g980",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g983",
+;     "type": "LINK2",
+;     "name": "\u6841\u67b6\u659c\u6490\u5de6 DIAG_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "TRUSS",
+;     "mat": 3,
+;     "sect": 15,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g976",
+;     "b": "g979",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "cross",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g984",
+;     "type": "LINK2",
+;     "name": "\u6841\u67b6\u659c\u6490\u53f3 DIAG_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "TRUSS",
+;     "mat": 3,
+;     "sect": 15,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g977",
+;     "b": "g980",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "cross",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g985",
+;     "type": "LINK2",
+;     "name": "\u4e0b\u5f26\u6a6b\u6881 BXBEAM",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 3,
+;     "sect": 16,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g979",
+;     "b": "g980",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g986",
+;     "type": "LINK2",
+;     "name": "\u4e0b\u5f26\u659c\u6490 BDIAG",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "TRUSS",
+;     "mat": 3,
+;     "sect": 17,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g979",
+;     "b": "g980",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "cross",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g987",
+;     "type": "LINK2",
+;     "name": "\u6a6b\u9694\u659c\u6490\u5de6\u4e0a CROSS_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "TRUSS",
+;     "mat": 3,
+;     "sect": 20,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g976",
+;     "b": "g980",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 2,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g988",
+;     "type": "LINK2",
+;     "name": "\u6a6b\u9694\u659c\u6490\u53f3\u4e0a CROSS_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "TRUSS",
+;     "mat": 3,
+;     "sect": 20,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g977",
+;     "b": "g979",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "same",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 2,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 1,
+;     "bEvery": 1,
+;     "count": 0,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g989",
+;     "type": "CURVE",
+;     "name": "\u4e3b\u7d22\u5de6 CABLE_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 11,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 3,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": -15,
+;       "y1": 1.2,
+;       "z1": 6,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": 1.2,
+;       "z2": 22,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 0
+;      },
+;      {
+;       "type": "SAG",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 32,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "x2": 80,
+;       "y2": 1.2,
+;       "z2": 22,
+;       "curve": "catenary",
+;       "fMode": "ratio",
+;       "f": 0.12,
+;       "fBase": "chord",
+;       "fz": 0,
+;       "_i": 1
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 3,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 95,
+;       "y2": 1.2,
+;       "z2": 6,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g990",
+;     "type": "CURVE",
+;     "name": "\u4e3b\u7d22\u53f3 CABLE_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 11,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 3,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": -15,
+;       "y1": -1.2,
+;       "z1": 6,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": -1.2,
+;       "z2": 22,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 0
+;      },
+;      {
+;       "type": "SAG",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 32,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "x2": 80,
+;       "y2": -1.2,
+;       "z2": 22,
+;       "curve": "catenary",
+;       "fMode": "ratio",
+;       "f": 0.12,
+;       "fBase": "chord",
+;       "fz": 0,
+;       "_i": 1
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 3,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 95,
+;       "y2": -1.2,
+;       "z2": 6,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g991",
+;     "type": "LINKZ",
+;     "name": "\u540a\u7d22\u5de6 HANG_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 12,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g989",
+;     "refSide": "own",
+;     "zRefSide": "own",
+;     "zMode": "abs",
+;     "targetZ": 10,
+;     "px": 0,
+;     "py": 0,
+;     "pz": 0,
+;     "sx": 0,
+;     "sy": 0,
+;     "zRef": "",
+;     "from": 5,
+;     "to": 35,
+;     "every": 1,
+;     "bottom": "snap",
+;     "snapTol": 0.01,
+;     "extT": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g992",
+;     "type": "LINKZ",
+;     "name": "\u540a\u7d22\u53f3 HANG_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 12,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "ref": "g990",
+;     "refSide": "own",
+;     "zRefSide": "own",
+;     "zMode": "abs",
+;     "targetZ": 10,
+;     "px": 0,
+;     "py": 0,
+;     "pz": 0,
+;     "sx": 0,
+;     "sy": 0,
+;     "zRef": "",
+;     "from": 5,
+;     "to": 35,
+;     "every": 1,
+;     "bottom": "snap",
+;     "snapTol": 0.01,
+;     "extT": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g993",
+;     "type": "CURVE",
+;     "name": "\u6297\u98a8\u7d22\u5de6 WIND_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 45,
+;      "axis": "X",
+;      "cmode": "custom",
+;      "cx": 0,
+;      "cy": 8,
+;      "cz": 2,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 18,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "SAG",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 24,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 10,
+;       "y1": 8,
+;       "z1": 2,
+;       "x2": 70,
+;       "y2": 8,
+;       "z2": 2,
+;       "curve": "parabola",
+;       "fMode": "ratio",
+;       "f": -0.1,
+;       "fBase": "chord",
+;       "fz": 0,
+;       "_i": 0
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g994",
+;     "type": "CURVE",
+;     "name": "\u6297\u98a8\u7d22\u53f3 WIND_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": -45,
+;      "axis": "X",
+;      "cmode": "custom",
+;      "cx": 0,
+;      "cy": -8,
+;      "cz": 2,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 18,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "SAG",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 24,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 10,
+;       "y1": -8,
+;       "z1": 2,
+;       "x2": 70,
+;       "y2": -8,
+;       "z2": 2,
+;       "curve": "parabola",
+;       "fMode": "ratio",
+;       "f": -0.1,
+;       "fBase": "chord",
+;       "fz": 0,
+;       "_i": 0
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g995",
+;     "type": "LINK2",
+;     "name": "\u6297\u98a8\u652f\u7d22\u5de6 WSTAY_L",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 19,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g979",
+;     "b": "g993",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 7,
+;     "aEvery": 2,
+;     "bFrom": 3,
+;     "bEvery": 2,
+;     "count": 11,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g996",
+;     "type": "LINK2",
+;     "name": "\u6297\u98a8\u652f\u7d22\u53f3 WSTAY_R",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "CABLE",
+;     "mat": 2,
+;     "sect": 19,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g980",
+;     "b": "g994",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 7,
+;     "aEvery": 2,
+;     "bFrom": 3,
+;     "bEvery": 2,
+;     "count": 11,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "extA": 0,
+;     "extB": 0
+;    },
+;    {
+;     "id": "g997",
+;     "type": "CURVE",
+;     "name": "\u5854\u67b6\u897f TOWER_W",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 3,
+;     "sect": 4,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 6,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": -1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": -1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 0
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 6,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": 1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 1
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": -1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": 1.2,
+;       "z2": 22,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    },
+;    {
+;     "id": "g998",
+;     "type": "CURVE",
+;     "name": "\u5854\u67b6\u6771 TOWER_E",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "BEAM",
+;     "mat": 3,
+;     "sect": 4,
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "pieces": [
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 6,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 80,
+;       "y1": -1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": -1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 0
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 6,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 80,
+;       "y1": 1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": 1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 1
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 80,
+;       "y1": -1.2,
+;       "z1": 22,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": 1.2,
+;       "z2": 22,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      }
+;     ],
+;     "edits": {},
+;     "dels": []
+;    }
+;   ],
+;   "numbering": {
+;    "nodeBase": 1001,
+;    "elemBase": 1001,
+;    "inc": 1000
+;   },
+;   "groupPrefix": "G_",
+;   "units": {
+;    "length": "M",
+;    "force": "KN",
+;    "heat": "KJ",
+;    "temper": "C"
+;   },
+;   "lib": {
+;    "mat": {},
+;    "sect": {}
+;   },
+;   "target": null,
+;   "weld": {
+;    "on": true,
+;    "tol": 0
+;   },
+;   "out": {
+;    "dxf": {
+;     "pts": true,
+;     "ntxt": false,
+;     "etxt": false
+;    },
+;    "stage": {
+;     "on": true,
+;     "save": true,
+;     "step": false
+;    }
+;   },
+;   "stages": [
+;    {
+;     "name": "CS01 \u5854\u67b6 TOWER",
+;     "days": 60,
+;     "age": 28,
+;     "on": [
+;      "G_TOWER_W",
+;      "G_TOWER_E"
+;     ]
+;    },
+;    {
+;     "name": "CS02 \u4e3b\u7e9c CABLE",
+;     "days": 30,
+;     "age": 0,
+;     "on": [
+;      "G_CABLE_L",
+;      "G_CABLE_R"
+;     ]
+;    },
+;    {
+;     "name": "CS03 \u6297\u98a8\u7d22 WIND",
+;     "days": 10,
+;     "age": 0,
+;     "on": [
+;      "G_WIND_L",
+;      "G_WIND_R"
+;     ]
+;    },
+;    {
+;     "name": "CS04 \u540a\u7d22 HANGER",
+;     "days": 15,
+;     "age": 0,
+;     "on": [
+;      "G_HANG_L",
+;      "G_HANG_R"
+;     ]
+;    },
+;    {
+;     "name": "CS05 \u7e31\u6a6b\u6881 DECK",
+;     "days": 30,
+;     "age": 0,
+;     "on": [
+;      "G_DECK",
+;      "G_EDGE_L",
+;      "G_EDGE_R",
+;      "G_XBEAM"
+;     ]
+;    },
+;    {
+;     "name": "CS06 \u5e95\u90e8\u6841\u67b6 TRUSS",
+;     "days": 25,
+;     "age": 0,
+;     "on": [
+;      "G_BCH_L",
+;      "G_BCH_R",
+;      "G_VERT_L",
+;      "G_VERT_R",
+;      "G_DIAG_L",
+;      "G_DIAG_R",
+;      "G_BXBEAM",
+;      "G_BDIAG",
+;      "G_CROSS_L",
+;      "G_CROSS_R"
+;     ]
+;    },
+;    {
+;     "name": "CS07 \u6297\u98a8\u652f\u7d22 WSTAY",
+;     "days": 10,
+;     "age": 0,
+;     "on": [
+;      "G_WSTAY_L",
+;      "G_WSTAY_R"
+;     ]
+;    }
+;   ],
+;   "view": {
+;    "az": 135,
+;    "el": 20,
+;    "zEx": 1
+;   }
+;  }
+; }
+; ==== CURVE-GEN-PARAMS-END ====
+
+*UNIT
+; FORCE, LENGTH, HEAT, TEMPER
+   KN, M, KJ, C
+
+*NODE
+; iNO, X, Y, Z
+; --- G_DECK (CURVE) ---
+   1001, 0, 0, 10
+   1002, 2.5, 0, 10
+   1003, 5, 0, 10
+   1004, 7.5, 0, 10
+   1005, 10, 0, 10
+   1006, 12.5, 0, 10
+   1007, 15, 0, 10
+   1008, 17.5, 0, 10
+   1009, 20, 0, 10
+   1010, 22.5, 0, 10
+   1011, 25, 0, 10
+   1012, 27.5, 0, 10
+   1013, 30, 0, 10
+   1014, 32.5, 0, 10
+   1015, 35, 0, 10
+   1016, 37.5, 0, 10
+   1017, 40, 0, 10
+   1018, 42.5, 0, 10
+   1019, 45, 0, 10
+   1020, 47.5, 0, 10
+   1021, 50, 0, 10
+   1022, 52.5, 0, 10
+   1023, 55, 0, 10
+   1024, 57.5, 0, 10
+   1025, 60, 0, 10
+   1026, 62.5, 0, 10
+   1027, 65, 0, 10
+   1028, 67.5, 0, 10
+   1029, 70, 0, 10
+   1030, 72.5, 0, 10
+   1031, 75, 0, 10
+   1032, 77.5, 0, 10
+   1033, 80, 0, 10
+; --- G_EDGE_L (OFFSET) ---
+   2001, 0, 1.2, 10
+   2002, 2.5, 1.2, 10
+   2003, 5, 1.2, 10
+   2004, 7.5, 1.2, 10
+   2005, 10, 1.2, 10
+   2006, 12.5, 1.2, 10
+   2007, 15, 1.2, 10
+   2008, 17.5, 1.2, 10
+   2009, 20, 1.2, 10
+   2010, 22.5, 1.2, 10
+   2011, 25, 1.2, 10
+   2012, 27.5, 1.2, 10
+   2013, 30, 1.2, 10
+   2014, 32.5, 1.2, 10
+   2015, 35, 1.2, 10
+   2016, 37.5, 1.2, 10
+   2017, 40, 1.2, 10
+   2018, 42.5, 1.2, 10
+   2019, 45, 1.2, 10
+   2020, 47.5, 1.2, 10
+   2021, 50, 1.2, 10
+   2022, 52.5, 1.2, 10
+   2023, 55, 1.2, 10
+   2024, 57.5, 1.2, 10
+   2025, 60, 1.2, 10
+   2026, 62.5, 1.2, 10
+   2027, 65, 1.2, 10
+   2028, 67.5, 1.2, 10
+   2029, 70, 1.2, 10
+   2030, 72.5, 1.2, 10
+   2031, 75, 1.2, 10
+   2032, 77.5, 1.2, 10
+   2033, 80, 1.2, 10
+; --- G_EDGE_R (OFFSET) ---
+   3001, 0, -1.2, 10
+   3002, 2.5, -1.2, 10
+   3003, 5, -1.2, 10
+   3004, 7.5, -1.2, 10
+   3005, 10, -1.2, 10
+   3006, 12.5, -1.2, 10
+   3007, 15, -1.2, 10
+   3008, 17.5, -1.2, 10
+   3009, 20, -1.2, 10
+   3010, 22.5, -1.2, 10
+   3011, 25, -1.2, 10
+   3012, 27.5, -1.2, 10
+   3013, 30, -1.2, 10
+   3014, 32.5, -1.2, 10
+   3015, 35, -1.2, 10
+   3016, 37.5, -1.2, 10
+   3017, 40, -1.2, 10
+   3018, 42.5, -1.2, 10
+   3019, 45, -1.2, 10
+   3020, 47.5, -1.2, 10
+   3021, 50, -1.2, 10
+   3022, 52.5, -1.2, 10
+   3023, 55, -1.2, 10
+   3024, 57.5, -1.2, 10
+   3025, 60, -1.2, 10
+   3026, 62.5, -1.2, 10
+   3027, 65, -1.2, 10
+   3028, 67.5, -1.2, 10
+   3029, 70, -1.2, 10
+   3030, 72.5, -1.2, 10
+   3031, 75, -1.2, 10
+   3032, 77.5, -1.2, 10
+   3033, 80, -1.2, 10
+; --- G_BCH_L (OFFSET) ---
+   5001, 0, 1.2, 8.4
+   5002, 2.5, 1.2, 8.4
+   5003, 5, 1.2, 8.4
+   5004, 7.5, 1.2, 8.4
+   5005, 10, 1.2, 8.4
+   5006, 12.5, 1.2, 8.4
+   5007, 15, 1.2, 8.4
+   5008, 17.5, 1.2, 8.4
+   5009, 20, 1.2, 8.4
+   5010, 22.5, 1.2, 8.4
+   5011, 25, 1.2, 8.4
+   5012, 27.5, 1.2, 8.4
+   5013, 30, 1.2, 8.4
+   5014, 32.5, 1.2, 8.4
+   5015, 35, 1.2, 8.4
+   5016, 37.5, 1.2, 8.4
+   5017, 40, 1.2, 8.4
+   5018, 42.5, 1.2, 8.4
+   5019, 45, 1.2, 8.4
+   5020, 47.5, 1.2, 8.4
+   5021, 50, 1.2, 8.4
+   5022, 52.5, 1.2, 8.4
+   5023, 55, 1.2, 8.4
+   5024, 57.5, 1.2, 8.4
+   5025, 60, 1.2, 8.4
+   5026, 62.5, 1.2, 8.4
+   5027, 65, 1.2, 8.4
+   5028, 67.5, 1.2, 8.4
+   5029, 70, 1.2, 8.4
+   5030, 72.5, 1.2, 8.4
+   5031, 75, 1.2, 8.4
+   5032, 77.5, 1.2, 8.4
+   5033, 80, 1.2, 8.4
+; --- G_BCH_R (OFFSET) ---
+   6001, 0, -1.2, 8.4
+   6002, 2.5, -1.2, 8.4
+   6003, 5, -1.2, 8.4
+   6004, 7.5, -1.2, 8.4
+   6005, 10, -1.2, 8.4
+   6006, 12.5, -1.2, 8.4
+   6007, 15, -1.2, 8.4
+   6008, 17.5, -1.2, 8.4
+   6009, 20, -1.2, 8.4
+   6010, 22.5, -1.2, 8.4
+   6011, 25, -1.2, 8.4
+   6012, 27.5, -1.2, 8.4
+   6013, 30, -1.2, 8.4
+   6014, 32.5, -1.2, 8.4
+   6015, 35, -1.2, 8.4
+   6016, 37.5, -1.2, 8.4
+   6017, 40, -1.2, 8.4
+   6018, 42.5, -1.2, 8.4
+   6019, 45, -1.2, 8.4
+   6020, 47.5, -1.2, 8.4
+   6021, 50, -1.2, 8.4
+   6022, 52.5, -1.2, 8.4
+   6023, 55, -1.2, 8.4
+   6024, 57.5, -1.2, 8.4
+   6025, 60, -1.2, 8.4
+   6026, 62.5, -1.2, 8.4
+   6027, 65, -1.2, 8.4
+   6028, 67.5, -1.2, 8.4
+   6029, 70, -1.2, 8.4
+   6030, 72.5, -1.2, 8.4
+   6031, 75, -1.2, 8.4
+   6032, 77.5, -1.2, 8.4
+   6033, 80, -1.2, 8.4
+; --- G_CABLE_L (CURVE) ---
+   15001, -15, 1.2, 6
+   15002, -10, 1.2, 11.333333
+   15003, -5, 1.2, 16.666667
+   15004, 0, 1.2, 22
+   15005, 2.5, 1.2, 20.818681
+   15006, 5, 1.2, 19.718297
+   15007, 7.5, 1.2, 18.697894
+   15008, 10, 1.2, 17.756586
+   15009, 12.5, 1.2, 16.893558
+   15010, 15, 1.2, 16.108061
+   15011, 17.5, 1.2, 15.399413
+   15012, 20, 1.2, 14.766999
+   15013, 22.5, 1.2, 14.210272
+   15014, 25, 1.2, 13.728747
+   15015, 27.5, 1.2, 13.322008
+   15016, 30, 1.2, 12.989701
+   15017, 32.5, 1.2, 12.731539
+   15018, 35, 1.2, 12.547298
+   15019, 37.5, 1.2, 12.436816
+   15020, 40, 1.2, 12.4
+   15021, 42.5, 1.2, 12.436816
+   15022, 45, 1.2, 12.547298
+   15023, 47.5, 1.2, 12.731539
+   15024, 50, 1.2, 12.989701
+   15025, 52.5, 1.2, 13.322008
+   15026, 55, 1.2, 13.728747
+   15027, 57.5, 1.2, 14.210272
+   15028, 60, 1.2, 14.766999
+   15029, 62.5, 1.2, 15.399413
+   15030, 65, 1.2, 16.108061
+   15031, 67.5, 1.2, 16.893558
+   15032, 70, 1.2, 17.756586
+   15033, 72.5, 1.2, 18.697894
+   15034, 75, 1.2, 19.718297
+   15035, 77.5, 1.2, 20.818681
+   15036, 80, 1.2, 22
+   15037, 85, 1.2, 16.666667
+   15038, 90, 1.2, 11.333333
+   15039, 95, 1.2, 6
+; --- G_CABLE_R (CURVE) ---
+   16001, -15, -1.2, 6
+   16002, -10, -1.2, 11.333333
+   16003, -5, -1.2, 16.666667
+   16004, 0, -1.2, 22
+   16005, 2.5, -1.2, 20.818681
+   16006, 5, -1.2, 19.718297
+   16007, 7.5, -1.2, 18.697894
+   16008, 10, -1.2, 17.756586
+   16009, 12.5, -1.2, 16.893558
+   16010, 15, -1.2, 16.108061
+   16011, 17.5, -1.2, 15.399413
+   16012, 20, -1.2, 14.766999
+   16013, 22.5, -1.2, 14.210272
+   16014, 25, -1.2, 13.728747
+   16015, 27.5, -1.2, 13.322008
+   16016, 30, -1.2, 12.989701
+   16017, 32.5, -1.2, 12.731539
+   16018, 35, -1.2, 12.547298
+   16019, 37.5, -1.2, 12.436816
+   16020, 40, -1.2, 12.4
+   16021, 42.5, -1.2, 12.436816
+   16022, 45, -1.2, 12.547298
+   16023, 47.5, -1.2, 12.731539
+   16024, 50, -1.2, 12.989701
+   16025, 52.5, -1.2, 13.322008
+   16026, 55, -1.2, 13.728747
+   16027, 57.5, -1.2, 14.210272
+   16028, 60, -1.2, 14.766999
+   16029, 62.5, -1.2, 15.399413
+   16030, 65, -1.2, 16.108061
+   16031, 67.5, -1.2, 16.893558
+   16032, 70, -1.2, 17.756586
+   16033, 72.5, -1.2, 18.697894
+   16034, 75, -1.2, 19.718297
+   16035, 77.5, -1.2, 20.818681
+   16036, 80, -1.2, 22
+   16037, 85, -1.2, 16.666667
+   16038, 90, -1.2, 11.333333
+   16039, 95, -1.2, 6
+; --- G_WIND_L (CURVE) ---
+   19001, 10, 8, 2
+   19002, 12.5, 7.322356, 2.677644
+   19003, 15, 6.703638, 3.296362
+   19004, 17.5, 6.143845, 3.856155
+   19005, 20, 5.642977, 4.357023
+   19006, 22.5, 5.201036, 4.798964
+   19007, 25, 4.818019, 5.181981
+   19008, 27.5, 4.493929, 5.506071
+   19009, 30, 4.228764, 5.771236
+   19010, 32.5, 4.022524, 5.977476
+   19011, 35, 3.87521, 6.12479
+   19012, 37.5, 3.786822, 6.213178
+   19013, 40, 3.757359, 6.242641
+   19014, 42.5, 3.786822, 6.213178
+   19015, 45, 3.87521, 6.12479
+   19016, 47.5, 4.022524, 5.977476
+   19017, 50, 4.228764, 5.771236
+   19018, 52.5, 4.493929, 5.506071
+   19019, 55, 4.818019, 5.181981
+   19020, 57.5, 5.201036, 4.798964
+   19021, 60, 5.642977, 4.357023
+   19022, 62.5, 6.143845, 3.856155
+   19023, 65, 6.703638, 3.296362
+   19024, 67.5, 7.322356, 2.677644
+   19025, 70, 8, 2
+; --- G_WIND_R (CURVE) ---
+   20001, 10, -8, 2
+   20002, 12.5, -7.322356, 2.677644
+   20003, 15, -6.703638, 3.296362
+   20004, 17.5, -6.143845, 3.856155
+   20005, 20, -5.642977, 4.357023
+   20006, 22.5, -5.201036, 4.798964
+   20007, 25, -4.818019, 5.181981
+   20008, 27.5, -4.493929, 5.506071
+   20009, 30, -4.228764, 5.771236
+   20010, 32.5, -4.022524, 5.977476
+   20011, 35, -3.87521, 6.12479
+   20012, 37.5, -3.786822, 6.213178
+   20013, 40, -3.757359, 6.242641
+   20014, 42.5, -3.786822, 6.213178
+   20015, 45, -3.87521, 6.12479
+   20016, 47.5, -4.022524, 5.977476
+   20017, 50, -4.228764, 5.771236
+   20018, 52.5, -4.493929, 5.506071
+   20019, 55, -4.818019, 5.181981
+   20020, 57.5, -5.201036, 4.798964
+   20021, 60, -5.642977, 4.357023
+   20022, 62.5, -6.143845, 3.856155
+   20023, 65, -6.703638, 3.296362
+   20024, 67.5, -7.322356, 2.677644
+   20025, 70, -8, 2
+; --- G_TOWER_W (CURVE) ---
+   23002, 0, -1.2, 18.333333
+   23003, 0, -1.2, 14.666667
+   23004, 0, -1.2, 11
+   23005, 0, -1.2, 7.333333
+   23006, 0, -1.2, 3.666667
+   23007, 0, -1.2, 0
+   23009, 0, 1.2, 18.333333
+   23010, 0, 1.2, 14.666667
+   23011, 0, 1.2, 11
+   23012, 0, 1.2, 7.333333
+   23013, 0, 1.2, 3.666667
+   23014, 0, 1.2, 0
+   23016, 0, 0, 22
+; --- G_TOWER_E (CURVE) ---
+   24002, 80, -1.2, 18.333333
+   24003, 80, -1.2, 14.666667
+   24004, 80, -1.2, 11
+   24005, 80, -1.2, 7.333333
+   24006, 80, -1.2, 3.666667
+   24007, 80, -1.2, 0
+   24009, 80, 1.2, 18.333333
+   24010, 80, 1.2, 14.666667
+   24011, 80, 1.2, 11
+   24012, 80, 1.2, 7.333333
+   24013, 80, 1.2, 3.666667
+   24014, 80, 1.2, 0
+   24016, 80, 0, 22
+
+*ELEMENT
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB,                     ; Frame  Element
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL, EXVAL2, bLMT ; Comp/Tens Truss
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iSUB, iWID , LCAXIS    ; Planar Element
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iN5, iN6, iN7, iN8     ; Solid  Element
+; --- G_DECK (CURVE) ---
+   1001, BEAM, 1, 1, 1001, 1002, 0, 0
+   1002, BEAM, 1, 1, 1002, 1003, 0, 0
+   1003, BEAM, 1, 1, 1003, 1004, 0, 0
+   1004, BEAM, 1, 1, 1004, 1005, 0, 0
+   1005, BEAM, 1, 1, 1005, 1006, 0, 0
+   1006, BEAM, 1, 1, 1006, 1007, 0, 0
+   1007, BEAM, 1, 1, 1007, 1008, 0, 0
+   1008, BEAM, 1, 1, 1008, 1009, 0, 0
+   1009, BEAM, 1, 1, 1009, 1010, 0, 0
+   1010, BEAM, 1, 1, 1010, 1011, 0, 0
+   1011, BEAM, 1, 1, 1011, 1012, 0, 0
+   1012, BEAM, 1, 1, 1012, 1013, 0, 0
+   1013, BEAM, 1, 1, 1013, 1014, 0, 0
+   1014, BEAM, 1, 1, 1014, 1015, 0, 0
+   1015, BEAM, 1, 1, 1015, 1016, 0, 0
+   1016, BEAM, 1, 1, 1016, 1017, 0, 0
+   1017, BEAM, 1, 1, 1017, 1018, 0, 0
+   1018, BEAM, 1, 1, 1018, 1019, 0, 0
+   1019, BEAM, 1, 1, 1019, 1020, 0, 0
+   1020, BEAM, 1, 1, 1020, 1021, 0, 0
+   1021, BEAM, 1, 1, 1021, 1022, 0, 0
+   1022, BEAM, 1, 1, 1022, 1023, 0, 0
+   1023, BEAM, 1, 1, 1023, 1024, 0, 0
+   1024, BEAM, 1, 1, 1024, 1025, 0, 0
+   1025, BEAM, 1, 1, 1025, 1026, 0, 0
+   1026, BEAM, 1, 1, 1026, 1027, 0, 0
+   1027, BEAM, 1, 1, 1027, 1028, 0, 0
+   1028, BEAM, 1, 1, 1028, 1029, 0, 0
+   1029, BEAM, 1, 1, 1029, 1030, 0, 0
+   1030, BEAM, 1, 1, 1030, 1031, 0, 0
+   1031, BEAM, 1, 1, 1031, 1032, 0, 0
+   1032, BEAM, 1, 1, 1032, 1033, 0, 0
+; --- G_EDGE_L (OFFSET) ---
+   2001, BEAM, 1, 2, 2001, 2002, 0, 0
+   2002, BEAM, 1, 2, 2002, 2003, 0, 0
+   2003, BEAM, 1, 2, 2003, 2004, 0, 0
+   2004, BEAM, 1, 2, 2004, 2005, 0, 0
+   2005, BEAM, 1, 2, 2005, 2006, 0, 0
+   2006, BEAM, 1, 2, 2006, 2007, 0, 0
+   2007, BEAM, 1, 2, 2007, 2008, 0, 0
+   2008, BEAM, 1, 2, 2008, 2009, 0, 0
+   2009, BEAM, 1, 2, 2009, 2010, 0, 0
+   2010, BEAM, 1, 2, 2010, 2011, 0, 0
+   2011, BEAM, 1, 2, 2011, 2012, 0, 0
+   2012, BEAM, 1, 2, 2012, 2013, 0, 0
+   2013, BEAM, 1, 2, 2013, 2014, 0, 0
+   2014, BEAM, 1, 2, 2014, 2015, 0, 0
+   2015, BEAM, 1, 2, 2015, 2016, 0, 0
+   2016, BEAM, 1, 2, 2016, 2017, 0, 0
+   2017, BEAM, 1, 2, 2017, 2018, 0, 0
+   2018, BEAM, 1, 2, 2018, 2019, 0, 0
+   2019, BEAM, 1, 2, 2019, 2020, 0, 0
+   2020, BEAM, 1, 2, 2020, 2021, 0, 0
+   2021, BEAM, 1, 2, 2021, 2022, 0, 0
+   2022, BEAM, 1, 2, 2022, 2023, 0, 0
+   2023, BEAM, 1, 2, 2023, 2024, 0, 0
+   2024, BEAM, 1, 2, 2024, 2025, 0, 0
+   2025, BEAM, 1, 2, 2025, 2026, 0, 0
+   2026, BEAM, 1, 2, 2026, 2027, 0, 0
+   2027, BEAM, 1, 2, 2027, 2028, 0, 0
+   2028, BEAM, 1, 2, 2028, 2029, 0, 0
+   2029, BEAM, 1, 2, 2029, 2030, 0, 0
+   2030, BEAM, 1, 2, 2030, 2031, 0, 0
+   2031, BEAM, 1, 2, 2031, 2032, 0, 0
+   2032, BEAM, 1, 2, 2032, 2033, 0, 0
+; --- G_EDGE_R (OFFSET) ---
+   3001, BEAM, 1, 2, 3001, 3002, 0, 0
+   3002, BEAM, 1, 2, 3002, 3003, 0, 0
+   3003, BEAM, 1, 2, 3003, 3004, 0, 0
+   3004, BEAM, 1, 2, 3004, 3005, 0, 0
+   3005, BEAM, 1, 2, 3005, 3006, 0, 0
+   3006, BEAM, 1, 2, 3006, 3007, 0, 0
+   3007, BEAM, 1, 2, 3007, 3008, 0, 0
+   3008, BEAM, 1, 2, 3008, 3009, 0, 0
+   3009, BEAM, 1, 2, 3009, 3010, 0, 0
+   3010, BEAM, 1, 2, 3010, 3011, 0, 0
+   3011, BEAM, 1, 2, 3011, 3012, 0, 0
+   3012, BEAM, 1, 2, 3012, 3013, 0, 0
+   3013, BEAM, 1, 2, 3013, 3014, 0, 0
+   3014, BEAM, 1, 2, 3014, 3015, 0, 0
+   3015, BEAM, 1, 2, 3015, 3016, 0, 0
+   3016, BEAM, 1, 2, 3016, 3017, 0, 0
+   3017, BEAM, 1, 2, 3017, 3018, 0, 0
+   3018, BEAM, 1, 2, 3018, 3019, 0, 0
+   3019, BEAM, 1, 2, 3019, 3020, 0, 0
+   3020, BEAM, 1, 2, 3020, 3021, 0, 0
+   3021, BEAM, 1, 2, 3021, 3022, 0, 0
+   3022, BEAM, 1, 2, 3022, 3023, 0, 0
+   3023, BEAM, 1, 2, 3023, 3024, 0, 0
+   3024, BEAM, 1, 2, 3024, 3025, 0, 0
+   3025, BEAM, 1, 2, 3025, 3026, 0, 0
+   3026, BEAM, 1, 2, 3026, 3027, 0, 0
+   3027, BEAM, 1, 2, 3027, 3028, 0, 0
+   3028, BEAM, 1, 2, 3028, 3029, 0, 0
+   3029, BEAM, 1, 2, 3029, 3030, 0, 0
+   3030, BEAM, 1, 2, 3030, 3031, 0, 0
+   3031, BEAM, 1, 2, 3031, 3032, 0, 0
+   3032, BEAM, 1, 2, 3032, 3033, 0, 0
+; --- G_XBEAM (LINK2) ---
+   4001, BEAM, 1, 3, 2001, 3001, 0, 0
+   4002, BEAM, 1, 3, 2002, 3002, 0, 0
+   4003, BEAM, 1, 3, 2003, 3003, 0, 0
+   4004, BEAM, 1, 3, 2004, 3004, 0, 0
+   4005, BEAM, 1, 3, 2005, 3005, 0, 0
+   4006, BEAM, 1, 3, 2006, 3006, 0, 0
+   4007, BEAM, 1, 3, 2007, 3007, 0, 0
+   4008, BEAM, 1, 3, 2008, 3008, 0, 0
+   4009, BEAM, 1, 3, 2009, 3009, 0, 0
+   4010, BEAM, 1, 3, 2010, 3010, 0, 0
+   4011, BEAM, 1, 3, 2011, 3011, 0, 0
+   4012, BEAM, 1, 3, 2012, 3012, 0, 0
+   4013, BEAM, 1, 3, 2013, 3013, 0, 0
+   4014, BEAM, 1, 3, 2014, 3014, 0, 0
+   4015, BEAM, 1, 3, 2015, 3015, 0, 0
+   4016, BEAM, 1, 3, 2016, 3016, 0, 0
+   4017, BEAM, 1, 3, 2017, 3017, 0, 0
+   4018, BEAM, 1, 3, 2018, 3018, 0, 0
+   4019, BEAM, 1, 3, 2019, 3019, 0, 0
+   4020, BEAM, 1, 3, 2020, 3020, 0, 0
+   4021, BEAM, 1, 3, 2021, 3021, 0, 0
+   4022, BEAM, 1, 3, 2022, 3022, 0, 0
+   4023, BEAM, 1, 3, 2023, 3023, 0, 0
+   4024, BEAM, 1, 3, 2024, 3024, 0, 0
+   4025, BEAM, 1, 3, 2025, 3025, 0, 0
+   4026, BEAM, 1, 3, 2026, 3026, 0, 0
+   4027, BEAM, 1, 3, 2027, 3027, 0, 0
+   4028, BEAM, 1, 3, 2028, 3028, 0, 0
+   4029, BEAM, 1, 3, 2029, 3029, 0, 0
+   4030, BEAM, 1, 3, 2030, 3030, 0, 0
+   4031, BEAM, 1, 3, 2031, 3031, 0, 0
+   4032, BEAM, 1, 3, 2032, 3032, 0, 0
+   4033, BEAM, 1, 3, 2033, 3033, 0, 0
+; --- G_BCH_L (OFFSET) ---
+   5001, BEAM, 1, 13, 5001, 5002, 0, 0
+   5002, BEAM, 1, 13, 5002, 5003, 0, 0
+   5003, BEAM, 1, 13, 5003, 5004, 0, 0
+   5004, BEAM, 1, 13, 5004, 5005, 0, 0
+   5005, BEAM, 1, 13, 5005, 5006, 0, 0
+   5006, BEAM, 1, 13, 5006, 5007, 0, 0
+   5007, BEAM, 1, 13, 5007, 5008, 0, 0
+   5008, BEAM, 1, 13, 5008, 5009, 0, 0
+   5009, BEAM, 1, 13, 5009, 5010, 0, 0
+   5010, BEAM, 1, 13, 5010, 5011, 0, 0
+   5011, BEAM, 1, 13, 5011, 5012, 0, 0
+   5012, BEAM, 1, 13, 5012, 5013, 0, 0
+   5013, BEAM, 1, 13, 5013, 5014, 0, 0
+   5014, BEAM, 1, 13, 5014, 5015, 0, 0
+   5015, BEAM, 1, 13, 5015, 5016, 0, 0
+   5016, BEAM, 1, 13, 5016, 5017, 0, 0
+   5017, BEAM, 1, 13, 5017, 5018, 0, 0
+   5018, BEAM, 1, 13, 5018, 5019, 0, 0
+   5019, BEAM, 1, 13, 5019, 5020, 0, 0
+   5020, BEAM, 1, 13, 5020, 5021, 0, 0
+   5021, BEAM, 1, 13, 5021, 5022, 0, 0
+   5022, BEAM, 1, 13, 5022, 5023, 0, 0
+   5023, BEAM, 1, 13, 5023, 5024, 0, 0
+   5024, BEAM, 1, 13, 5024, 5025, 0, 0
+   5025, BEAM, 1, 13, 5025, 5026, 0, 0
+   5026, BEAM, 1, 13, 5026, 5027, 0, 0
+   5027, BEAM, 1, 13, 5027, 5028, 0, 0
+   5028, BEAM, 1, 13, 5028, 5029, 0, 0
+   5029, BEAM, 1, 13, 5029, 5030, 0, 0
+   5030, BEAM, 1, 13, 5030, 5031, 0, 0
+   5031, BEAM, 1, 13, 5031, 5032, 0, 0
+   5032, BEAM, 1, 13, 5032, 5033, 0, 0
+; --- G_BCH_R (OFFSET) ---
+   6001, BEAM, 1, 13, 6001, 6002, 0, 0
+   6002, BEAM, 1, 13, 6002, 6003, 0, 0
+   6003, BEAM, 1, 13, 6003, 6004, 0, 0
+   6004, BEAM, 1, 13, 6004, 6005, 0, 0
+   6005, BEAM, 1, 13, 6005, 6006, 0, 0
+   6006, BEAM, 1, 13, 6006, 6007, 0, 0
+   6007, BEAM, 1, 13, 6007, 6008, 0, 0
+   6008, BEAM, 1, 13, 6008, 6009, 0, 0
+   6009, BEAM, 1, 13, 6009, 6010, 0, 0
+   6010, BEAM, 1, 13, 6010, 6011, 0, 0
+   6011, BEAM, 1, 13, 6011, 6012, 0, 0
+   6012, BEAM, 1, 13, 6012, 6013, 0, 0
+   6013, BEAM, 1, 13, 6013, 6014, 0, 0
+   6014, BEAM, 1, 13, 6014, 6015, 0, 0
+   6015, BEAM, 1, 13, 6015, 6016, 0, 0
+   6016, BEAM, 1, 13, 6016, 6017, 0, 0
+   6017, BEAM, 1, 13, 6017, 6018, 0, 0
+   6018, BEAM, 1, 13, 6018, 6019, 0, 0
+   6019, BEAM, 1, 13, 6019, 6020, 0, 0
+   6020, BEAM, 1, 13, 6020, 6021, 0, 0
+   6021, BEAM, 1, 13, 6021, 6022, 0, 0
+   6022, BEAM, 1, 13, 6022, 6023, 0, 0
+   6023, BEAM, 1, 13, 6023, 6024, 0, 0
+   6024, BEAM, 1, 13, 6024, 6025, 0, 0
+   6025, BEAM, 1, 13, 6025, 6026, 0, 0
+   6026, BEAM, 1, 13, 6026, 6027, 0, 0
+   6027, BEAM, 1, 13, 6027, 6028, 0, 0
+   6028, BEAM, 1, 13, 6028, 6029, 0, 0
+   6029, BEAM, 1, 13, 6029, 6030, 0, 0
+   6030, BEAM, 1, 13, 6030, 6031, 0, 0
+   6031, BEAM, 1, 13, 6031, 6032, 0, 0
+   6032, BEAM, 1, 13, 6032, 6033, 0, 0
+; --- G_VERT_L (LINK2) ---
+   7001, BEAM, 3, 14, 2001, 5001, 0, 0
+   7002, BEAM, 3, 14, 2002, 5002, 0, 0
+   7003, BEAM, 3, 14, 2003, 5003, 0, 0
+   7004, BEAM, 3, 14, 2004, 5004, 0, 0
+   7005, BEAM, 3, 14, 2005, 5005, 0, 0
+   7006, BEAM, 3, 14, 2006, 5006, 0, 0
+   7007, BEAM, 3, 14, 2007, 5007, 0, 0
+   7008, BEAM, 3, 14, 2008, 5008, 0, 0
+   7009, BEAM, 3, 14, 2009, 5009, 0, 0
+   7010, BEAM, 3, 14, 2010, 5010, 0, 0
+   7011, BEAM, 3, 14, 2011, 5011, 0, 0
+   7012, BEAM, 3, 14, 2012, 5012, 0, 0
+   7013, BEAM, 3, 14, 2013, 5013, 0, 0
+   7014, BEAM, 3, 14, 2014, 5014, 0, 0
+   7015, BEAM, 3, 14, 2015, 5015, 0, 0
+   7016, BEAM, 3, 14, 2016, 5016, 0, 0
+   7017, BEAM, 3, 14, 2017, 5017, 0, 0
+   7018, BEAM, 3, 14, 2018, 5018, 0, 0
+   7019, BEAM, 3, 14, 2019, 5019, 0, 0
+   7020, BEAM, 3, 14, 2020, 5020, 0, 0
+   7021, BEAM, 3, 14, 2021, 5021, 0, 0
+   7022, BEAM, 3, 14, 2022, 5022, 0, 0
+   7023, BEAM, 3, 14, 2023, 5023, 0, 0
+   7024, BEAM, 3, 14, 2024, 5024, 0, 0
+   7025, BEAM, 3, 14, 2025, 5025, 0, 0
+   7026, BEAM, 3, 14, 2026, 5026, 0, 0
+   7027, BEAM, 3, 14, 2027, 5027, 0, 0
+   7028, BEAM, 3, 14, 2028, 5028, 0, 0
+   7029, BEAM, 3, 14, 2029, 5029, 0, 0
+   7030, BEAM, 3, 14, 2030, 5030, 0, 0
+   7031, BEAM, 3, 14, 2031, 5031, 0, 0
+   7032, BEAM, 3, 14, 2032, 5032, 0, 0
+   7033, BEAM, 3, 14, 2033, 5033, 0, 0
+; --- G_VERT_R (LINK2) ---
+   8001, BEAM, 3, 14, 3001, 6001, 0, 0
+   8002, BEAM, 3, 14, 3002, 6002, 0, 0
+   8003, BEAM, 3, 14, 3003, 6003, 0, 0
+   8004, BEAM, 3, 14, 3004, 6004, 0, 0
+   8005, BEAM, 3, 14, 3005, 6005, 0, 0
+   8006, BEAM, 3, 14, 3006, 6006, 0, 0
+   8007, BEAM, 3, 14, 3007, 6007, 0, 0
+   8008, BEAM, 3, 14, 3008, 6008, 0, 0
+   8009, BEAM, 3, 14, 3009, 6009, 0, 0
+   8010, BEAM, 3, 14, 3010, 6010, 0, 0
+   8011, BEAM, 3, 14, 3011, 6011, 0, 0
+   8012, BEAM, 3, 14, 3012, 6012, 0, 0
+   8013, BEAM, 3, 14, 3013, 6013, 0, 0
+   8014, BEAM, 3, 14, 3014, 6014, 0, 0
+   8015, BEAM, 3, 14, 3015, 6015, 0, 0
+   8016, BEAM, 3, 14, 3016, 6016, 0, 0
+   8017, BEAM, 3, 14, 3017, 6017, 0, 0
+   8018, BEAM, 3, 14, 3018, 6018, 0, 0
+   8019, BEAM, 3, 14, 3019, 6019, 0, 0
+   8020, BEAM, 3, 14, 3020, 6020, 0, 0
+   8021, BEAM, 3, 14, 3021, 6021, 0, 0
+   8022, BEAM, 3, 14, 3022, 6022, 0, 0
+   8023, BEAM, 3, 14, 3023, 6023, 0, 0
+   8024, BEAM, 3, 14, 3024, 6024, 0, 0
+   8025, BEAM, 3, 14, 3025, 6025, 0, 0
+   8026, BEAM, 3, 14, 3026, 6026, 0, 0
+   8027, BEAM, 3, 14, 3027, 6027, 0, 0
+   8028, BEAM, 3, 14, 3028, 6028, 0, 0
+   8029, BEAM, 3, 14, 3029, 6029, 0, 0
+   8030, BEAM, 3, 14, 3030, 6030, 0, 0
+   8031, BEAM, 3, 14, 3031, 6031, 0, 0
+   8032, BEAM, 3, 14, 3032, 6032, 0, 0
+   8033, BEAM, 3, 14, 3033, 6033, 0, 0
+; --- G_DIAG_L (LINK2) ---
+   9001, TRUSS, 3, 15, 2001, 5002, 0, 0
+   9002, TRUSS, 3, 15, 2002, 5001, 0, 0
+   9003, TRUSS, 3, 15, 2002, 5003, 0, 0
+   9004, TRUSS, 3, 15, 2003, 5002, 0, 0
+   9005, TRUSS, 3, 15, 2003, 5004, 0, 0
+   9006, TRUSS, 3, 15, 2004, 5003, 0, 0
+   9007, TRUSS, 3, 15, 2004, 5005, 0, 0
+   9008, TRUSS, 3, 15, 2005, 5004, 0, 0
+   9009, TRUSS, 3, 15, 2005, 5006, 0, 0
+   9010, TRUSS, 3, 15, 2006, 5005, 0, 0
+   9011, TRUSS, 3, 15, 2006, 5007, 0, 0
+   9012, TRUSS, 3, 15, 2007, 5006, 0, 0
+   9013, TRUSS, 3, 15, 2007, 5008, 0, 0
+   9014, TRUSS, 3, 15, 2008, 5007, 0, 0
+   9015, TRUSS, 3, 15, 2008, 5009, 0, 0
+   9016, TRUSS, 3, 15, 2009, 5008, 0, 0
+   9017, TRUSS, 3, 15, 2009, 5010, 0, 0
+   9018, TRUSS, 3, 15, 2010, 5009, 0, 0
+   9019, TRUSS, 3, 15, 2010, 5011, 0, 0
+   9020, TRUSS, 3, 15, 2011, 5010, 0, 0
+   9021, TRUSS, 3, 15, 2011, 5012, 0, 0
+   9022, TRUSS, 3, 15, 2012, 5011, 0, 0
+   9023, TRUSS, 3, 15, 2012, 5013, 0, 0
+   9024, TRUSS, 3, 15, 2013, 5012, 0, 0
+   9025, TRUSS, 3, 15, 2013, 5014, 0, 0
+   9026, TRUSS, 3, 15, 2014, 5013, 0, 0
+   9027, TRUSS, 3, 15, 2014, 5015, 0, 0
+   9028, TRUSS, 3, 15, 2015, 5014, 0, 0
+   9029, TRUSS, 3, 15, 2015, 5016, 0, 0
+   9030, TRUSS, 3, 15, 2016, 5015, 0, 0
+   9031, TRUSS, 3, 15, 2016, 5017, 0, 0
+   9032, TRUSS, 3, 15, 2017, 5016, 0, 0
+   9033, TRUSS, 3, 15, 2017, 5018, 0, 0
+   9034, TRUSS, 3, 15, 2018, 5017, 0, 0
+   9035, TRUSS, 3, 15, 2018, 5019, 0, 0
+   9036, TRUSS, 3, 15, 2019, 5018, 0, 0
+   9037, TRUSS, 3, 15, 2019, 5020, 0, 0
+   9038, TRUSS, 3, 15, 2020, 5019, 0, 0
+   9039, TRUSS, 3, 15, 2020, 5021, 0, 0
+   9040, TRUSS, 3, 15, 2021, 5020, 0, 0
+   9041, TRUSS, 3, 15, 2021, 5022, 0, 0
+   9042, TRUSS, 3, 15, 2022, 5021, 0, 0
+   9043, TRUSS, 3, 15, 2022, 5023, 0, 0
+   9044, TRUSS, 3, 15, 2023, 5022, 0, 0
+   9045, TRUSS, 3, 15, 2023, 5024, 0, 0
+   9046, TRUSS, 3, 15, 2024, 5023, 0, 0
+   9047, TRUSS, 3, 15, 2024, 5025, 0, 0
+   9048, TRUSS, 3, 15, 2025, 5024, 0, 0
+   9049, TRUSS, 3, 15, 2025, 5026, 0, 0
+   9050, TRUSS, 3, 15, 2026, 5025, 0, 0
+   9051, TRUSS, 3, 15, 2026, 5027, 0, 0
+   9052, TRUSS, 3, 15, 2027, 5026, 0, 0
+   9053, TRUSS, 3, 15, 2027, 5028, 0, 0
+   9054, TRUSS, 3, 15, 2028, 5027, 0, 0
+   9055, TRUSS, 3, 15, 2028, 5029, 0, 0
+   9056, TRUSS, 3, 15, 2029, 5028, 0, 0
+   9057, TRUSS, 3, 15, 2029, 5030, 0, 0
+   9058, TRUSS, 3, 15, 2030, 5029, 0, 0
+   9059, TRUSS, 3, 15, 2030, 5031, 0, 0
+   9060, TRUSS, 3, 15, 2031, 5030, 0, 0
+   9061, TRUSS, 3, 15, 2031, 5032, 0, 0
+   9062, TRUSS, 3, 15, 2032, 5031, 0, 0
+   9063, TRUSS, 3, 15, 2032, 5033, 0, 0
+   9064, TRUSS, 3, 15, 2033, 5032, 0, 0
+; --- G_DIAG_R (LINK2) ---
+   10001, TRUSS, 3, 15, 3001, 6002, 0, 0
+   10002, TRUSS, 3, 15, 3002, 6001, 0, 0
+   10003, TRUSS, 3, 15, 3002, 6003, 0, 0
+   10004, TRUSS, 3, 15, 3003, 6002, 0, 0
+   10005, TRUSS, 3, 15, 3003, 6004, 0, 0
+   10006, TRUSS, 3, 15, 3004, 6003, 0, 0
+   10007, TRUSS, 3, 15, 3004, 6005, 0, 0
+   10008, TRUSS, 3, 15, 3005, 6004, 0, 0
+   10009, TRUSS, 3, 15, 3005, 6006, 0, 0
+   10010, TRUSS, 3, 15, 3006, 6005, 0, 0
+   10011, TRUSS, 3, 15, 3006, 6007, 0, 0
+   10012, TRUSS, 3, 15, 3007, 6006, 0, 0
+   10013, TRUSS, 3, 15, 3007, 6008, 0, 0
+   10014, TRUSS, 3, 15, 3008, 6007, 0, 0
+   10015, TRUSS, 3, 15, 3008, 6009, 0, 0
+   10016, TRUSS, 3, 15, 3009, 6008, 0, 0
+   10017, TRUSS, 3, 15, 3009, 6010, 0, 0
+   10018, TRUSS, 3, 15, 3010, 6009, 0, 0
+   10019, TRUSS, 3, 15, 3010, 6011, 0, 0
+   10020, TRUSS, 3, 15, 3011, 6010, 0, 0
+   10021, TRUSS, 3, 15, 3011, 6012, 0, 0
+   10022, TRUSS, 3, 15, 3012, 6011, 0, 0
+   10023, TRUSS, 3, 15, 3012, 6013, 0, 0
+   10024, TRUSS, 3, 15, 3013, 6012, 0, 0
+   10025, TRUSS, 3, 15, 3013, 6014, 0, 0
+   10026, TRUSS, 3, 15, 3014, 6013, 0, 0
+   10027, TRUSS, 3, 15, 3014, 6015, 0, 0
+   10028, TRUSS, 3, 15, 3015, 6014, 0, 0
+   10029, TRUSS, 3, 15, 3015, 6016, 0, 0
+   10030, TRUSS, 3, 15, 3016, 6015, 0, 0
+   10031, TRUSS, 3, 15, 3016, 6017, 0, 0
+   10032, TRUSS, 3, 15, 3017, 6016, 0, 0
+   10033, TRUSS, 3, 15, 3017, 6018, 0, 0
+   10034, TRUSS, 3, 15, 3018, 6017, 0, 0
+   10035, TRUSS, 3, 15, 3018, 6019, 0, 0
+   10036, TRUSS, 3, 15, 3019, 6018, 0, 0
+   10037, TRUSS, 3, 15, 3019, 6020, 0, 0
+   10038, TRUSS, 3, 15, 3020, 6019, 0, 0
+   10039, TRUSS, 3, 15, 3020, 6021, 0, 0
+   10040, TRUSS, 3, 15, 3021, 6020, 0, 0
+   10041, TRUSS, 3, 15, 3021, 6022, 0, 0
+   10042, TRUSS, 3, 15, 3022, 6021, 0, 0
+   10043, TRUSS, 3, 15, 3022, 6023, 0, 0
+   10044, TRUSS, 3, 15, 3023, 6022, 0, 0
+   10045, TRUSS, 3, 15, 3023, 6024, 0, 0
+   10046, TRUSS, 3, 15, 3024, 6023, 0, 0
+   10047, TRUSS, 3, 15, 3024, 6025, 0, 0
+   10048, TRUSS, 3, 15, 3025, 6024, 0, 0
+   10049, TRUSS, 3, 15, 3025, 6026, 0, 0
+   10050, TRUSS, 3, 15, 3026, 6025, 0, 0
+   10051, TRUSS, 3, 15, 3026, 6027, 0, 0
+   10052, TRUSS, 3, 15, 3027, 6026, 0, 0
+   10053, TRUSS, 3, 15, 3027, 6028, 0, 0
+   10054, TRUSS, 3, 15, 3028, 6027, 0, 0
+   10055, TRUSS, 3, 15, 3028, 6029, 0, 0
+   10056, TRUSS, 3, 15, 3029, 6028, 0, 0
+   10057, TRUSS, 3, 15, 3029, 6030, 0, 0
+   10058, TRUSS, 3, 15, 3030, 6029, 0, 0
+   10059, TRUSS, 3, 15, 3030, 6031, 0, 0
+   10060, TRUSS, 3, 15, 3031, 6030, 0, 0
+   10061, TRUSS, 3, 15, 3031, 6032, 0, 0
+   10062, TRUSS, 3, 15, 3032, 6031, 0, 0
+   10063, TRUSS, 3, 15, 3032, 6033, 0, 0
+   10064, TRUSS, 3, 15, 3033, 6032, 0, 0
+; --- G_BXBEAM (LINK2) ---
+   11001, BEAM, 3, 16, 5001, 6001, 0, 0
+   11002, BEAM, 3, 16, 5002, 6002, 0, 0
+   11003, BEAM, 3, 16, 5003, 6003, 0, 0
+   11004, BEAM, 3, 16, 5004, 6004, 0, 0
+   11005, BEAM, 3, 16, 5005, 6005, 0, 0
+   11006, BEAM, 3, 16, 5006, 6006, 0, 0
+   11007, BEAM, 3, 16, 5007, 6007, 0, 0
+   11008, BEAM, 3, 16, 5008, 6008, 0, 0
+   11009, BEAM, 3, 16, 5009, 6009, 0, 0
+   11010, BEAM, 3, 16, 5010, 6010, 0, 0
+   11011, BEAM, 3, 16, 5011, 6011, 0, 0
+   11012, BEAM, 3, 16, 5012, 6012, 0, 0
+   11013, BEAM, 3, 16, 5013, 6013, 0, 0
+   11014, BEAM, 3, 16, 5014, 6014, 0, 0
+   11015, BEAM, 3, 16, 5015, 6015, 0, 0
+   11016, BEAM, 3, 16, 5016, 6016, 0, 0
+   11017, BEAM, 3, 16, 5017, 6017, 0, 0
+   11018, BEAM, 3, 16, 5018, 6018, 0, 0
+   11019, BEAM, 3, 16, 5019, 6019, 0, 0
+   11020, BEAM, 3, 16, 5020, 6020, 0, 0
+   11021, BEAM, 3, 16, 5021, 6021, 0, 0
+   11022, BEAM, 3, 16, 5022, 6022, 0, 0
+   11023, BEAM, 3, 16, 5023, 6023, 0, 0
+   11024, BEAM, 3, 16, 5024, 6024, 0, 0
+   11025, BEAM, 3, 16, 5025, 6025, 0, 0
+   11026, BEAM, 3, 16, 5026, 6026, 0, 0
+   11027, BEAM, 3, 16, 5027, 6027, 0, 0
+   11028, BEAM, 3, 16, 5028, 6028, 0, 0
+   11029, BEAM, 3, 16, 5029, 6029, 0, 0
+   11030, BEAM, 3, 16, 5030, 6030, 0, 0
+   11031, BEAM, 3, 16, 5031, 6031, 0, 0
+   11032, BEAM, 3, 16, 5032, 6032, 0, 0
+   11033, BEAM, 3, 16, 5033, 6033, 0, 0
+; --- G_BDIAG (LINK2) ---
+   12001, TRUSS, 3, 17, 5001, 6002, 0, 0
+   12002, TRUSS, 3, 17, 5002, 6001, 0, 0
+   12003, TRUSS, 3, 17, 5002, 6003, 0, 0
+   12004, TRUSS, 3, 17, 5003, 6002, 0, 0
+   12005, TRUSS, 3, 17, 5003, 6004, 0, 0
+   12006, TRUSS, 3, 17, 5004, 6003, 0, 0
+   12007, TRUSS, 3, 17, 5004, 6005, 0, 0
+   12008, TRUSS, 3, 17, 5005, 6004, 0, 0
+   12009, TRUSS, 3, 17, 5005, 6006, 0, 0
+   12010, TRUSS, 3, 17, 5006, 6005, 0, 0
+   12011, TRUSS, 3, 17, 5006, 6007, 0, 0
+   12012, TRUSS, 3, 17, 5007, 6006, 0, 0
+   12013, TRUSS, 3, 17, 5007, 6008, 0, 0
+   12014, TRUSS, 3, 17, 5008, 6007, 0, 0
+   12015, TRUSS, 3, 17, 5008, 6009, 0, 0
+   12016, TRUSS, 3, 17, 5009, 6008, 0, 0
+   12017, TRUSS, 3, 17, 5009, 6010, 0, 0
+   12018, TRUSS, 3, 17, 5010, 6009, 0, 0
+   12019, TRUSS, 3, 17, 5010, 6011, 0, 0
+   12020, TRUSS, 3, 17, 5011, 6010, 0, 0
+   12021, TRUSS, 3, 17, 5011, 6012, 0, 0
+   12022, TRUSS, 3, 17, 5012, 6011, 0, 0
+   12023, TRUSS, 3, 17, 5012, 6013, 0, 0
+   12024, TRUSS, 3, 17, 5013, 6012, 0, 0
+   12025, TRUSS, 3, 17, 5013, 6014, 0, 0
+   12026, TRUSS, 3, 17, 5014, 6013, 0, 0
+   12027, TRUSS, 3, 17, 5014, 6015, 0, 0
+   12028, TRUSS, 3, 17, 5015, 6014, 0, 0
+   12029, TRUSS, 3, 17, 5015, 6016, 0, 0
+   12030, TRUSS, 3, 17, 5016, 6015, 0, 0
+   12031, TRUSS, 3, 17, 5016, 6017, 0, 0
+   12032, TRUSS, 3, 17, 5017, 6016, 0, 0
+   12033, TRUSS, 3, 17, 5017, 6018, 0, 0
+   12034, TRUSS, 3, 17, 5018, 6017, 0, 0
+   12035, TRUSS, 3, 17, 5018, 6019, 0, 0
+   12036, TRUSS, 3, 17, 5019, 6018, 0, 0
+   12037, TRUSS, 3, 17, 5019, 6020, 0, 0
+   12038, TRUSS, 3, 17, 5020, 6019, 0, 0
+   12039, TRUSS, 3, 17, 5020, 6021, 0, 0
+   12040, TRUSS, 3, 17, 5021, 6020, 0, 0
+   12041, TRUSS, 3, 17, 5021, 6022, 0, 0
+   12042, TRUSS, 3, 17, 5022, 6021, 0, 0
+   12043, TRUSS, 3, 17, 5022, 6023, 0, 0
+   12044, TRUSS, 3, 17, 5023, 6022, 0, 0
+   12045, TRUSS, 3, 17, 5023, 6024, 0, 0
+   12046, TRUSS, 3, 17, 5024, 6023, 0, 0
+   12047, TRUSS, 3, 17, 5024, 6025, 0, 0
+   12048, TRUSS, 3, 17, 5025, 6024, 0, 0
+   12049, TRUSS, 3, 17, 5025, 6026, 0, 0
+   12050, TRUSS, 3, 17, 5026, 6025, 0, 0
+   12051, TRUSS, 3, 17, 5026, 6027, 0, 0
+   12052, TRUSS, 3, 17, 5027, 6026, 0, 0
+   12053, TRUSS, 3, 17, 5027, 6028, 0, 0
+   12054, TRUSS, 3, 17, 5028, 6027, 0, 0
+   12055, TRUSS, 3, 17, 5028, 6029, 0, 0
+   12056, TRUSS, 3, 17, 5029, 6028, 0, 0
+   12057, TRUSS, 3, 17, 5029, 6030, 0, 0
+   12058, TRUSS, 3, 17, 5030, 6029, 0, 0
+   12059, TRUSS, 3, 17, 5030, 6031, 0, 0
+   12060, TRUSS, 3, 17, 5031, 6030, 0, 0
+   12061, TRUSS, 3, 17, 5031, 6032, 0, 0
+   12062, TRUSS, 3, 17, 5032, 6031, 0, 0
+   12063, TRUSS, 3, 17, 5032, 6033, 0, 0
+   12064, TRUSS, 3, 17, 5033, 6032, 0, 0
+; --- G_CROSS_L (LINK2) ---
+   13001, TRUSS, 3, 20, 2001, 6001, 0, 0
+   13002, TRUSS, 3, 20, 2003, 6003, 0, 0
+   13003, TRUSS, 3, 20, 2005, 6005, 0, 0
+   13004, TRUSS, 3, 20, 2007, 6007, 0, 0
+   13005, TRUSS, 3, 20, 2009, 6009, 0, 0
+   13006, TRUSS, 3, 20, 2011, 6011, 0, 0
+   13007, TRUSS, 3, 20, 2013, 6013, 0, 0
+   13008, TRUSS, 3, 20, 2015, 6015, 0, 0
+   13009, TRUSS, 3, 20, 2017, 6017, 0, 0
+   13010, TRUSS, 3, 20, 2019, 6019, 0, 0
+   13011, TRUSS, 3, 20, 2021, 6021, 0, 0
+   13012, TRUSS, 3, 20, 2023, 6023, 0, 0
+   13013, TRUSS, 3, 20, 2025, 6025, 0, 0
+   13014, TRUSS, 3, 20, 2027, 6027, 0, 0
+   13015, TRUSS, 3, 20, 2029, 6029, 0, 0
+   13016, TRUSS, 3, 20, 2031, 6031, 0, 0
+   13017, TRUSS, 3, 20, 2033, 6033, 0, 0
+; --- G_CROSS_R (LINK2) ---
+   14001, TRUSS, 3, 20, 3001, 5001, 0, 0
+   14002, TRUSS, 3, 20, 3003, 5003, 0, 0
+   14003, TRUSS, 3, 20, 3005, 5005, 0, 0
+   14004, TRUSS, 3, 20, 3007, 5007, 0, 0
+   14005, TRUSS, 3, 20, 3009, 5009, 0, 0
+   14006, TRUSS, 3, 20, 3011, 5011, 0, 0
+   14007, TRUSS, 3, 20, 3013, 5013, 0, 0
+   14008, TRUSS, 3, 20, 3015, 5015, 0, 0
+   14009, TRUSS, 3, 20, 3017, 5017, 0, 0
+   14010, TRUSS, 3, 20, 3019, 5019, 0, 0
+   14011, TRUSS, 3, 20, 3021, 5021, 0, 0
+   14012, TRUSS, 3, 20, 3023, 5023, 0, 0
+   14013, TRUSS, 3, 20, 3025, 5025, 0, 0
+   14014, TRUSS, 3, 20, 3027, 5027, 0, 0
+   14015, TRUSS, 3, 20, 3029, 5029, 0, 0
+   14016, TRUSS, 3, 20, 3031, 5031, 0, 0
+   14017, TRUSS, 3, 20, 3033, 5033, 0, 0
+; --- G_CABLE_L (CURVE) ---
+   15001, TENSTR, 2, 11, 15001, 15002, 0, 3, 0, 3
+   15002, TENSTR, 2, 11, 15002, 15003, 0, 3, 0, 3
+   15003, TENSTR, 2, 11, 15003, 15004, 0, 3, 0, 3
+   15004, TENSTR, 2, 11, 15004, 15005, 0, 3, 0, 3
+   15005, TENSTR, 2, 11, 15005, 15006, 0, 3, 0, 3
+   15006, TENSTR, 2, 11, 15006, 15007, 0, 3, 0, 3
+   15007, TENSTR, 2, 11, 15007, 15008, 0, 3, 0, 3
+   15008, TENSTR, 2, 11, 15008, 15009, 0, 3, 0, 3
+   15009, TENSTR, 2, 11, 15009, 15010, 0, 3, 0, 3
+   15010, TENSTR, 2, 11, 15010, 15011, 0, 3, 0, 3
+   15011, TENSTR, 2, 11, 15011, 15012, 0, 3, 0, 3
+   15012, TENSTR, 2, 11, 15012, 15013, 0, 3, 0, 3
+   15013, TENSTR, 2, 11, 15013, 15014, 0, 3, 0, 3
+   15014, TENSTR, 2, 11, 15014, 15015, 0, 3, 0, 3
+   15015, TENSTR, 2, 11, 15015, 15016, 0, 3, 0, 3
+   15016, TENSTR, 2, 11, 15016, 15017, 0, 3, 0, 3
+   15017, TENSTR, 2, 11, 15017, 15018, 0, 3, 0, 3
+   15018, TENSTR, 2, 11, 15018, 15019, 0, 3, 0, 3
+   15019, TENSTR, 2, 11, 15019, 15020, 0, 3, 0, 3
+   15020, TENSTR, 2, 11, 15020, 15021, 0, 3, 0, 3
+   15021, TENSTR, 2, 11, 15021, 15022, 0, 3, 0, 3
+   15022, TENSTR, 2, 11, 15022, 15023, 0, 3, 0, 3
+   15023, TENSTR, 2, 11, 15023, 15024, 0, 3, 0, 3
+   15024, TENSTR, 2, 11, 15024, 15025, 0, 3, 0, 3
+   15025, TENSTR, 2, 11, 15025, 15026, 0, 3, 0, 3
+   15026, TENSTR, 2, 11, 15026, 15027, 0, 3, 0, 3
+   15027, TENSTR, 2, 11, 15027, 15028, 0, 3, 0, 3
+   15028, TENSTR, 2, 11, 15028, 15029, 0, 3, 0, 3
+   15029, TENSTR, 2, 11, 15029, 15030, 0, 3, 0, 3
+   15030, TENSTR, 2, 11, 15030, 15031, 0, 3, 0, 3
+   15031, TENSTR, 2, 11, 15031, 15032, 0, 3, 0, 3
+   15032, TENSTR, 2, 11, 15032, 15033, 0, 3, 0, 3
+   15033, TENSTR, 2, 11, 15033, 15034, 0, 3, 0, 3
+   15034, TENSTR, 2, 11, 15034, 15035, 0, 3, 0, 3
+   15035, TENSTR, 2, 11, 15035, 15036, 0, 3, 0, 3
+   15036, TENSTR, 2, 11, 15036, 15037, 0, 3, 0, 3
+   15037, TENSTR, 2, 11, 15037, 15038, 0, 3, 0, 3
+   15038, TENSTR, 2, 11, 15038, 15039, 0, 3, 0, 3
+; --- G_CABLE_R (CURVE) ---
+   16001, TENSTR, 2, 11, 16001, 16002, 0, 3, 0, 3
+   16002, TENSTR, 2, 11, 16002, 16003, 0, 3, 0, 3
+   16003, TENSTR, 2, 11, 16003, 16004, 0, 3, 0, 3
+   16004, TENSTR, 2, 11, 16004, 16005, 0, 3, 0, 3
+   16005, TENSTR, 2, 11, 16005, 16006, 0, 3, 0, 3
+   16006, TENSTR, 2, 11, 16006, 16007, 0, 3, 0, 3
+   16007, TENSTR, 2, 11, 16007, 16008, 0, 3, 0, 3
+   16008, TENSTR, 2, 11, 16008, 16009, 0, 3, 0, 3
+   16009, TENSTR, 2, 11, 16009, 16010, 0, 3, 0, 3
+   16010, TENSTR, 2, 11, 16010, 16011, 0, 3, 0, 3
+   16011, TENSTR, 2, 11, 16011, 16012, 0, 3, 0, 3
+   16012, TENSTR, 2, 11, 16012, 16013, 0, 3, 0, 3
+   16013, TENSTR, 2, 11, 16013, 16014, 0, 3, 0, 3
+   16014, TENSTR, 2, 11, 16014, 16015, 0, 3, 0, 3
+   16015, TENSTR, 2, 11, 16015, 16016, 0, 3, 0, 3
+   16016, TENSTR, 2, 11, 16016, 16017, 0, 3, 0, 3
+   16017, TENSTR, 2, 11, 16017, 16018, 0, 3, 0, 3
+   16018, TENSTR, 2, 11, 16018, 16019, 0, 3, 0, 3
+   16019, TENSTR, 2, 11, 16019, 16020, 0, 3, 0, 3
+   16020, TENSTR, 2, 11, 16020, 16021, 0, 3, 0, 3
+   16021, TENSTR, 2, 11, 16021, 16022, 0, 3, 0, 3
+   16022, TENSTR, 2, 11, 16022, 16023, 0, 3, 0, 3
+   16023, TENSTR, 2, 11, 16023, 16024, 0, 3, 0, 3
+   16024, TENSTR, 2, 11, 16024, 16025, 0, 3, 0, 3
+   16025, TENSTR, 2, 11, 16025, 16026, 0, 3, 0, 3
+   16026, TENSTR, 2, 11, 16026, 16027, 0, 3, 0, 3
+   16027, TENSTR, 2, 11, 16027, 16028, 0, 3, 0, 3
+   16028, TENSTR, 2, 11, 16028, 16029, 0, 3, 0, 3
+   16029, TENSTR, 2, 11, 16029, 16030, 0, 3, 0, 3
+   16030, TENSTR, 2, 11, 16030, 16031, 0, 3, 0, 3
+   16031, TENSTR, 2, 11, 16031, 16032, 0, 3, 0, 3
+   16032, TENSTR, 2, 11, 16032, 16033, 0, 3, 0, 3
+   16033, TENSTR, 2, 11, 16033, 16034, 0, 3, 0, 3
+   16034, TENSTR, 2, 11, 16034, 16035, 0, 3, 0, 3
+   16035, TENSTR, 2, 11, 16035, 16036, 0, 3, 0, 3
+   16036, TENSTR, 2, 11, 16036, 16037, 0, 3, 0, 3
+   16037, TENSTR, 2, 11, 16037, 16038, 0, 3, 0, 3
+   16038, TENSTR, 2, 11, 16038, 16039, 0, 3, 0, 3
+; --- G_HANG_L (LINKZ) ---
+   17001, TENSTR, 2, 12, 15005, 2002, 0, 3, 0, 3
+   17002, TENSTR, 2, 12, 15006, 2003, 0, 3, 0, 3
+   17003, TENSTR, 2, 12, 15007, 2004, 0, 3, 0, 3
+   17004, TENSTR, 2, 12, 15008, 2005, 0, 3, 0, 3
+   17005, TENSTR, 2, 12, 15009, 2006, 0, 3, 0, 3
+   17006, TENSTR, 2, 12, 15010, 2007, 0, 3, 0, 3
+   17007, TENSTR, 2, 12, 15011, 2008, 0, 3, 0, 3
+   17008, TENSTR, 2, 12, 15012, 2009, 0, 3, 0, 3
+   17009, TENSTR, 2, 12, 15013, 2010, 0, 3, 0, 3
+   17010, TENSTR, 2, 12, 15014, 2011, 0, 3, 0, 3
+   17011, TENSTR, 2, 12, 15015, 2012, 0, 3, 0, 3
+   17012, TENSTR, 2, 12, 15016, 2013, 0, 3, 0, 3
+   17013, TENSTR, 2, 12, 15017, 2014, 0, 3, 0, 3
+   17014, TENSTR, 2, 12, 15018, 2015, 0, 3, 0, 3
+   17015, TENSTR, 2, 12, 15019, 2016, 0, 3, 0, 3
+   17016, TENSTR, 2, 12, 15020, 2017, 0, 3, 0, 3
+   17017, TENSTR, 2, 12, 15021, 2018, 0, 3, 0, 3
+   17018, TENSTR, 2, 12, 15022, 2019, 0, 3, 0, 3
+   17019, TENSTR, 2, 12, 15023, 2020, 0, 3, 0, 3
+   17020, TENSTR, 2, 12, 15024, 2021, 0, 3, 0, 3
+   17021, TENSTR, 2, 12, 15025, 2022, 0, 3, 0, 3
+   17022, TENSTR, 2, 12, 15026, 2023, 0, 3, 0, 3
+   17023, TENSTR, 2, 12, 15027, 2024, 0, 3, 0, 3
+   17024, TENSTR, 2, 12, 15028, 2025, 0, 3, 0, 3
+   17025, TENSTR, 2, 12, 15029, 2026, 0, 3, 0, 3
+   17026, TENSTR, 2, 12, 15030, 2027, 0, 3, 0, 3
+   17027, TENSTR, 2, 12, 15031, 2028, 0, 3, 0, 3
+   17028, TENSTR, 2, 12, 15032, 2029, 0, 3, 0, 3
+   17029, TENSTR, 2, 12, 15033, 2030, 0, 3, 0, 3
+   17030, TENSTR, 2, 12, 15034, 2031, 0, 3, 0, 3
+   17031, TENSTR, 2, 12, 15035, 2032, 0, 3, 0, 3
+; --- G_HANG_R (LINKZ) ---
+   18001, TENSTR, 2, 12, 16005, 3002, 0, 3, 0, 3
+   18002, TENSTR, 2, 12, 16006, 3003, 0, 3, 0, 3
+   18003, TENSTR, 2, 12, 16007, 3004, 0, 3, 0, 3
+   18004, TENSTR, 2, 12, 16008, 3005, 0, 3, 0, 3
+   18005, TENSTR, 2, 12, 16009, 3006, 0, 3, 0, 3
+   18006, TENSTR, 2, 12, 16010, 3007, 0, 3, 0, 3
+   18007, TENSTR, 2, 12, 16011, 3008, 0, 3, 0, 3
+   18008, TENSTR, 2, 12, 16012, 3009, 0, 3, 0, 3
+   18009, TENSTR, 2, 12, 16013, 3010, 0, 3, 0, 3
+   18010, TENSTR, 2, 12, 16014, 3011, 0, 3, 0, 3
+   18011, TENSTR, 2, 12, 16015, 3012, 0, 3, 0, 3
+   18012, TENSTR, 2, 12, 16016, 3013, 0, 3, 0, 3
+   18013, TENSTR, 2, 12, 16017, 3014, 0, 3, 0, 3
+   18014, TENSTR, 2, 12, 16018, 3015, 0, 3, 0, 3
+   18015, TENSTR, 2, 12, 16019, 3016, 0, 3, 0, 3
+   18016, TENSTR, 2, 12, 16020, 3017, 0, 3, 0, 3
+   18017, TENSTR, 2, 12, 16021, 3018, 0, 3, 0, 3
+   18018, TENSTR, 2, 12, 16022, 3019, 0, 3, 0, 3
+   18019, TENSTR, 2, 12, 16023, 3020, 0, 3, 0, 3
+   18020, TENSTR, 2, 12, 16024, 3021, 0, 3, 0, 3
+   18021, TENSTR, 2, 12, 16025, 3022, 0, 3, 0, 3
+   18022, TENSTR, 2, 12, 16026, 3023, 0, 3, 0, 3
+   18023, TENSTR, 2, 12, 16027, 3024, 0, 3, 0, 3
+   18024, TENSTR, 2, 12, 16028, 3025, 0, 3, 0, 3
+   18025, TENSTR, 2, 12, 16029, 3026, 0, 3, 0, 3
+   18026, TENSTR, 2, 12, 16030, 3027, 0, 3, 0, 3
+   18027, TENSTR, 2, 12, 16031, 3028, 0, 3, 0, 3
+   18028, TENSTR, 2, 12, 16032, 3029, 0, 3, 0, 3
+   18029, TENSTR, 2, 12, 16033, 3030, 0, 3, 0, 3
+   18030, TENSTR, 2, 12, 16034, 3031, 0, 3, 0, 3
+   18031, TENSTR, 2, 12, 16035, 3032, 0, 3, 0, 3
+; --- G_WIND_L (CURVE) ---
+   19001, TENSTR, 2, 18, 19001, 19002, 0, 3, 0, 3
+   19002, TENSTR, 2, 18, 19002, 19003, 0, 3, 0, 3
+   19003, TENSTR, 2, 18, 19003, 19004, 0, 3, 0, 3
+   19004, TENSTR, 2, 18, 19004, 19005, 0, 3, 0, 3
+   19005, TENSTR, 2, 18, 19005, 19006, 0, 3, 0, 3
+   19006, TENSTR, 2, 18, 19006, 19007, 0, 3, 0, 3
+   19007, TENSTR, 2, 18, 19007, 19008, 0, 3, 0, 3
+   19008, TENSTR, 2, 18, 19008, 19009, 0, 3, 0, 3
+   19009, TENSTR, 2, 18, 19009, 19010, 0, 3, 0, 3
+   19010, TENSTR, 2, 18, 19010, 19011, 0, 3, 0, 3
+   19011, TENSTR, 2, 18, 19011, 19012, 0, 3, 0, 3
+   19012, TENSTR, 2, 18, 19012, 19013, 0, 3, 0, 3
+   19013, TENSTR, 2, 18, 19013, 19014, 0, 3, 0, 3
+   19014, TENSTR, 2, 18, 19014, 19015, 0, 3, 0, 3
+   19015, TENSTR, 2, 18, 19015, 19016, 0, 3, 0, 3
+   19016, TENSTR, 2, 18, 19016, 19017, 0, 3, 0, 3
+   19017, TENSTR, 2, 18, 19017, 19018, 0, 3, 0, 3
+   19018, TENSTR, 2, 18, 19018, 19019, 0, 3, 0, 3
+   19019, TENSTR, 2, 18, 19019, 19020, 0, 3, 0, 3
+   19020, TENSTR, 2, 18, 19020, 19021, 0, 3, 0, 3
+   19021, TENSTR, 2, 18, 19021, 19022, 0, 3, 0, 3
+   19022, TENSTR, 2, 18, 19022, 19023, 0, 3, 0, 3
+   19023, TENSTR, 2, 18, 19023, 19024, 0, 3, 0, 3
+   19024, TENSTR, 2, 18, 19024, 19025, 0, 3, 0, 3
+; --- G_WIND_R (CURVE) ---
+   20001, TENSTR, 2, 18, 20001, 20002, 0, 3, 0, 3
+   20002, TENSTR, 2, 18, 20002, 20003, 0, 3, 0, 3
+   20003, TENSTR, 2, 18, 20003, 20004, 0, 3, 0, 3
+   20004, TENSTR, 2, 18, 20004, 20005, 0, 3, 0, 3
+   20005, TENSTR, 2, 18, 20005, 20006, 0, 3, 0, 3
+   20006, TENSTR, 2, 18, 20006, 20007, 0, 3, 0, 3
+   20007, TENSTR, 2, 18, 20007, 20008, 0, 3, 0, 3
+   20008, TENSTR, 2, 18, 20008, 20009, 0, 3, 0, 3
+   20009, TENSTR, 2, 18, 20009, 20010, 0, 3, 0, 3
+   20010, TENSTR, 2, 18, 20010, 20011, 0, 3, 0, 3
+   20011, TENSTR, 2, 18, 20011, 20012, 0, 3, 0, 3
+   20012, TENSTR, 2, 18, 20012, 20013, 0, 3, 0, 3
+   20013, TENSTR, 2, 18, 20013, 20014, 0, 3, 0, 3
+   20014, TENSTR, 2, 18, 20014, 20015, 0, 3, 0, 3
+   20015, TENSTR, 2, 18, 20015, 20016, 0, 3, 0, 3
+   20016, TENSTR, 2, 18, 20016, 20017, 0, 3, 0, 3
+   20017, TENSTR, 2, 18, 20017, 20018, 0, 3, 0, 3
+   20018, TENSTR, 2, 18, 20018, 20019, 0, 3, 0, 3
+   20019, TENSTR, 2, 18, 20019, 20020, 0, 3, 0, 3
+   20020, TENSTR, 2, 18, 20020, 20021, 0, 3, 0, 3
+   20021, TENSTR, 2, 18, 20021, 20022, 0, 3, 0, 3
+   20022, TENSTR, 2, 18, 20022, 20023, 0, 3, 0, 3
+   20023, TENSTR, 2, 18, 20023, 20024, 0, 3, 0, 3
+   20024, TENSTR, 2, 18, 20024, 20025, 0, 3, 0, 3
+; --- G_WSTAY_L (LINK2) ---
+   21001, TENSTR, 2, 19, 5007, 19003, 0, 3, 0, 3
+   21002, TENSTR, 2, 19, 5009, 19005, 0, 3, 0, 3
+   21003, TENSTR, 2, 19, 5011, 19007, 0, 3, 0, 3
+   21004, TENSTR, 2, 19, 5013, 19009, 0, 3, 0, 3
+   21005, TENSTR, 2, 19, 5015, 19011, 0, 3, 0, 3
+   21006, TENSTR, 2, 19, 5017, 19013, 0, 3, 0, 3
+   21007, TENSTR, 2, 19, 5019, 19015, 0, 3, 0, 3
+   21008, TENSTR, 2, 19, 5021, 19017, 0, 3, 0, 3
+   21009, TENSTR, 2, 19, 5023, 19019, 0, 3, 0, 3
+   21010, TENSTR, 2, 19, 5025, 19021, 0, 3, 0, 3
+   21011, TENSTR, 2, 19, 5027, 19023, 0, 3, 0, 3
+; --- G_WSTAY_R (LINK2) ---
+   22001, TENSTR, 2, 19, 6007, 20003, 0, 3, 0, 3
+   22002, TENSTR, 2, 19, 6009, 20005, 0, 3, 0, 3
+   22003, TENSTR, 2, 19, 6011, 20007, 0, 3, 0, 3
+   22004, TENSTR, 2, 19, 6013, 20009, 0, 3, 0, 3
+   22005, TENSTR, 2, 19, 6015, 20011, 0, 3, 0, 3
+   22006, TENSTR, 2, 19, 6017, 20013, 0, 3, 0, 3
+   22007, TENSTR, 2, 19, 6019, 20015, 0, 3, 0, 3
+   22008, TENSTR, 2, 19, 6021, 20017, 0, 3, 0, 3
+   22009, TENSTR, 2, 19, 6023, 20019, 0, 3, 0, 3
+   22010, TENSTR, 2, 19, 6025, 20021, 0, 3, 0, 3
+   22011, TENSTR, 2, 19, 6027, 20023, 0, 3, 0, 3
+; --- G_TOWER_W (CURVE) ---
+   23001, BEAM, 3, 4, 16004, 23002, 0, 0
+   23002, BEAM, 3, 4, 23002, 23003, 0, 0
+   23003, BEAM, 3, 4, 23003, 23004, 0, 0
+   23004, BEAM, 3, 4, 23004, 23005, 0, 0
+   23005, BEAM, 3, 4, 23005, 23006, 0, 0
+   23006, BEAM, 3, 4, 23006, 23007, 0, 0
+   23007, BEAM, 3, 4, 15004, 23009, 0, 0
+   23008, BEAM, 3, 4, 23009, 23010, 0, 0
+   23009, BEAM, 3, 4, 23010, 23011, 0, 0
+   23010, BEAM, 3, 4, 23011, 23012, 0, 0
+   23011, BEAM, 3, 4, 23012, 23013, 0, 0
+   23012, BEAM, 3, 4, 23013, 23014, 0, 0
+   23013, BEAM, 3, 4, 16004, 23016, 0, 0
+   23014, BEAM, 3, 4, 23016, 15004, 0, 0
+; --- G_TOWER_E (CURVE) ---
+   24001, BEAM, 3, 4, 16036, 24002, 0, 0
+   24002, BEAM, 3, 4, 24002, 24003, 0, 0
+   24003, BEAM, 3, 4, 24003, 24004, 0, 0
+   24004, BEAM, 3, 4, 24004, 24005, 0, 0
+   24005, BEAM, 3, 4, 24005, 24006, 0, 0
+   24006, BEAM, 3, 4, 24006, 24007, 0, 0
+   24007, BEAM, 3, 4, 15036, 24009, 0, 0
+   24008, BEAM, 3, 4, 24009, 24010, 0, 0
+   24009, BEAM, 3, 4, 24010, 24011, 0, 0
+   24010, BEAM, 3, 4, 24011, 24012, 0, 0
+   24011, BEAM, 3, 4, 24012, 24013, 0, 0
+   24012, BEAM, 3, 4, 24013, 24014, 0, 0
+   24013, BEAM, 3, 4, 16036, 24016, 0, 0
+   24014, BEAM, 3, 4, 24016, 15036, 0, 0
+
+*GROUP
+; NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE
+   G_DECK, 1001to1033, 1001to1032, 0
+   G_EDGE_L, 2001to2033, 2001to2032, 0
+   G_EDGE_R, 3001to3033, 3001to3032, 0
+   G_XBEAM, , 4001to4033, 0
+   G_BCH_L, 5001to5033, 5001to5032, 0
+   G_BCH_R, 6001to6033, 6001to6032, 0
+   G_VERT_L, , 7001to7033, 0
+   G_VERT_R, , 8001to8033, 0
+   G_DIAG_L, , 9001to9064, 0
+   G_DIAG_R, , 10001to10064, 0
+   G_BXBEAM, , 11001to11033, 0
+   G_BDIAG, , 12001to12064, 0
+   G_CROSS_L, , 13001to13017, 0
+   G_CROSS_R, , 14001to14017, 0
+   G_CABLE_L, 15001to15039, 15001to15038, 0
+   G_CABLE_R, 16001to16039, 16001to16038, 0
+   G_HANG_L, , 17001to17031, 0
+   G_HANG_R, , 18001to18031, 0
+   G_WIND_L, 19001to19025, 19001to19024, 0
+   G_WIND_R, 20001to20025, 20001to20024, 0
+   G_WSTAY_L, , 21001to21011, 0
+   G_WSTAY_R, , 22001to22011, 0
+   G_TOWER_W, 23002to23007 23009to23014 23016, 23001to23014, 0
+   G_TOWER_E, 24002to24007 24009to24014 24016, 24001to24014, 0
+   G_ALL, 1001to1033 2001to2033 3001to3033 5001to5033 6001to6033 15001to15039 16001to16039 19001to19025 20001to20025 23002to23007 23009to23014 23016 24002to24007 24009to24014 24016, 1001to1032 2001to2032 3001to3032 4001to4033 5001to5032 6001to6032 7001to7033 8001to8033 9001to9064 10001to10064 11001to11033 12001to12064 13001to13017 14001to14017 15001to15038 16001to16038 17001to17031 18001to18031 19001to19024 20001to20024 21001to21011 22001to22011 23001to23014 24001to24014, 0
+
+*STAGE
+; NAME=NAME, DURATION, bSAVESTAGE, bSAVESTEP
+; STEP=DAY1, DAY2, ...
+; AELEM=GROUP1, AGE1, GROUP2, AGE2, ...
+; DELEM=GROUP1, REDIST1, GROUP2, REDIST2, ...
+; ABNDR=BGROUP1, POS1, BGROUP2, POS2, ...
+; DBNDR=BGROUP1, BGROUP2, ...
+; ALOAD=LGROUP1, DAY1, LGROUP2, DAY2, ...
+; DLOAD=LGROUP1, DAY1, LGROUP2, DAY2, ...
+   NAME=CS01_TOWER, 60, YES, NO
+     AELEM=G_TOWER_W, 28, G_TOWER_E, 28
+   NAME=CS02_CABLE, 30, YES, NO
+     AELEM=G_CABLE_L, 0, G_CABLE_R, 0
+   NAME=CS03_WIND, 10, YES, NO
+     AELEM=G_WIND_L, 0, G_WIND_R, 0
+   NAME=CS04_HANGER, 15, YES, NO
+     AELEM=G_HANG_L, 0, G_HANG_R, 0
+   NAME=CS05_DECK, 30, YES, NO
+     AELEM=G_DECK, 0, G_EDGE_L, 0, G_EDGE_R, 0, G_XBEAM, 0
+   NAME=CS06_TRUSS, 25, YES, NO
+     AELEM=G_BCH_L, 0, G_BCH_R, 0, G_VERT_L, 0, G_VERT_R, 0, G_DIAG_L, 0, G_DIAG_R, 0, G_BXBEAM, 0, G_BDIAG, 0, G_CROSS_L, 0, G_CROSS_R, 0
+   NAME=CS07_WSTAY, 10, YES, NO
+     AELEM=G_WSTAY_L, 0, G_WSTAY_R, 0
+
+*ENDDATA

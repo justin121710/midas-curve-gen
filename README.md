@@ -232,6 +232,23 @@
 **`.dwg` 做不到** —— 那是 Autodesk 控制的封閉二進位格式,純前端寫不出來。
 但 AutoCAD / BricsCAD / Civil 3D / Rhino 全都直接讀 DXF,要 `.dwg` 在 CAD 裡另存即可。
 
+## 纜索初張力與無應力長度(`tools/cable_pretension.py`)
+
+工具匯出的纜索元素 `EXVAL` 預設是 0。`tools/cable_pretension.py` 讀匯出的 `.mct` 與一份**角色設定檔**
+(哪些群組是主纜、吊索、耐風索、繫索,以及載重與 `EA`),依恆載平衡算出每根纜索的張力與 `Lu`,
+把 `EXVAL` / `EXVAL2` 填回元素列,另外輸出報表與繫索的等值節點力(`TIE_EQ`):
+
+```bash
+python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
+```
+
+- 主纜節點可選擇移到**索多邊形**上(依吊索載重,不是理想拋物線 / 懸鏈線)
+- 耐風索可選擇以**力密度法**重算,使它成為繫索的平衡形狀(內建範例的「懸垂」段與繫索方向差約 7.7°,程式會警告)
+- 純 Python 標準函式庫;12 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+
+**這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
+詳見 [tools/README.md](tools/README.md)。
+
 ## 幾個要知道的事
 
 - **單位:輸入什麼單位就算什麼單位,匯出也是同一個單位,全程不換算。** 單位在最上方標題列設定,預設 `m` / `kgf`。
