@@ -1,15 +1,15 @@
 ;---------------------------------------------------------------------------
 ; Alignment Modeler  (alignment-modeler)
-; Generated : 2026-10-30 23:37 +08:00
-; Units     : KN, M   (coordinates exported as entered, no conversion)
+; Generated : 2026-10-31 02:07 +00:00
+; Units     : KGF, M   (coordinates exported as entered, no conversion)
 ; Groups    : 24
-; Nodes     : 319    Elements : 754    Structure groups : 25
-; Total elem length : 2276.926091
+; Nodes     : 321    Elements : 791    Structure groups : 25
+; Total elem length : 2281.726091
 ;
 ;   G_DECK (CURVE)  nodes 1001-1033  elements 1001-1032
 ;   G_EDGE_L (OFFSET)  nodes 2001-2033  elements 2001-2032
 ;   G_EDGE_R (OFFSET)  nodes 3001-3033  elements 3001-3032
-;   G_XBEAM (LINK2)  nodes -  elements 4001-4033
+;   G_XBEAM (LINK2)  nodes -  elements 4001-4066
 ;   G_BCH_L (OFFSET)  nodes 5001-5033  elements 5001-5032
 ;   G_BCH_R (OFFSET)  nodes 6001-6033  elements 6001-6032
 ;   G_VERT_L (LINK2)  nodes -  elements 7001-7033
@@ -28,11 +28,11 @@
 ;   G_WIND_R (CURVE)  nodes 20001-20025  elements 20001-20024
 ;   G_WSTAY_L (LINK2)  nodes -  elements 21001-21011
 ;   G_WSTAY_R (LINK2)  nodes -  elements 22001-22011
-;   G_TOWER_W (CURVE)  nodes 23002-23016  elements 23001-23014
-;   G_TOWER_E (CURVE)  nodes 24002-24016  elements 24001-24014
+;   G_TOWER_W (CURVE)  nodes 23002-23019  elements 23001-23016
+;   G_TOWER_E (CURVE)  nodes 24002-24019  elements 24001-24016
 ;
 ; NOTE: importing an MCT containing *UNIT changes the model's active unit system.
-; NOTE: element beta angle is always 0.
+; NOTE: element beta angle = the group's Beta Angle field (default 0).
 ; The parameter block below restores every input if this file is dropped back
 ; onto the generator page.
 ;---------------------------------------------------------------------------
@@ -40,11 +40,11 @@
 ; {
 ;  "formatVersion": 3,
 ;  "tool": "alignment-modeler",
-;  "generated": "2026-10-30T23:37:53+08:00",
+;  "generated": "2026-10-31T02:07:58+00:00",
 ;  "state": {
 ;   "groups": [
 ;    {
-;     "id": "g975",
+;     "id": "g1",
 ;     "type": "CURVE",
 ;     "name": "\u6a4b\u9762\u4e2d\u5fc3\u7dda DECK",
 ;     "on": true,
@@ -138,10 +138,11 @@
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 0
 ;    },
 ;    {
-;     "id": "g976",
+;     "id": "g2",
 ;     "type": "OFFSET",
 ;     "name": "\u908a\u6a11\u5de6 EDGE_L",
 ;     "on": true,
@@ -183,14 +184,15 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g975",
+;     "ref": "g1",
 ;     "d": -1.2,
 ;     "h": 0,
 ;     "extS": 0,
-;     "extE": 0
+;     "extE": 0,
+;     "slot": 1
 ;    },
 ;    {
-;     "id": "g977",
+;     "id": "g3",
 ;     "type": "OFFSET",
 ;     "name": "\u908a\u6a11\u53f3 EDGE_R",
 ;     "on": true,
@@ -232,14 +234,15 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g975",
+;     "ref": "g1",
 ;     "d": 1.2,
 ;     "h": 0,
 ;     "extS": 0,
-;     "extE": 0
+;     "extE": 0,
+;     "slot": 2
 ;    },
 ;    {
-;     "id": "g978",
+;     "id": "g4",
 ;     "type": "LINK2",
 ;     "name": "\u6a6b\u6881 XBEAM",
 ;     "on": true,
@@ -281,8 +284,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g976",
-;     "b": "g977",
+;     "a": "g2",
+;     "b": "g3",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -302,11 +305,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 2,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 3
 ;    },
 ;    {
-;     "id": "g979",
+;     "id": "g5",
 ;     "type": "OFFSET",
 ;     "name": "\u4e0b\u5f26\u5de6 BCH_L",
 ;     "on": true,
@@ -348,14 +353,15 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g976",
+;     "ref": "g2",
 ;     "d": 0,
 ;     "h": -1.6,
 ;     "extS": 0,
-;     "extE": 0
+;     "extE": 0,
+;     "slot": 4
 ;    },
 ;    {
-;     "id": "g980",
+;     "id": "g6",
 ;     "type": "OFFSET",
 ;     "name": "\u4e0b\u5f26\u53f3 BCH_R",
 ;     "on": true,
@@ -397,14 +403,15 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g977",
+;     "ref": "g3",
 ;     "d": 0,
 ;     "h": -1.6,
 ;     "extS": 0,
-;     "extE": 0
+;     "extE": 0,
+;     "slot": 5
 ;    },
 ;    {
-;     "id": "g981",
+;     "id": "g7",
 ;     "type": "LINK2",
 ;     "name": "\u6841\u67b6\u8c4e\u687f\u5de6 VERT_L",
 ;     "on": true,
@@ -446,8 +453,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g976",
-;     "b": "g979",
+;     "a": "g2",
+;     "b": "g5",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -467,11 +474,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 6
 ;    },
 ;    {
-;     "id": "g982",
+;     "id": "g8",
 ;     "type": "LINK2",
 ;     "name": "\u6841\u67b6\u8c4e\u687f\u53f3 VERT_R",
 ;     "on": true,
@@ -513,8 +522,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g977",
-;     "b": "g980",
+;     "a": "g3",
+;     "b": "g6",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -534,11 +543,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 7
 ;    },
 ;    {
-;     "id": "g983",
+;     "id": "g9",
 ;     "type": "LINK2",
 ;     "name": "\u6841\u67b6\u659c\u6490\u5de6 DIAG_L",
 ;     "on": true,
@@ -580,8 +591,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g976",
-;     "b": "g979",
+;     "a": "g2",
+;     "b": "g5",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "cross",
@@ -601,11 +612,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 8
 ;    },
 ;    {
-;     "id": "g984",
+;     "id": "g10",
 ;     "type": "LINK2",
 ;     "name": "\u6841\u67b6\u659c\u6490\u53f3 DIAG_R",
 ;     "on": true,
@@ -647,8 +660,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g977",
-;     "b": "g980",
+;     "a": "g3",
+;     "b": "g6",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "cross",
@@ -668,11 +681,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 9
 ;    },
 ;    {
-;     "id": "g985",
+;     "id": "g11",
 ;     "type": "LINK2",
 ;     "name": "\u4e0b\u5f26\u6a6b\u6881 BXBEAM",
 ;     "on": true,
@@ -714,8 +729,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g979",
-;     "b": "g980",
+;     "a": "g5",
+;     "b": "g6",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -735,11 +750,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 10
 ;    },
 ;    {
-;     "id": "g986",
+;     "id": "g12",
 ;     "type": "LINK2",
 ;     "name": "\u4e0b\u5f26\u659c\u6490 BDIAG",
 ;     "on": true,
@@ -781,8 +798,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g979",
-;     "b": "g980",
+;     "a": "g5",
+;     "b": "g6",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "cross",
@@ -802,11 +819,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 11
 ;    },
 ;    {
-;     "id": "g987",
+;     "id": "g13",
 ;     "type": "LINK2",
 ;     "name": "\u6a6b\u9694\u659c\u6490\u5de6\u4e0a CROSS_L",
 ;     "on": true,
@@ -848,8 +867,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g976",
-;     "b": "g980",
+;     "a": "g2",
+;     "b": "g6",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -869,11 +888,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 12
 ;    },
 ;    {
-;     "id": "g988",
+;     "id": "g14",
 ;     "type": "LINK2",
 ;     "name": "\u6a6b\u9694\u659c\u6490\u53f3\u4e0a CROSS_R",
 ;     "on": true,
@@ -915,8 +936,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g977",
-;     "b": "g979",
+;     "a": "g3",
+;     "b": "g5",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "same",
@@ -936,11 +957,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 13
 ;    },
 ;    {
-;     "id": "g989",
+;     "id": "g15",
 ;     "type": "CURVE",
 ;     "name": "\u4e3b\u7d22\u5de6 CABLE_L",
 ;     "on": true,
@@ -1131,10 +1154,11 @@
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 14
 ;    },
 ;    {
-;     "id": "g990",
+;     "id": "g16",
 ;     "type": "CURVE",
 ;     "name": "\u4e3b\u7d22\u53f3 CABLE_R",
 ;     "on": true,
@@ -1325,10 +1349,11 @@
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 15
 ;    },
 ;    {
-;     "id": "g991",
+;     "id": "g17",
 ;     "type": "LINKZ",
 ;     "name": "\u540a\u7d22\u5de6 HANG_L",
 ;     "on": true,
@@ -1370,7 +1395,7 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g989",
+;     "ref": "g15",
 ;     "refSide": "own",
 ;     "zRefSide": "own",
 ;     "zMode": "abs",
@@ -1381,16 +1406,18 @@
 ;     "sx": 0,
 ;     "sy": 0,
 ;     "zRef": "",
+;     "zMap": "plan",
 ;     "from": 5,
 ;     "to": 35,
 ;     "every": 1,
-;     "bottom": "snap",
+;     "bottom": "snapOnly",
 ;     "snapTol": 0.01,
 ;     "extT": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 16
 ;    },
 ;    {
-;     "id": "g992",
+;     "id": "g18",
 ;     "type": "LINKZ",
 ;     "name": "\u540a\u7d22\u53f3 HANG_R",
 ;     "on": true,
@@ -1432,7 +1459,7 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "ref": "g990",
+;     "ref": "g16",
 ;     "refSide": "own",
 ;     "zRefSide": "own",
 ;     "zMode": "abs",
@@ -1443,16 +1470,18 @@
 ;     "sx": 0,
 ;     "sy": 0,
 ;     "zRef": "",
+;     "zMap": "plan",
 ;     "from": 5,
 ;     "to": 35,
 ;     "every": 1,
-;     "bottom": "snap",
+;     "bottom": "snapOnly",
 ;     "snapTol": 0.01,
 ;     "extT": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 17
 ;    },
 ;    {
-;     "id": "g993",
+;     "id": "g19",
 ;     "type": "CURVE",
 ;     "name": "\u6297\u98a8\u7d22\u5de6 WIND_L",
 ;     "on": true,
@@ -1545,10 +1574,11 @@
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 18
 ;    },
 ;    {
-;     "id": "g994",
+;     "id": "g20",
 ;     "type": "CURVE",
 ;     "name": "\u6297\u98a8\u7d22\u53f3 WIND_R",
 ;     "on": true,
@@ -1641,10 +1671,11 @@
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 19
 ;    },
 ;    {
-;     "id": "g995",
+;     "id": "g21",
 ;     "type": "LINK2",
 ;     "name": "\u6297\u98a8\u652f\u7d22\u5de6 WSTAY_L",
 ;     "on": true,
@@ -1686,8 +1717,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g979",
-;     "b": "g993",
+;     "a": "g5",
+;     "b": "g19",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "free",
@@ -1707,11 +1738,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 20
 ;    },
 ;    {
-;     "id": "g996",
+;     "id": "g22",
 ;     "type": "LINK2",
 ;     "name": "\u6297\u98a8\u652f\u7d22\u53f3 WSTAY_R",
 ;     "on": true,
@@ -1753,8 +1786,8 @@
 ;      "on": false,
 ;      "text": ""
 ;     },
-;     "a": "g980",
-;     "b": "g994",
+;     "a": "g6",
+;     "b": "g20",
 ;     "aSide": "own",
 ;     "bSide": "own",
 ;     "pair": "free",
@@ -1774,11 +1807,13 @@
 ;       0
 ;      ]
 ;     ],
+;     "div": 1,
 ;     "extA": 0,
-;     "extB": 0
+;     "extB": 0,
+;     "slot": 21
 ;    },
 ;    {
-;     "id": "g997",
+;     "id": "g23",
 ;     "type": "CURVE",
 ;     "name": "\u5854\u67b6\u897f TOWER_W",
 ;     "on": true,
@@ -1840,7 +1875,7 @@
 ;       },
 ;       "split": {
 ;        "mode": "count",
-;        "count": 6,
+;        "count": 4,
 ;        "spacing": 5,
 ;        "tol": 0.02,
 ;        "maxSpacing": 20,
@@ -1862,13 +1897,62 @@
 ;       "endMode": "point",
 ;       "x2": 0,
 ;       "y2": -1.2,
-;       "z2": 0,
+;       "z2": 8,
 ;       "len": 50,
 ;       "az": 90,
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
 ;       "_i": 0
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": -1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 1
 ;      },
 ;      {
 ;       "type": "LINE",
@@ -1889,7 +1973,7 @@
 ;       },
 ;       "split": {
 ;        "mode": "count",
-;        "count": 6,
+;        "count": 4,
 ;        "spacing": 5,
 ;        "tol": 0.02,
 ;        "maxSpacing": 20,
@@ -1911,13 +1995,62 @@
 ;       "endMode": "point",
 ;       "x2": 0,
 ;       "y2": 1.2,
+;       "z2": 8,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": 1.2,
 ;       "z2": 0,
 ;       "len": 50,
 ;       "az": 90,
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
-;       "_i": 1
+;       "_i": 3
 ;      },
 ;      {
 ;       "type": "LINE",
@@ -1966,14 +2099,64 @@
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
-;       "_i": 2
+;       "_i": 4
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": -1.2,
+;       "z1": 8,
+;       "endMode": "point",
+;       "x2": 0,
+;       "y2": 1.2,
+;       "z2": 8,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 5
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 22
 ;    },
 ;    {
-;     "id": "g998",
+;     "id": "g24",
 ;     "type": "CURVE",
 ;     "name": "\u5854\u67b6\u6771 TOWER_E",
 ;     "on": true,
@@ -2035,7 +2218,7 @@
 ;       },
 ;       "split": {
 ;        "mode": "count",
-;        "count": 6,
+;        "count": 4,
 ;        "spacing": 5,
 ;        "tol": 0.02,
 ;        "maxSpacing": 20,
@@ -2057,13 +2240,62 @@
 ;       "endMode": "point",
 ;       "x2": 80,
 ;       "y2": -1.2,
-;       "z2": 0,
+;       "z2": 8,
 ;       "len": 50,
 ;       "az": 90,
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
 ;       "_i": 0
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": -1.2,
+;       "z2": 0,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 1
 ;      },
 ;      {
 ;       "type": "LINE",
@@ -2084,7 +2316,7 @@
 ;       },
 ;       "split": {
 ;        "mode": "count",
-;        "count": 6,
+;        "count": 4,
 ;        "spacing": 5,
 ;        "tol": 0.02,
 ;        "maxSpacing": 20,
@@ -2106,13 +2338,62 @@
 ;       "endMode": "point",
 ;       "x2": 80,
 ;       "y2": 1.2,
+;       "z2": 8,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 2
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "prev",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 0,
+;       "y1": 0,
+;       "z1": 0,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": 1.2,
 ;       "z2": 0,
 ;       "len": 50,
 ;       "az": 90,
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
-;       "_i": 1
+;       "_i": 3
 ;      },
 ;      {
 ;       "type": "LINE",
@@ -2161,11 +2442,61 @@
 ;       "el": 0,
 ;       "extS": 0,
 ;       "extE": 0,
-;       "_i": 2
+;       "_i": 4
+;      },
+;      {
+;       "type": "LINE",
+;       "sRef": "",
+;       "eRef": "",
+;       "xf": {
+;        "dx": 0,
+;        "dy": 0,
+;        "dz": 0,
+;        "rot": 0,
+;        "axis": "Z",
+;        "cmode": "auto",
+;        "cx": 0,
+;        "cy": 0,
+;        "cz": 0,
+;        "mir": "",
+;        "mirAt": 0
+;       },
+;       "split": {
+;        "mode": "count",
+;        "count": 2,
+;        "spacing": 5,
+;        "tol": 0.02,
+;        "maxSpacing": 20,
+;        "rem": "even",
+;        "axis": "x",
+;        "axisSpacing": 5,
+;        "axisBase": "start",
+;        "axisAt": 0,
+;        "list": "10@5",
+;        "listAlong": "s"
+;       },
+;       "ovr": false,
+;       "etype": "BEAM",
+;       "mat": 1,
+;       "sect": 1,
+;       "x1": 80,
+;       "y1": -1.2,
+;       "z1": 8,
+;       "endMode": "point",
+;       "x2": 80,
+;       "y2": 1.2,
+;       "z2": 8,
+;       "len": 50,
+;       "az": 90,
+;       "el": 0,
+;       "extS": 0,
+;       "extE": 0,
+;       "_i": 5
 ;      }
 ;     ],
 ;     "edits": {},
-;     "dels": []
+;     "dels": [],
+;     "slot": 23
 ;    }
 ;   ],
 ;   "numbering": {
@@ -2176,7 +2507,7 @@
 ;   "groupPrefix": "G_",
 ;   "units": {
 ;    "length": "M",
-;    "force": "KN",
+;    "force": "KGF",
 ;    "heat": "KJ",
 ;    "temper": "C"
 ;   },
@@ -2199,7 +2530,8 @@
 ;     "on": true,
 ;     "save": true,
 ;     "step": false
-;    }
+;    },
+;    "freeGrp": false
 ;   },
 ;   "stages": [
 ;    {
@@ -2287,7 +2619,7 @@
 
 *UNIT
 ; FORCE, LENGTH, HEAT, TEMPER
-   KN, M, KJ, C
+   KGF, M, KJ, C
 
 *NODE
 ; iNO, X, Y, Z
@@ -2594,33 +2926,35 @@
    20024, 67.5, -7.322356, 2.677644
    20025, 70, -8, 2
 ; --- G_TOWER_W (CURVE) ---
-   23002, 0, -1.2, 18.333333
-   23003, 0, -1.2, 14.666667
-   23004, 0, -1.2, 11
-   23005, 0, -1.2, 7.333333
-   23006, 0, -1.2, 3.666667
+   23002, 0, -1.2, 18.5
+   23003, 0, -1.2, 15
+   23004, 0, -1.2, 11.5
+   23005, 0, -1.2, 8
+   23006, 0, -1.2, 4
    23007, 0, -1.2, 0
-   23009, 0, 1.2, 18.333333
-   23010, 0, 1.2, 14.666667
-   23011, 0, 1.2, 11
-   23012, 0, 1.2, 7.333333
-   23013, 0, 1.2, 3.666667
+   23009, 0, 1.2, 18.5
+   23010, 0, 1.2, 15
+   23011, 0, 1.2, 11.5
+   23012, 0, 1.2, 8
+   23013, 0, 1.2, 4
    23014, 0, 1.2, 0
    23016, 0, 0, 22
+   23019, 0, 0, 8
 ; --- G_TOWER_E (CURVE) ---
-   24002, 80, -1.2, 18.333333
-   24003, 80, -1.2, 14.666667
-   24004, 80, -1.2, 11
-   24005, 80, -1.2, 7.333333
-   24006, 80, -1.2, 3.666667
+   24002, 80, -1.2, 18.5
+   24003, 80, -1.2, 15
+   24004, 80, -1.2, 11.5
+   24005, 80, -1.2, 8
+   24006, 80, -1.2, 4
    24007, 80, -1.2, 0
-   24009, 80, 1.2, 18.333333
-   24010, 80, 1.2, 14.666667
-   24011, 80, 1.2, 11
-   24012, 80, 1.2, 7.333333
-   24013, 80, 1.2, 3.666667
+   24009, 80, 1.2, 18.5
+   24010, 80, 1.2, 15
+   24011, 80, 1.2, 11.5
+   24012, 80, 1.2, 8
+   24013, 80, 1.2, 4
    24014, 80, 1.2, 0
    24016, 80, 0, 22
+   24019, 80, 0, 8
 
 *ELEMENT
 ; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB,                     ; Frame  Element
@@ -2727,39 +3061,72 @@
    3031, BEAM, 1, 2, 3031, 3032, 0, 0
    3032, BEAM, 1, 2, 3032, 3033, 0, 0
 ; --- G_XBEAM (LINK2) ---
-   4001, BEAM, 1, 3, 2001, 3001, 0, 0
-   4002, BEAM, 1, 3, 2002, 3002, 0, 0
-   4003, BEAM, 1, 3, 2003, 3003, 0, 0
-   4004, BEAM, 1, 3, 2004, 3004, 0, 0
-   4005, BEAM, 1, 3, 2005, 3005, 0, 0
-   4006, BEAM, 1, 3, 2006, 3006, 0, 0
-   4007, BEAM, 1, 3, 2007, 3007, 0, 0
-   4008, BEAM, 1, 3, 2008, 3008, 0, 0
-   4009, BEAM, 1, 3, 2009, 3009, 0, 0
-   4010, BEAM, 1, 3, 2010, 3010, 0, 0
-   4011, BEAM, 1, 3, 2011, 3011, 0, 0
-   4012, BEAM, 1, 3, 2012, 3012, 0, 0
-   4013, BEAM, 1, 3, 2013, 3013, 0, 0
-   4014, BEAM, 1, 3, 2014, 3014, 0, 0
-   4015, BEAM, 1, 3, 2015, 3015, 0, 0
-   4016, BEAM, 1, 3, 2016, 3016, 0, 0
-   4017, BEAM, 1, 3, 2017, 3017, 0, 0
-   4018, BEAM, 1, 3, 2018, 3018, 0, 0
-   4019, BEAM, 1, 3, 2019, 3019, 0, 0
-   4020, BEAM, 1, 3, 2020, 3020, 0, 0
-   4021, BEAM, 1, 3, 2021, 3021, 0, 0
-   4022, BEAM, 1, 3, 2022, 3022, 0, 0
-   4023, BEAM, 1, 3, 2023, 3023, 0, 0
-   4024, BEAM, 1, 3, 2024, 3024, 0, 0
-   4025, BEAM, 1, 3, 2025, 3025, 0, 0
-   4026, BEAM, 1, 3, 2026, 3026, 0, 0
-   4027, BEAM, 1, 3, 2027, 3027, 0, 0
-   4028, BEAM, 1, 3, 2028, 3028, 0, 0
-   4029, BEAM, 1, 3, 2029, 3029, 0, 0
-   4030, BEAM, 1, 3, 2030, 3030, 0, 0
-   4031, BEAM, 1, 3, 2031, 3031, 0, 0
-   4032, BEAM, 1, 3, 2032, 3032, 0, 0
-   4033, BEAM, 1, 3, 2033, 3033, 0, 0
+   4001, BEAM, 1, 3, 2001, 1001, 0, 0
+   4002, BEAM, 1, 3, 1001, 3001, 0, 0
+   4003, BEAM, 1, 3, 2002, 1002, 0, 0
+   4004, BEAM, 1, 3, 1002, 3002, 0, 0
+   4005, BEAM, 1, 3, 2003, 1003, 0, 0
+   4006, BEAM, 1, 3, 1003, 3003, 0, 0
+   4007, BEAM, 1, 3, 2004, 1004, 0, 0
+   4008, BEAM, 1, 3, 1004, 3004, 0, 0
+   4009, BEAM, 1, 3, 2005, 1005, 0, 0
+   4010, BEAM, 1, 3, 1005, 3005, 0, 0
+   4011, BEAM, 1, 3, 2006, 1006, 0, 0
+   4012, BEAM, 1, 3, 1006, 3006, 0, 0
+   4013, BEAM, 1, 3, 2007, 1007, 0, 0
+   4014, BEAM, 1, 3, 1007, 3007, 0, 0
+   4015, BEAM, 1, 3, 2008, 1008, 0, 0
+   4016, BEAM, 1, 3, 1008, 3008, 0, 0
+   4017, BEAM, 1, 3, 2009, 1009, 0, 0
+   4018, BEAM, 1, 3, 1009, 3009, 0, 0
+   4019, BEAM, 1, 3, 2010, 1010, 0, 0
+   4020, BEAM, 1, 3, 1010, 3010, 0, 0
+   4021, BEAM, 1, 3, 2011, 1011, 0, 0
+   4022, BEAM, 1, 3, 1011, 3011, 0, 0
+   4023, BEAM, 1, 3, 2012, 1012, 0, 0
+   4024, BEAM, 1, 3, 1012, 3012, 0, 0
+   4025, BEAM, 1, 3, 2013, 1013, 0, 0
+   4026, BEAM, 1, 3, 1013, 3013, 0, 0
+   4027, BEAM, 1, 3, 2014, 1014, 0, 0
+   4028, BEAM, 1, 3, 1014, 3014, 0, 0
+   4029, BEAM, 1, 3, 2015, 1015, 0, 0
+   4030, BEAM, 1, 3, 1015, 3015, 0, 0
+   4031, BEAM, 1, 3, 2016, 1016, 0, 0
+   4032, BEAM, 1, 3, 1016, 3016, 0, 0
+   4033, BEAM, 1, 3, 2017, 1017, 0, 0
+   4034, BEAM, 1, 3, 1017, 3017, 0, 0
+   4035, BEAM, 1, 3, 2018, 1018, 0, 0
+   4036, BEAM, 1, 3, 1018, 3018, 0, 0
+   4037, BEAM, 1, 3, 2019, 1019, 0, 0
+   4038, BEAM, 1, 3, 1019, 3019, 0, 0
+   4039, BEAM, 1, 3, 2020, 1020, 0, 0
+   4040, BEAM, 1, 3, 1020, 3020, 0, 0
+   4041, BEAM, 1, 3, 2021, 1021, 0, 0
+   4042, BEAM, 1, 3, 1021, 3021, 0, 0
+   4043, BEAM, 1, 3, 2022, 1022, 0, 0
+   4044, BEAM, 1, 3, 1022, 3022, 0, 0
+   4045, BEAM, 1, 3, 2023, 1023, 0, 0
+   4046, BEAM, 1, 3, 1023, 3023, 0, 0
+   4047, BEAM, 1, 3, 2024, 1024, 0, 0
+   4048, BEAM, 1, 3, 1024, 3024, 0, 0
+   4049, BEAM, 1, 3, 2025, 1025, 0, 0
+   4050, BEAM, 1, 3, 1025, 3025, 0, 0
+   4051, BEAM, 1, 3, 2026, 1026, 0, 0
+   4052, BEAM, 1, 3, 1026, 3026, 0, 0
+   4053, BEAM, 1, 3, 2027, 1027, 0, 0
+   4054, BEAM, 1, 3, 1027, 3027, 0, 0
+   4055, BEAM, 1, 3, 2028, 1028, 0, 0
+   4056, BEAM, 1, 3, 1028, 3028, 0, 0
+   4057, BEAM, 1, 3, 2029, 1029, 0, 0
+   4058, BEAM, 1, 3, 1029, 3029, 0, 0
+   4059, BEAM, 1, 3, 2030, 1030, 0, 0
+   4060, BEAM, 1, 3, 1030, 3030, 0, 0
+   4061, BEAM, 1, 3, 2031, 1031, 0, 0
+   4062, BEAM, 1, 3, 1031, 3031, 0, 0
+   4063, BEAM, 1, 3, 2032, 1032, 0, 0
+   4064, BEAM, 1, 3, 1032, 3032, 0, 0
+   4065, BEAM, 1, 3, 2033, 1033, 0, 0
+   4066, BEAM, 1, 3, 1033, 3033, 0, 0
 ; --- G_BCH_L (OFFSET) ---
    5001, BEAM, 1, 13, 5001, 5002, 0, 0
    5002, BEAM, 1, 13, 5002, 5003, 0, 0
@@ -3390,6 +3757,8 @@
    23012, BEAM, 3, 4, 23013, 23014, 0, 0
    23013, BEAM, 3, 4, 16004, 23016, 0, 0
    23014, BEAM, 3, 4, 23016, 15004, 0, 0
+   23015, BEAM, 3, 4, 23005, 23019, 0, 0
+   23016, BEAM, 3, 4, 23019, 23012, 0, 0
 ; --- G_TOWER_E (CURVE) ---
    24001, BEAM, 3, 4, 16036, 24002, 0, 0
    24002, BEAM, 3, 4, 24002, 24003, 0, 0
@@ -3405,13 +3774,15 @@
    24012, BEAM, 3, 4, 24013, 24014, 0, 0
    24013, BEAM, 3, 4, 16036, 24016, 0, 0
    24014, BEAM, 3, 4, 24016, 15036, 0, 0
+   24015, BEAM, 3, 4, 24005, 24019, 0, 0
+   24016, BEAM, 3, 4, 24019, 24012, 0, 0
 
 *GROUP
 ; NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE
    G_DECK, 1001to1033, 1001to1032, 0
    G_EDGE_L, 2001to2033, 2001to2032, 0
    G_EDGE_R, 3001to3033, 3001to3032, 0
-   G_XBEAM, , 4001to4033, 0
+   G_XBEAM, , 4001to4066, 0
    G_BCH_L, 5001to5033, 5001to5032, 0
    G_BCH_R, 6001to6033, 6001to6032, 0
    G_VERT_L, , 7001to7033, 0
@@ -3430,9 +3801,9 @@
    G_WIND_R, 20001to20025, 20001to20024, 0
    G_WSTAY_L, , 21001to21011, 0
    G_WSTAY_R, , 22001to22011, 0
-   G_TOWER_W, 23002to23007 23009to23014 23016, 23001to23014, 0
-   G_TOWER_E, 24002to24007 24009to24014 24016, 24001to24014, 0
-   G_ALL, 1001to1033 2001to2033 3001to3033 5001to5033 6001to6033 15001to15039 16001to16039 19001to19025 20001to20025 23002to23007 23009to23014 23016 24002to24007 24009to24014 24016, 1001to1032 2001to2032 3001to3032 4001to4033 5001to5032 6001to6032 7001to7033 8001to8033 9001to9064 10001to10064 11001to11033 12001to12064 13001to13017 14001to14017 15001to15038 16001to16038 17001to17031 18001to18031 19001to19024 20001to20024 21001to21011 22001to22011 23001to23014 24001to24014, 0
+   G_TOWER_W, 23002to23007 23009to23014 23016 23019, 23001to23016, 0
+   G_TOWER_E, 24002to24007 24009to24014 24016 24019, 24001to24016, 0
+   G_ALL, 1001to1033 2001to2033 3001to3033 5001to5033 6001to6033 15001to15039 16001to16039 19001to19025 20001to20025 23002to23007 23009to23014 23016 23019 24002to24007 24009to24014 24016 24019, 1001to1032 2001to2032 3001to3032 4001to4066 5001to5032 6001to6032 7001to7033 8001to8033 9001to9064 10001to10064 11001to11033 12001to12064 13001to13017 14001to14017 15001to15038 16001to16038 17001to17031 18001to18031 19001to19024 20001to20024 21001to21011 22001to22011 23001to23016 24001to24016, 0
 
 *STAGE
 ; NAME=NAME, DURATION, bSAVESTAGE, bSAVESTEP

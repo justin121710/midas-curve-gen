@@ -1,18 +1,18 @@
 {
-  "_說明": "midas-curve-gen『人行吊橋』範例（單位 kN、m）的角色設定；數值為示意，請換成你的設計值",
+  "_說明": "midas-curve-gen『人行吊橋』範例(單位 kgf、m)的角色設定;數值為示意,請換成你的設計值",
   "main":   ["G_CABLE_L", "G_CABLE_R"],
   "hanger": ["G_HANG_L", "G_HANG_R"],
   "wind":   ["G_WIND_L", "G_WIND_R"],
   "tie":    ["G_WSTAY_L", "G_WSTAY_R"],
   "loads": {
-    "deck_per_len": 3.0,
-    "band": 0.2,
-    "w_main": 0.12,
-    "w_hang": 0.02,
-    "w_wind": 0.06
+    "deck_per_len": 300,
+    "band": 20,
+    "w_main": 12,
+    "w_hang": 2,
+    "w_wind": 6
   },
-  "EA": { "main": 168000, "hanger": 40200, "wind": 99000, "tie": 28000 },
-  "wind_H": 60.0,
+  "EA": { "main": 17000000, "hanger": 4100000, "wind": 10000000, "tie": 2850000 },
+  "wind_H": 6000,
   "output_kind": "Lu",
   "fix_main_z": true
 }

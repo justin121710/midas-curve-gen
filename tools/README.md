@@ -32,7 +32,7 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned
 
 ## 角色設定檔(roles.json)
 
-範例見 `examples/suspension_demo_roles.json`(對應工具內建的「人行吊橋」範例,單位 kN、m)。
+範例見 `examples/suspension_demo_roles.json`(對應工具內建的「人行吊橋」範例,單位 kgf、m —— 工具的預設單位)。
 
 | 欄位 | 說明 |
 |---|---|
@@ -58,7 +58,7 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned
    相鄰兩段張力的合力就是繫索要提供的力 → 繫索張力 $t$,以及它把橋面節點往哪裡拉。
    - 程式檢查兩件事:沒有繫索的節點合力是否為 0、繫索方向與合力的夾角。
      工具的「懸垂」段是拋物線或懸鏈線,**不是**繫索的索多邊形;內建範例的夾角約 7.7°,
-     沒有繫索的中間節點也有約 2.1 kN 的不平衡力。
+     沒有繫索的中間節點也有約 212 kgf 的不平衡力。
    - 設 `fix_wind` 與 `tie_T` 時改用力密度法(錨碇與繫索的橋面端固定、迭代更新力密度)求平衡位置,
      夾角歸零、每根繫索的張力都等於 `tie_T`。
 2. **主纜與吊索**:吊索力 $N_h$ = 橋面分擔 + 繫索向下分力 + 吊索自重的一半;

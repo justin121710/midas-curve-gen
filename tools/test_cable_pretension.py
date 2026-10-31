@@ -43,7 +43,7 @@ class T02_Parsing(unittest.TestCase):
     def test_read_demo(self):
         with open(MCT, encoding="utf-8") as fi:
             m = cp.Mct(fi.read())
-        self.assertEqual(m.unit[:2], ("KN", "M"))
+        self.assertEqual(m.unit[:2], ("KGF", "M"))
         self.assertEqual(len(m.group_elems("G_CABLE_L")), 38)
         ns, el = cp.chain(m, "G_CABLE_L")
         self.assertEqual((ns[0], ns[-1], len(el)), (15001, 15039, 38))
@@ -113,14 +113,14 @@ class T04_WindSystem(unittest.TestCase):
         self.assertGreater(max(v["mis"] for v in ties.values()), 2.0)
 
     def test_force_density_form_finding(self):
-        cfg, m, rep, ties, d, log = run({"fix_wind": True, "tie_T": 2.5})
+        cfg, m, rep, ties, d, log = run({"fix_wind": True, "tie_T": 250.0})
         self.assertNotIn("不是這組繫索的索多邊形", log)
         for v in ties.values():
-            self.assertAlmostEqual(v["t"], 2.5, places=6)
+            self.assertAlmostEqual(v["t"], 250.0, places=4)
             self.assertLess(v["mis"], 1e-3)
 
     def test_tie_eq_is_balanced_laterally(self):
-        cfg, m, rep, ties, d, log = run({"fix_wind": True, "tie_T": 2.5})
+        cfg, m, rep, ties, d, log = run({"fix_wind": True, "tie_T": 250.0})
         fy = sum(v["force"][1] for v in ties.values())
         fz = sum(v["force"][2] for v in ties.values())
         self.assertLess(abs(fy), 1e-6)                         # 兩側橫向分力互相抵消
@@ -128,7 +128,7 @@ class T04_WindSystem(unittest.TestCase):
 
     def test_incompatible_tie_tension_is_rejected(self):
         with self.assertRaises(ValueError):
-            run({"fix_wind": True, "tie_T": 50.0})
+            run({"fix_wind": True, "tie_T": 5000.0})
 
 
 if __name__ == "__main__":

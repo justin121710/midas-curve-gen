@@ -67,7 +67,23 @@
   #resizer:hover, #resizer.on, #tresizer:hover, #tresizer.on{background:var(--accent-soft)}
   #resizer::after, #tresizer::after{content:"⋮"; position:absolute; top:50%; left:50%;
     transform:translate(-50%,-50%); color:var(--ink-3); font-size:12px; line-height:1}
-  @media(max-width:1180px){
+  /* v3.46(檢查報告 LAY-01):筆電寬度。標題列保持一行(說明文字收掉、間距縮小、次要按鈕只留圖示),
+     3D 視圖至少佔 44% 寬 —— 1366×768 原本只剩 305 px 寬、還被自己的工具列蓋住。
+     上下堆疊的窄版改到 900 px 以下才用(1024 寬也維持左右並排,3D 不會掉到折線以下)。 */
+  @media(max-width:1500px){
+    header{gap:7px; padding:8px 12px}
+    header .note{display:none}
+    header .hgap{width:6px}
+    header button{padding:4px 8px}
+    #app{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr) 7px max(var(--rw,330px), 44vw)}
+    #app.tcol{grid-template-columns:0 0 minmax(0,1fr) 7px max(var(--rw,330px), 44vw)} }
+  @media(max-width:1300px){
+    header .bt{display:none}
+    header .stage{display:none} }
+  .cvwrap.narrow .cvtools .tag{display:none}
+  .cvwrap.narrow .viewcube{grid-template-columns:repeat(3,21px); grid-template-rows:repeat(3,21px); gap:2px; padding:3px}
+  .cvwrap.narrow .viewcube button{font-size:9.5px}
+  @media(max-width:900px){
     /* 窄版本來是上下堆疊;沒選群組時讓畫布直接補到第一列,不留空白 */
     #app.nosel{grid-template-columns:var(--tw,150px) 7px minmax(0,1fr)}
     #app.nosel #right, #app.nosel.swap #right{grid-column:3; grid-row:1;
@@ -123,10 +139,14 @@
   /* 型別欄改成圖示:產品線用組的主題色(currentColor),背景線固定淺灰 */
   #tree .it .ic{display:flex; flex:0 0 auto; line-height:0}
   #tree .it .ic.off{color:#aeb6c2 !important; opacity:.6}
-  #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  #tree .it .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+    display:flex; flex-direction:column; line-height:1.25}
+  #tree .it .nm .gn{font-family:var(--mono); font-size:9.5px; color:var(--ink-3); font-weight:400;
+    overflow:hidden; text-overflow:ellipsis}
+  #tree .it.on .nm .gn{color:var(--accent)}
   #tree .it .meta{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--ink-3);
     flex:0 0 auto; display:none; letter-spacing:-.04em; font-variant-numeric:tabular-nums}
-  #tree .it:hover .meta, #tree .it.on .meta{display:inline}
+  #tree .it:hover .meta{display:inline}
   #tree .it.on .meta{color:var(--accent)}
   #tree .addwrap{padding:7px 8px 7px 11px; position:relative}
   #tree .addbtn{font:inherit; font-size:11.5px; color:var(--accent); background:none; border:0;
@@ -443,23 +463,40 @@
   .pickrow .nm{font-family:var(--mono); font-size:11.5px; flex:1}
   .pickrow .tag{font-size:10.5px; color:var(--ink-3)}
   .pickrow.taken .tag{color:#8a6116}
+  #msgs .msg.info{background:#f4f6f9; color:var(--ink-2); border-color:var(--line)}
+  #msgs .c.i{color:var(--ink-3)}
+  /* 空白畫面的起始卡片(v3.46) */
+  #empty-start{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(250,251,252,.92); z-index:5; padding:16px; overflow:auto}
+  #empty-start .es-in{max-width:760px; width:100%}
+  #empty-start .es-h{font-size:18px; font-weight:700; margin-bottom:10px}
+  #empty-start .es-u{font-size:12.5px; color:var(--ink-2); margin-bottom:14px; display:flex; gap:8px;
+    align-items:center; flex-wrap:wrap}
+  #empty-start .es-u span{color:var(--ink-3)}
+  #empty-start .es-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px}
+  #empty-start .es-c{text-align:left; padding:12px 14px; border:1px solid var(--line); border-radius:6px;
+    background:#fff; cursor:pointer; display:flex; flex-direction:column; gap:4px}
+  #empty-start .es-c:hover{border-color:var(--accent, #1c5d99)}
+  #empty-start .es-c b{font-size:13.5px}
+  #empty-start .es-c span{font-size:11.5px; color:var(--ink-3)}
+  #empty-start .es-r{border-color:#1c5d99; background:#f2f7fc}
 </style>
 </head>
 <body>
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.44</span>
+  <span class="stage">群組架構 v3.46</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
     <select id="u-force" title="力的單位(寫進 .mct 的 *UNIT)"></select>
   </span>
   <span class="sp"></span>
-  <button id="btn-undo" disabled>↶ 復原</button>
-  <button id="btn-redo" disabled>↷ 重做</button>
-  <button id="btn-tree" title="收合 / 展開左側群組欄"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="1.8" y="2.4" width="12.4" height="11.2" rx="1.4"/><path d="M6.2 2.4v11.2"/></svg> 群組欄</button>
-  <button id="btn-swap" title="輸入區與預覽區左右對調">⇄ 版面</button>
+  <button id="btn-undo" disabled title="復原(Ctrl+Z)">↶<span class="bt"> 復原</span></button>
+  <button id="btn-redo" disabled title="重做(Ctrl+Y)">↷<span class="bt"> 重做</span></button>
+  <button id="btn-tree" title="收合 / 展開左側群組欄"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="1.8" y="2.4" width="12.4" height="11.2" rx="1.4"/><path d="M6.2 2.4v11.2"/></svg><span class="bt"> 群組欄</span></button>
+  <button id="btn-swap" title="輸入區與預覽區左右對調">⇄<span class="bt"> 版面</span></button>
   <span class="hgap"></span>
   <button id="btn-demo">載入範例</button>
   <button id="btn-clear" class="warn">全部清空</button>
@@ -1712,10 +1749,11 @@ function defaultGroup(type, n){
     from:1, to:0, every:1,                       // same / skew / cross / ratio / near 用起始群組的節點範圍
     // free(自訂)= 一個「樣式單元」+ 兩個群組各自的起點與步進;pattern 是單元內的連線
     aFrom:1, aEvery:1, bFrom:1, bEvery:1, count:0, rev:false, pattern:[[0,0]],
+    div:1,                                       // 每一根連桿再等分成 div 個元素(中間點是這一組的節點)
     extA:0, extB:0 };                            // 每一根連桿兩端各自可以再往外延伸
   if (type === "LINKZ") return { ...base, ref:"", refSide:"own", zRefSide:"own", zMode:"abs", targetZ:0,
     px:0, py:0, pz:0, sx:0, sy:0,                // zMode = "plane":過 (px,py,pz)、坡度 sx / sy 的斜面
-    zRef:"",                                     // zMode = "ref":取另一群組對應節點的高程
+    zRef:"", zMap:"plan",                        // zMode = "ref":取另一群組的高程(plan = 依平面位置;index = 依序號,舊)
     from:1, to:0, every:1, bottom:"new", snapTol:dL(0.5),
     extT:0, extB:0 };                            // 每一根的上 / 下端各自可以再往外延伸
   // 匯入組:節點與元素都是死的清單,沒有母體參數(SPEC §16.4)
@@ -1793,6 +1831,7 @@ function xfMake(xf, pts, startPivot){
   };
   // 鏡射會把方位角翻面,沒有單一角度增量可用 —— 標成 null 讓 annotate() 重新算
   f.dAz = (!mir && ax === "Z") ? -rot : null;        // 方位角自 +Y 順時針,逆時針轉 θ 即 az−θ
+  f.c = c;                                             // 實際用到的旋轉中心(位移複製要拿來組合變換)
   return f;
 }
 // 保留 az / k / s 等附加欄位的點變換
@@ -1975,6 +2014,8 @@ function weldNodes(groups, warns, opt){
   const on = !opt || opt.on !== false;
   if (!on) return 0;
   const tol = Math.max(0, num(opt && opt.tol) || 0);
+  const noW = opt && opt.noWeld && opt.noWeld.size ? opt.noWeld : null;
+  const kept = opt && opt.kept;
   const cell = tol > 0 ? tol : 1e-6;
   const key = (x, y, z) => [Math.floor(x/cell), Math.floor(y/cell), Math.floor(z/cell)].join(",");
   // 先照編號由小到大掃,先看到的自然就是那一群裡編號最小的
@@ -1986,6 +2027,7 @@ function weldNodes(groups, warns, opt){
   const winner = new Map();                            // 被併掉的編號 → 留下來的節點
   all.forEach(n => {
     let hit = null;
+    const kp = [];                                     // 這個節點刻意不併的對象(最後沒併進同組節點才算一對)
     // 檢查自己與相鄰的 26 個格子(只用格子當索引會漏掉剛好跨在格線兩側的點)
     for (let dx = -1; dx <= 1 && !hit; dx++)
       for (let dy = -1; dy <= 1 && !hit; dy++)
@@ -1997,11 +2039,18 @@ function weldNodes(groups, warns, opt){
             // 兩個都是匯入來的節點就不併 —— 既有模型裡本來就重合的節點是它自己的事,
             // 併掉等於偷改使用者的模型。新建的東西碰到匯入節點仍然會併(那正是想要的)。
             if (m.imp && n.imp) continue;
+            // v3.46(FEAT-01):群組設了「不與其他群組合併」→ 跨群組的重合保留成兩個節點,記成一對
+            if (noW && m.gid !== n.gid && (noW.has(m.gid) || noW.has(n.gid))){
+              const dk = Math.max(Math.abs(m.x-n.x), Math.abs(m.y-n.y), Math.abs(m.z-n.z));
+              if (dk <= (tol > 0 ? tol : 1e-9)) kp.push([m, n]);
+              continue;
+            }
             const d = Math.max(Math.abs(m.x-n.x), Math.abs(m.y-n.y), Math.abs(m.z-n.z));
             if (d <= (tol > 0 ? tol : 1e-9)){ hit = m; break; }
           }
         }
     if (hit){ winner.set(n.num, hit); return; }
+    if (kept) kp.forEach(q => kept.push(q));
     const k = key(n.x, n.y, n.z);
     if (!buckets.has(k)) buckets.set(k, []);
     buckets.get(k).push(n);
@@ -2027,10 +2076,45 @@ function weldNodes(groups, warns, opt){
     r.nodes = r.nodes.filter(n => !winner.has(n.num));
     finishStat(r);
   });
-  warns.push(`已合併 ${winner.size} 個座標重合的節點(每個位置只留編號最小的那一個)` +
+  warns.push(`ℹ 已合併 ${winner.size} 個座標重合的節點(每個位置只留編號最小的那一個)` +
     (degen ? `,並刪掉 ${degen} 根因此退化成零長度的元素` : "") +
     `。節點編號會出現跳號,這是正常的。不想合併請到「編號總表」關掉。`);
   return winner.size;
+}
+
+/* ---------- 模型是不是一整塊(v3.45)----------
+   合併完之後,用元素把節點串成連通塊。分成好幾塊時一定要講 ——
+   懸空的那一塊在 midas 裡沒有任何邊界,勁度矩陣奇異(v3.44 吊橋範例的橋面中心線就是這樣:
+   橫梁直接從左邊梁拉到右邊梁,中心線一個節點都沒接到)。
+   用支承 / Elastic Link 在 midas 裡才接起來的構件也會被點名,所以這是警告不是錯誤。 */
+function splitPieces(groups, warns){
+  const up = new Map();
+  const find = n => { let r = n; while (up.get(r) !== r) r = up.get(r);
+    while (up.get(n) !== r){ const nx = up.get(n); up.set(n, r); n = nx; } return r; };
+  const add = n => { if (!up.has(n)) up.set(n, n); };
+  groups.forEach(r => r.elems.forEach(e => {
+    add(e.i); add(e.j);
+    const a = find(e.i), b = find(e.j);
+    if (a !== b) up.set(a, b);
+  }));
+  if (!up.size) return 1;
+  const comp = new Map();                              // 根 → { n:元素數, g:群組名集合 }
+  groups.forEach(r => r.elems.forEach(e => {
+    const k = find(e.i);
+    if (!comp.has(k)) comp.set(k, { n:0, g:new Set() });
+    const c = comp.get(k); c.n++; c.g.add(r.g.name);
+  }));
+  if (comp.size <= 1) return 1;
+  const list = [...comp.values()].sort((a, b) => b.n - a.n);
+  const small = list.slice(1, 4).map(c => {
+    const gs = [...c.g];
+    return `${gs.slice(0, 3).join("、")}${gs.length > 3 ? " 等" : ""}(${c.n} 根)`;
+  });
+  warns.push(`模型分成 ${list.length} 塊互不相連:最大的一塊以外還有 ${small.join(";")}` +
+    `${list.length > 4 ? " …" : ""}。懸空的構件在 midas 裡會讓勁度矩陣奇異 —— ` +
+    `要接卻沒接到的,檢查節點是否真的重合(合併容許值)或改用分割 / 參照接上;` +
+    `打算在 midas 用支承、Elastic Link 連接的可以不理會。`);
+  return list.length;
 }
 
 /* ==========================================================================
@@ -2184,8 +2268,20 @@ function buildImportNodes(list){
   return { byNum, byGid };
 }
 
+/* 每個群組一個固定的號段序號(slot)。沒有 slot 的:整份都沒有(舊檔、測試)→ 依清單順序,
+   與 v3.45 以前完全相同;只有部分沒有(新加的、複製出來的)→ 接在目前最大的後面,不擠別人。
+   重複的(複製時帶過來的)保留清單中先出現的那一個。 */
+function ensureSlots(groups){
+  const has = g => Number.isInteger(g.slot) && g.slot >= 0;
+  if (!groups.some(has)){ groups.forEach((g, i) => { g.slot = i; }); return; }
+  const seen = new Set(); const need = [];
+  groups.forEach(g => { if (has(g) && !seen.has(g.slot)) seen.add(g.slot); else need.push(g); });
+  let nx = seen.size ? Math.max(...seen) + 1 : 0;
+  need.forEach(g => { g.slot = nx++; });
+}
 function buildModel(st, errs, warns){
   const inc = Math.max(1, Math.round(num(st.numbering.inc)) || 1000);
+  ensureSlots(st.groups || []);
   const prefix = st.groupPrefix || "G_";
   const built = new Map();                             // id → {nodes, elems, ...}
   const list = (st.groups || []).filter(g => g.on !== false);
@@ -2209,8 +2305,28 @@ function buildModel(st, errs, warns){
   pending.forEach(g => errs.push(`「${g.name}」引用的群組不存在或形成循環,已略過`));
 
   const groups = order;
-  addManualElems(groups, errs);      // 端點可能跨組,一定要等全部組都建完才解析得到
-  const welded = weldNodes(groups, warns, st.weld);
+  addManualElems(groups, errs);
+  groups.forEach(r => { r.nTot = r.nodes.length; r.eTot = r.elems.length; });   // 合併之前的數量(號段用)      // 端點可能跨組,一定要等全部組都建完才解析得到
+  const kept = [];
+  const noWeld = new Set(groups.filter(r => r.g.noWeld).map(r => r.g.id));
+  const welded = weldNodes(groups, warns, { ...(st.weld || {}), noWeld, kept });
+  /* 自由端(只連一個元素的節點,FEAT-02):錨碇、塔底、懸空的吊索下端都在這裡。
+     它們應該全部是要設邊界的位置 —— 清單交給使用者核對,也可以匯出成節點群組。 */
+  const deg = new Map();
+  groups.forEach(r => r.elems.forEach(e => { deg.set(e.i, (deg.get(e.i) || 0) + 1); deg.set(e.j, (deg.get(e.j) || 0) + 1); }));
+  const free = [];
+  groups.forEach(r => r.nodes.forEach(n => { if (deg.get(n.num) === 1) free.push({ n, r }); }));
+  free.sort((a, b) => a.n.num - b.n.num);
+  if (kept.length) warns.push(`ℹ 有 ${kept.length} 對節點座標重合但刻意不合併(群組設了「不與其他群組合併」),` +
+    `清單在「編號總表 → 自由端與節點對」,匯入 midas 後以 Elastic Link 等方式連接。`);
+  const pieces = splitPieces(groups, warns);
+  if (free.length){
+    const byG = new Map();
+    free.forEach(f => byG.set(f.r.gname, (byG.get(f.r.gname) || 0) + 1));
+    warns.push(`ℹ 自由端(只連一根元素的節點)${free.length} 個:` +
+      [...byG].slice(0, 6).map(([k, v]) => `${k} ${v}`).join("、") + (byG.size > 6 ? " …" : "") +
+      `。它們應該全部是要設邊界的位置(錨碇、塔底…),不是的話就是該接沒接;清單在「編號總表」。`);
+  }
   const tot = {
     n:groups.reduce((a,r) => a + r.nodes.length, 0),
     e:groups.reduce((a,r) => a + r.elems.length, 0),
@@ -2223,7 +2339,13 @@ function buildModel(st, errs, warns){
     r.elems.forEach(e  => { if (seenE.has(e.num))  r.numClash = true; else seenE.set(e.num, r); });
   });
   const clash = groups.filter(r => r.numClash);
-  clash.forEach(r => errs.push(`「${r.g.name}」的節點或元素編號與其他群組重複`));
+  /* 號段溢位(檢查報告 WF-05):節點或元素數超過號段增量的群組,一定會佔到下一段。
+     要點名**溢位的那一組**並給解法 —— 被撞到的那一組本身沒有錯。 */
+  const over = groups.filter(r => r.nTot >= inc || r.eTot >= inc);
+  over.forEach(r => errs.push(`「${r.g.name}」有 ${r.nTot} 個節點、${r.eTot} 個元素,` +
+    `超過號段增量 ${inc},佔到了下一個號段。到「編號總表」把號段增量改成 ` +
+    `${Math.ceil((Math.max(r.nTot, r.eTot) + 1)/1000)*1000} 以上,或把這個群組拆成兩組。`));
+  if (!over.length) clash.forEach(r => errs.push(`「${r.g.name}」的節點或元素編號與其他群組重複`));
 
   /* 與「目標模型」的編號衝突(SPEC §16.3)。
      midas 匯入 MCT 時遇到已經存在的編號是**直接覆蓋、不會問**,而且不會報錯 ——
@@ -2296,7 +2418,20 @@ function buildModel(st, errs, warns){
       `有 ${all.length} 個群組沒有排進任何施工階段(${all.slice(0, 5).join("、")}` +
       `${all.length > 5 ? "…" : ""})。它們在 midas 的階段分析裡會永遠不啟用。`);
   }
-  return { groups, byId:built, tot, names, prefix, inc, clash:clash.length, tclash, stages };
+  /* 與上次匯出的編號比對(檢查報告 WF-02):號段起點或數量變了,就不能再用「匯入覆蓋」更新原模型。 */
+  const le = st.lastExport;
+  if (le && le.groups){
+    const changed = [];
+    groups.forEach(r => {
+      const o = le.groups[r.g.id]; if (!o) return;
+      if (o[0] !== r.nodeBase || o[1] !== r.nTot || o[2] !== r.elemBase || o[3] !== r.eTot) changed.push(r.g.name);
+    });
+    const gone = Object.keys(le.groups).filter(id => !built.has(id)).length;
+    if (changed.length || gone) warns.push(`與上次匯出(${le.at})相比,${changed.length} 個群組的編號或數量改變了` +
+      `(${changed.slice(0, 4).join("、")}${changed.length > 4 ? "…" : ""}${gone ? `;另有 ${gone} 個群組已刪除或停用` : ""})。` +
+      `這次的 .mct 不要「匯入覆蓋」原本的 midas 模型 —— 同一個編號已經是別的節點 / 元素,改用新的模型檔。`);
+  }
+  return { groups, byId:built, tot, names, prefix, inc, clash:clash.length, tclash, stages, pieces, free, kept };
 }
 
 // 依段的型別建立曲線;start 為繼承的起點(cont 時使用)
@@ -2431,10 +2566,12 @@ function buildOne(g, idx, built, st, inc, prefix, errs, warns){
   const R = buildOneRaw(g, idx, built, st, inc, prefix, errs, warns);
   addManualNodes(g, R);
   // 平移旋轉開放給所有組別(不再限定曲線組 / 偏置),只動「本組自己的」節點
+  // 本組自己的節點(合併重合節點之前)—— 位移複製要用它算旋轉中心
+  R.own0 = R.nodes.filter(n => n.gid === g.id);
   if (R.nodes.length && xfActive(g.xf)){
-    const own = R.nodes.filter(n => n.gid === g.id);
+    const own = R.own0;
     const f = xfMake(g.xf, own);
-    if (f){ xfApplyNodes(f, own); R.xfOn = true; refreshElemGeom(R); }
+    if (f){ xfApplyNodes(f, own); R.xfOn = true; R.xfC = f.c; refreshElemGeom(R); }
   }
   addExtElems(g, R, warns);
   if (R.nodes.length) finishStat(R);
@@ -2463,9 +2600,12 @@ function stampChainIdx(R){
 function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
   const tag = `「${g.name}」`;
   const T = TYPES[g.type];
-  // v3.9:編號一律自動 —— 全域起始 + 本組在清單中的順序 × 號段增量
-  const nodeBase = num(st.numbering.nodeBase) + idx*inc;
-  const elemBase = num(st.numbering.elemBase) + idx*inc;
+  /* 號段 = 全域起始 + 本組的號段序號(slot)× 號段增量。
+     v3.46 起 slot 一經指定就固定在群組上(檢查報告 WF-02):插入、刪除、停用、調整清單順序
+     都不再讓別的群組改號 —— 否則把新的 .mct「匯入覆蓋」原模型時,座標會寫到別的構件上。 */
+  const slot = Number.isInteger(g.slot) ? g.slot : idx;
+  const nodeBase = num(st.numbering.nodeBase) + slot*inc;
+  const elemBase = num(st.numbering.elemBase) + slot*inc;
   const gname = prefix + mctName(g.name, "G" + p2(idx+1));   // 暫定值,buildModel 會統一去重
   const R = { g, idx, gname, nodeBase, elemBase, nodes:[], elems:[],
               color:groupColor(g, idx), stat:{}, pieces:[] };
@@ -2491,7 +2631,7 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
   const mkElem = (a, b, pc, extra) => {
     const chord = distXY(a, b), len3d = dist3(a, b);
     const e = { num:elemBase + ec++, i:a.num, j:b.num, a, b, chord, len3d, gid:g.id,
-      group:gname, ...attrOf(pc), dev:0, pi:pc ? pc._i : -1, cable:gcable, ...(extra || {}) };
+      group:gname, ...attrOf(pc), dev:0, pi:pc ? pc._i : -1, cable:gcable, beta:num(g.beta) || 0, ...(extra || {}) };
     applySecTab(e);
     R.elems.push(e); return e;
   };
@@ -2859,13 +2999,31 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
       pairs.forEach(([, q]) => { if (seen.has(q)) dup++; else seen.add(q); });
       if (dup) warns.push(tag + `有 ${dup} 根連到重複的節點(兩個群組疏密差太多)`);
     }
-    pairs.forEach(([j, q]) => mkElem(A[j], B[q], null));
+    /* 每根分割 N(v3.45):連桿等分成 N 個元素,中間點是這一組自己的節點。
+       中間點落在別的群組的節點上時,會由「合併重合節點」接過去 ——
+       橫梁從左邊梁拉到右邊梁、分割 2,中點就接上橋面中心線。 */
+    const N = Math.max(1, Math.round(num(g.div)) || 1);
+    // 中間點和兩端共線:BEAM 沒問題(有彎曲勁度),纜索 / 桁架在中間點沒有橫向勁度(與扇出同一條檢查)
+    if (N > 1 && /^(CABLE|TRUSS)$/.test(attrOf(null).type))
+      warns.push(tag + `每根分割 ${N} 但元素是 ${attrOf(null).type}:中間節點與兩端共線,` +
+        `幾何非線性分析橫向勁度為零,極可能不收斂。分割只建議用在梁(BEAM)`);
+    pairs.forEach(([j, q]) => {
+      const a = A[j], b = B[q];
+      let prev = a;
+      for (let k = 1; k <= N; k++){
+        const u = k/N;
+        const nd = (k === N) ? b : mkNode({ x:a.x + (b.x-a.x)*u, y:a.y + (b.y-a.y)*u,
+                                            z:a.z + (b.z-a.z)*u, linkMid:true });
+        mkElem(prev, nd, null);
+        prev = nd;
+      }
+    });
     // 延伸:每一根連桿在起始群組端 / 目標群組端各自再往外多接一根(SPEC §16.15)。
     // 兩端的節點都屬於別的群組,所以延伸出去的節點與元素都算這一組的。
     const kA = Math.max(0, num(g.extA) || 0), kB = Math.max(0, num(g.extB) || 0);
     if (kA > 1e-12) pairs.forEach(([j, q]) => pendExt(A[j], B[q], kA));
     if (kB > 1e-12) pairs.forEach(([j, q]) => pendExt(B[q], A[j], kB));
-    R.stat = { ...R.stat, a:A0.g.name, b:B0.g.name, count:pairs.length, pair:mode };
+    R.stat = { ...R.stat, a:A0.g.name, b:B0.g.name, count:pairs.length, pair:mode, div:N };
     finishStat(R); return R;
   }
 
@@ -2876,7 +3034,8 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     /* 目標高程三種寫法:
        abs   固定高程(原本就有的)
        plane 過某點、給 X / Y 兩個坡度的斜面 —— 坡地上的墩柱、傾斜的橋面
-       ref   取另一群組「對應那個節點」的 Z —— 掛在另一條線下面的吊索        */
+       ref   取另一群組在**同一個平面位置**的 Z —— 掛在有預拱 / 縱坡的橋面下的吊索
+             (v3.46:預設依平面位置內插;舊檔是「第 j 個對第 j 個」,zMap = "index" 保留舊行為)*/
     const zMode = (g.zMode === "plane" || g.zMode === "ref") ? g.zMode : "abs";
     const tz = num(g.targetZ);
     if (zMode === "abs" && !Number.isFinite(tz)){ errs.push(tag + "目標高程無效"); R.stat.err = "高程無效"; return R; }
@@ -2887,8 +3046,31 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     if (zMode === "ref" && (!zrn || !zrn.length)){
       errs.push(tag + "找不到取高程的那個群組"); R.stat.err = "無高程來源"; return R;
     }
+    /* 依平面位置取高程:把來源節點投影到取高程群組的折線(平面)上,在最近的那一段內插 Z。
+       投影落在折線範圍外就不取(不外插)。v3.45 以前一律用序號對應,主纜與橋面的節點數
+       不同(主纜多了控索的節點)時整串錯開,預拱橋面下的吊索幾乎全部貼不上。 */
+    const byPlan = zMode === "ref" && g.zMap !== "index";
+    let planFar = 0;
+    const zAtPlan = p => {
+      let best = null;
+      for (let k = 0; k + 1 < zrn.length; k++){
+        const a = zrn[k], b = zrn[k+1];
+        const vx = b.x - a.x, vy = b.y - a.y, L2 = vx*vx + vy*vy;
+        if (L2 < 1e-18) continue;
+        const t = ((p.x - a.x)*vx + (p.y - a.y)*vy)/L2;
+        if (t < -1e-9 || t > 1 + 1e-9) continue;
+        const tc = Math.min(1, Math.max(0, t));
+        const d = Math.hypot(a.x + vx*tc - p.x, a.y + vy*tc - p.y);
+        if (!best || d < best.d) best = { d, z:a.z + (b.z - a.z)*tc };
+      }
+      if (zrn.length === 1){ const d = Math.hypot(zrn[0].x - p.x, zrn[0].y - p.y); best = { d, z:zrn[0].z }; }
+      if (best && best.d > planFar) planFar = best.d;
+      return best ? best.z : NaN;
+    };
     const every = Math.max(1, Math.round(num(g.every)) || 1);
-    const snap = g.bottom === "snap";
+    // snap:貼附,找不到就新增節點(舊行為,但會警告);snapOnly:找不到就不建這一根並報錯
+    const strict = g.bottom === "snapOnly";
+    const snap = g.bottom === "snap" || strict;
     const tolS = Math.max(0, num(g.snapTol) || 0);
     const pool = snap ? [...built.values()].flatMap(r => r.nodes) : [];
     const src0 = nodeSetOf(ref, g.refSide);
@@ -2896,13 +3078,16 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     const lo0 = clamp(Math.round(num(g.from)) || 1, 1, N0);
     const hi0 = clamp(Math.round(num(g.to)) || N0, 1, N0);
     const lo = Math.min(lo0, hi0) - 1, hi = Math.max(lo0, hi0) - 1;
-    let skipped = 0, noZ = 0;
+    let skipped = 0, noZ = 0, missN = 0, missD = Infinity;
     const links = [];
     for (let j = lo; j <= hi; j += every){
       const top = src0[j];
       let zt;
       if (zMode === "plane") zt = pl.pz + pl.sx*(top.x - pl.px) + pl.sy*(top.y - pl.py);
-      else if (zMode === "ref"){ const q = zrn[j]; if (!q){ noZ++; continue; } zt = q.z; }
+      else if (zMode === "ref"){
+        if (byPlan) zt = zAtPlan(top);
+        else { const q = zrn[j]; if (!q){ noZ++; continue; } zt = q.z; }
+      }
       else zt = tz;
       if (!Number.isFinite(zt)){ noZ++; continue; }
       if (top.z <= zt + 1e-9){ skipped++; continue; }
@@ -2911,8 +3096,9 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
       if (snap){
         let bd = Infinity;
         pool.forEach(n0 => { const dd = dist3(n0, target); if (dd < bd){ bd = dd; bot = n0; } });
-        if (!bot || bd > tolS) bot = null;
+        if (!bot || bd > tolS){ bot = null; missN++; if (bd < missD) missD = bd; }
       }
+      if (!bot && strict) continue;
       if (!bot) bot = mkNode({ ...target, deck:true });
       mkElem(top, bot, null);
       links.push([top, bot]);
@@ -2922,8 +3108,20 @@ function buildOneRaw(g, idx, built, st, inc, prefix, errs, warns){
     if (kT > 1e-12) links.forEach(([t2, b2]) => pendExt(t2, b2, kT));
     if (kB > 1e-12) links.forEach(([t2, b2]) => pendExt(b2, t2, kB));
     if (skipped) warns.push(tag + `有 ${skipped} 個來源節點已低於目標高程,該連接略過`);
-    if (noZ) warns.push(tag + `有 ${noZ} 個節點在取高程的群組裡沒有對應節點,已略過`);
-    R.stat = { ...R.stat, ref:ref.g.name, targetZ:tz, skipped, zMode };
+    if (noZ) warns.push(tag + (byPlan
+      ? `有 ${noZ} 個來源節點的平面位置不在取高程群組的範圍內,已略過`
+      : `有 ${noZ} 個節點在取高程的群組裡沒有對應節點,已略過`));
+    /* v3.46:貼附失敗一定要講 —— 吊索下端沒接到橋面,在 midas 裡就是自由端。
+       把最近的既有節點有多遠寫出來:差一點點是容差太小,差很多是高程或範圍錯了。 */
+    if (missN){
+      const far = Number.isFinite(missD) ? `最近的既有節點在 ${(+missD.toPrecision(3))} ${UL()} 外` : "附近沒有任何節點";
+      if (strict) errs.push(tag + `有 ${missN} 根下端在貼附容差 ${(+tolS.toPrecision(3))} ${UL()} 內找不到既有節點(${far}),這幾根沒有建立`);
+      else warns.push(tag + `有 ${missN} 根下端在貼附容差 ${(+tolS.toPrecision(3))} ${UL()} 內找不到既有節點(${far}),` +
+        `已新增節點 —— 這些下端沒有接到任何構件,在 midas 裡是自由端`);
+    }
+    if (byPlan && planFar > Math.max(tolS, 1e-6) && planFar > 1e-3)
+      warns.push(tag + `來源節點與取高程群組的平面距離最大 ${(+planFar.toPrecision(3))} ${UL()}(取的是平面上最近那一段的高程)`);
+    R.stat = { ...R.stat, ref:ref.g.name, targetZ:tz, skipped, zMode, miss:missN };
     finishStat(R); return R;
   }
 
@@ -3068,7 +3266,7 @@ function elemLine(e){
   // 那種情況退回一般路徑重建 —— 寧可欄位保守,也不要輸出指向錯節點的舊資料列。
   if (e.raw && e.i === e.i0 && e.j === e.j0) return e.raw;
   const isCable = e.type === "CABLE";
-  const base = `${e.num}, ${isCable ? "TENSTR" : e.type}, ${e.mat}, ${e.sect}, ${e.i}, ${e.j}, 0`;
+  const base = `${e.num}, ${isCable ? "TENSTR" : e.type}, ${e.mat}, ${e.sect}, ${e.i}, ${e.j}, ${mnum(num(e.beta) || 0)}`;
   if (isCable){
     const c = { ...CABLE_DEF(), ...(e.cable || {}) };
     const sub = Math.round(num(c.sub)) || 3, ev = mnum(num(c.val) || 0);
@@ -3081,6 +3279,7 @@ function elemLine(e){
   return `${base}, 0`;
 }
 
+const freeGrpName = gn => "N_" + (gn.indexOf(MODEL.prefix) === 0 ? gn.slice(MODEL.prefix.length) : gn) + "_END";
 function groupMembers(){
   const m = new Map();
   const add = (g, ns, es) => {
@@ -3117,7 +3316,7 @@ function mctText(){
     `  nodes ${rng(r.nodes)}  elements ${rng(r.elems)}`));
   L.push(`${C}`);
   L.push(`${C} NOTE: importing an MCT containing *UNIT changes the model's active unit system.`);
-  L.push(`${C} NOTE: element beta angle is always 0.`);
+  L.push(`${C} NOTE: element beta angle = the group's Beta Angle field (default 0).`);
   L.push(`${C} The parameter block below restores every input if this file is dropped back`);
   L.push(`${C} onto the generator page.`);
   L.push(rule);
@@ -3154,6 +3353,16 @@ function mctText(){
     const t = gm.get(nm) || { n:new Set(), e:new Set() };
     L.push(`${I}${nm}, ${compressList([...t.n])}, ${compressList([...t.e])}, 0`);
   });
+  /* 自由端節點群組(FEAT-02,預設關閉):每個群組的自由端一組,只有節點清單。
+     midas 裡以群組選取節點再指定邊界,不必抄編號。元素清單留空的寫法尚未以實機樣本核對。 */
+  if (state.out.freeGrp && (MODEL.free || []).length){
+    L.push(`${C} --- free-end node groups (select these to assign supports) ---`);
+    const byG = new Map();
+    MODEL.free.forEach(f => { const k = f.r.gname; if (!byG.has(k)) byG.set(k, []); byG.get(k).push(f.n.num); });
+    byG.forEach((ns, gn) => L.push(`${I}${freeGrpName(gn)}, ${compressList(ns)}, , 0`));
+    if ((MODEL.kept || []).length)
+      L.push(`${I}N_PAIRS, ${compressList(MODEL.kept.flatMap(([a, b]) => [a.num, b.num]))}, , 0`);
+  }
   // 施工階段群組也是結構群組,直接接在同一個區塊後面(SPEC §16.5 層一)
   if (MODEL.stages && MODEL.stages.length){
     L.push(`${C} --- construction stage groups ---`);
@@ -3361,7 +3570,7 @@ const DEF_STATE = () => ({
   weld:{ on:true, tol:0 },       // 合併座標重合的節點(只留編號最小的那個)
 
   // stage:*STAGE 每個階段都一樣的那兩個欄位(逐階段填只是噪音,集中在一處設定)
-  out:{ dxf:DXF_DEF(), stage:{ on:true, save:true, step:false } },
+  out:{ dxf:DXF_DEF(), stage:{ on:true, save:true, step:false }, freeGrp:false },
   // 施工階段表(SPEC §16.5 層二):一列一個階段,啟用哪些結構群組。
   // 目前只驅動 3D 視圖的時間軸滑桿 —— *STAGE 的實機格式還沒拿到樣本(§16.10)。
   stages:[],                      // [{ name, days, on:[群組名…] }]
@@ -3420,6 +3629,8 @@ function normState(s){
     if (!g.id) g.id = newId();
     const n = +String(g.id).replace(/\D/g, "");
     if (Number.isFinite(n) && n >= SEQ) SEQ = n + 1;
+    // v3.46:垂落「取另一群組高程」改成依平面位置;舊檔沒有 zMap,維持原本的序號對應
+    if (g.type === "LINKZ" && g.zMap === undefined) g.zMap = "index";
     const base = defaultGroup(g.type);
     const keepId = g.id;
     Object.keys(base).forEach(k => { if (g[k] === undefined) g[k] = base[k]; });
@@ -3571,9 +3782,11 @@ function demoSuspension(){
   const edR = { ...defaultGroup("OFFSET"), name:"邊樑右 EDGE_R", ref:deck.id, d:Y,  h:0,
                 etype:"BEAM", mat:1, sect:2 };
   /* 橫梁每個節點一根(2.5 m)—— 吊索也是每 2.5 m 一根,一根吊索正對一根橫梁,
-     載重才有地方交:吊索吊住邊樑節點,橫梁就在同一個節點把力橫過去。 */
+     載重才有地方交:吊索吊住邊樑節點,橫梁就在同一個節點把力橫過去。
+     v3.45:橫梁**每根分割 2**,中點正好落在橋面中心線的節點上,由「合併重合節點」接過去。
+     v3.44 以前橫梁直接從左邊樑拉到右邊樑,中心線是一串懸空的梁 → midas 勁度矩陣奇異。 */
   const xb  = { ...defaultGroup("LINK2"), name:"橫梁 XBEAM", a:edL.id, b:edR.id,
-                pair:"same", from:1, to:0, every:1, etype:"BEAM", mat:1, sect:3 };
+                pair:"same", from:1, to:0, every:1, div:2, etype:"BEAM", mat:1, sect:3 };
 
   /* ---- 橋面下的桁架 ----
      兩側邊樑就是上弦,各自往下偏置 TD 得下弦,每個節點(2.5 m)一根豎桿 ——
@@ -3617,7 +3830,7 @@ function demoSuspension(){
 
   // 吊索:主索第 5..35 個節點垂落到橋面高程,下端貼附邊樑既有節點
   const hang = (nm, ref) => ({ ...defaultGroup("LINKZ"), name:nm, ref, targetZ:ZD,
-    from:5, to:35, every:1, bottom:"snap", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
+    from:5, to:35, every:1, bottom:"snapOnly", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
   const hL = hang("吊索左 HANG_L", cL.id), hR = hang("吊索右 HANG_R", cR.id);
 
   /* ---- 抗風索 ----
@@ -3644,11 +3857,19 @@ function demoSuspension(){
     aFrom:7, aEvery:2, bFrom:3, bEvery:2, count:11, etype:"CABLE", mat:2, sect:19 });
   const wsL = wstay("抗風支索左 WSTAY_L", blL.id, wcL.id), wsR = wstay("抗風支索右 WSTAY_R", blR.id, wcR.id);
 
-  // 塔架:兩根立柱 + 頂橫梁,一組三段
+  /* 塔架:兩根立柱 + 塔頂橫梁 + **塔下橫梁**,一組六段。
+     v3.45:柱在 Z = ZB 斷開成上下兩段,ZB 再拉一根塔下橫梁 —— 橋面(桁架下弦端點 Z = ZD − TD)
+     才有東西可以支承。塔下橫梁比下弦端點低 0.4 m(支承高):兩者**不能重合**,
+     重合會被「合併重合節點」併成剛接;匯入 midas 後在這兩個節點之間拉 Elastic Link。
+     v3.44 以前柱子一路切 6 等分到底,塔上沒有任何節點在橋面高度,橋面縱向只靠吊索吊著。 */
+  const ZB = ZD - TD - 0.4;                            // 塔下橫梁 Z = 8.0
   const tower = (nm, x) => G(nm, [
-    D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:0, split:SPL({ count:6 }) }),
-    D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) })
+    D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:ZB, split:SPL({ count:4 }) }),
+    D("LINE", { endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:2 }) }),
+    D("LINE", { cont:false, x1:x, y1:Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZB, split:SPL({ count:4 }) }),
+    D("LINE", { endMode:"point", x2:x, y2:Y, z2:0, split:SPL({ count:2 }) }),
+    D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) }),
+    D("LINE", { cont:false, x1:x, y1:-Y, z1:ZB, endMode:"point", x2:x, y2:Y, z2:ZB, split:SPL({ count:2 }) })
   ], { etype:"BEAM", mat:3, sect:4 });
 
   s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB, crA, crB,
@@ -3879,6 +4100,8 @@ function groupSummary(g){
   return r.nodes.length + "節點";
 }
 
+// 清單第一行只放中文部分,英數(匯出名)放在第二行小字 —— 不再被截成「橋面中心線 …」(LAY-02)
+const nameMain = n => { const t = String(n).replace(/\s+[A-Za-z0-9_]+$/, ""); return t || n; };
 let ADD_MENU_HTML = "";
 function renderTree(){
   const rows = state.groups.map((g, i) => {
@@ -3888,7 +4111,8 @@ function renderTree(){
       SELSET.has(g.id) && SEL !== g.id ? " msel" : ""}${bad ? " err" : ""}" data-id="${g.id}" draggable="true">
       <span class="ic${g.on === false ? " off" : ""}" style="color:${colorOfGroup(g)}" title="${
         esc(T.name + (soloPiece(g) ? "(" + PIECES[soloPiece(g)].name + ")" : ""))}">${iconFor(g)}</span>
-      <span class="nm">${esc(g.name)}</span>
+      <span class="nm" title="${esc(g.name)}${r ? " · " + esc(r.gname) + " · " + r.nodeBase + "～" : ""}">${esc(nameMain(g.name))}${
+        r ? `<small class="gn">${esc(r.gname)}</small>` : ""}</span>
       <span class="meta">${esc(groupSummary(g))}</span>
       <button class="kebab" data-menu="${g.id}" title="更多(也可以直接右鍵)">⋯</button></div>`;
   }).join("");
@@ -4113,6 +4337,73 @@ function bakeXfShift(g){
   return true;
 }
 
+/* ---------- 兩個變換接起來(v3.45)----------
+   複本的幾何必須是「原本的變換 O 做完,再做這次的變換 D」:p → D(O(p))。
+   v3.44 以前只是把 D 的欄位疊進 O(鏡射直接設上去、旋轉角相加),
+   但一個 xf 的順序是 **鏡射 → 繞中心旋轉 → 平移**,鏡射因此跑到 O 的旋轉**之前**,
+   旋轉中心也沒有跟著鏡射 —— 已經轉過 45° 的抗風索鏡射過去,錨碇整個飛走。
+
+   要把 D∘O 寫回同一種 xf,鏡射得「穿過」O 的旋轉:
+     M R_θ = R_θ′ M   θ′ = θ(旋轉軸就是鏡射面的法線)、−θ(其餘)
+     旋轉中心 c → M(c),O 的平移 d → S·d(鏡射軸那一項變號)
+   再接 D 的旋轉:同一軸的兩個旋轉合成一個(角度相加、中心不變、差額變成平移);
+   O 沒有旋轉時直接用 D 的。**辦不到的組合回 null**(兩個不同軸的旋轉、兩個不同軸的鏡射),
+   呼叫端要擋下來,不能悄悄做錯。
+
+   O 的旋轉中心用建模時**實際用到**的那一點(R.xfC,自動中心也一樣),
+   結果一律改成「自訂座標」—— 鏡射之後再用自動中心,算出來的會是另一個點。     */
+const AXI = { X:"x", Y:"y", Z:"z" };
+function rotVec(ax, deg, v){
+  const t = deg*D2R, co = Math.cos(t), si = Math.sin(t);
+  if (ax === "X") return { x:v.x, y:v.y*co - v.z*si, z:v.y*si + v.z*co };
+  if (ax === "Y") return { x:v.x*co + v.z*si, y:v.y, z:-v.x*si + v.z*co };
+  return { x:v.x*co - v.y*si, y:v.x*si + v.y*co, z:v.z };
+}
+function composeXf(O0, cO, D){
+  const O = { ...XF_DEF(), ...(O0 || {}) };
+  const V = (x, y, z) => ({ x:num(x) || 0, y:num(y) || 0, z:num(z) || 0 });
+  const add = (a, b) => ({ x:a.x + b.x, y:a.y + b.y, z:a.z + b.z });
+  const sub = (a, b) => ({ x:a.x - b.x, y:a.y - b.y, z:a.z - b.z });
+  const tiny = v => Math.abs(v) < 1e-12;
+  // T = 目前累積的變換:p → R(axis, rot)·(M(p) − c) + c + d
+  let T = { mir:mirOf(O), mirAt:num(O.mirAt) || 0, rot:num(O.rot) || 0, axis:O.axis || "Z",
+            c:cO ? V(cO.x, cO.y, cO.z) : V(O.cx, O.cy, O.cz), d:V(O.dx, O.dy, O.dz) };
+  const dM = mirOf(D), dRot = num(D.rot) || 0, dAx = D.axis || "Z";
+  // 1. D 的鏡射穿過 T
+  if (dM){
+    const k = AXI[dM], at = num(D.mirAt) || 0;
+    const S = v => ({ ...v, [k]:-v[k] });
+    const Mp = v => ({ ...v, [k]:2*at - v[k] });
+    const rot = (T.axis === dM) ? T.rot : -T.rot;
+    if (!T.mir) T = { mir:dM, mirAt:at, rot, axis:T.axis, c:Mp(T.c), d:S(T.d) };
+    else if (T.mir === dM){
+      // 同一軸鏡射兩次 = 沿這一軸平移 2(at − 原本的 at)
+      const c2 = S(sub(T.c, { x:0, y:0, z:0, [k]:2*T.mirAt }));
+      const sh = { x:0, y:0, z:0, [k]:2*at - 2*T.mirAt };
+      T = { mir:"", mirAt:0, rot, axis:T.axis, c:c2, d:add(S(T.d), sh) };
+    } else return null;
+  }
+  // 2. D 的旋轉(中心:D.pivot;沒給就用群組自己的旋轉中心 —— 沒有旋轉過的群組就是它的自動中心)
+  if (!tiny(dRot)){
+    // T 的旋轉中心本身不會被旋轉帶走,變換之後就在 c + d
+    const cD = D.pivot ? V(D.pivot.x, D.pivot.y, D.pivot.z) : add(T.c, T.d);
+    if (tiny(T.rot)){
+      // R_D(M p + d − cD) + cD:中心換成「M p 那一側」的 cD − d,平移不變
+      T = { ...T, rot:dRot, axis:dAx, c:sub(cD, T.d) };
+    } else if (T.axis === dAx){
+      // R_D(R_T(Mp − c) + c + d − cD) + cD = R_sum(Mp − c) + c + [R_D(c + d − cD) + cD − c]
+      const extra = sub(add(rotVec(dAx, dRot, sub(add(T.c, T.d), cD)), cD), T.c);
+      T = { ...T, rot:T.rot + dRot, d:extra };
+    } else return null;
+  }
+  // 3. D 的平移
+  T.d = add(T.d, V(D.dx, D.dy, D.dz));
+  const out = { ...O, mir:T.mir, mirAt:T.mir ? rnd12(T.mirAt) : 0, rot:rnd12(T.rot), axis:T.axis,
+                dx:rnd12(T.d.x), dy:rnd12(T.d.y), dz:rnd12(T.d.z) };
+  if (!tiny(T.rot)){ out.cmode = "custom"; out.cx = rnd12(T.c.x); out.cy = rnd12(T.c.y); out.cz = rnd12(T.c.z); }
+  return out;
+}
+
 // mkName(原名) → 複本的名字。deep = true 時連上游一起複製並改指參照。
 const dupGroup = (g, mkName, xfDelta, deep, quiet, afterG) =>
   dupGroups([g], mkName, xfDelta, deep, quiet, afterG);
@@ -4128,6 +4419,7 @@ function dupGroups(seeds, mkName, xfDelta, deep, quiet, afterG){
   const copies = src.map(o => {
     const c = clone(o);
     c.id = newId(); c.name = nameOf(o.name);
+    delete c.slot;                                     // 複本接在最大號段後面,不擠原本的群組
     map.set(o.id, c.id);
     return c;
   });
@@ -4141,23 +4433,66 @@ function dupGroups(seeds, mkName, xfDelta, deep, quiet, afterG){
   const newIds = new Set(copies.map(c => c.id));
   const pureShift = !!xfDelta && !xfDelta.mir && Math.abs(num(xfDelta.rot) || 0) < 1e-12;
   const shift0 = xfDelta ? { dx:num(xfDelta.dx) || 0, dy:num(xfDelta.dy) || 0, dz:num(xfDelta.dz) || 0 } : null;
-  if (xfDelta) copies.forEach(c => {
-    if (pureShift && depIds(c).every(id => newIds.has(id)) && bakeShift(c, shift0)) return;
-    const xf = { ...XF_DEF(), ...(c.xf || {}) };
-    // 疊在原本的變換之上(原組本來就偏過的話,複本要再偏一次而不是取代)
-    xf.dx = (num(xf.dx) || 0) + (num(xfDelta.dx) || 0);
-    xf.dy = (num(xf.dy) || 0) + (num(xfDelta.dy) || 0);
-    xf.dz = (num(xf.dz) || 0) + (num(xfDelta.dz) || 0);
-    if (Math.abs(num(xfDelta.rot) || 0) > 1e-12){
-      xf.rot = (num(xf.rot) || 0) + (num(xfDelta.rot) || 0);
-      xf.axis = xfDelta.axis || "Z";
-      // 沿線陣列要繞「基準點」轉,不是繞群組自己的中心
-      if (xfDelta.pivot){ xf.cmode = "custom";
-        xf.cx = xfDelta.pivot.x; xf.cy = xfDelta.pivot.y; xf.cz = xfDelta.pivot.z; }
+  const tiny = v => Math.abs(num(v) || 0) < 1e-12;
+  let D = xfDelta;
+  if (D && !D.pivot && !tiny(D.rot)){
+    /* 旋轉沒給中心:整套共用**第一個群組自己的旋轉中心**(沒轉過的群組就是它的自動中心)。
+       每個複本各繞各的中心轉,整套一起複製時就散掉了。 */
+    const r0 = MODEL.byId && MODEL.byId.get(g.id);
+    const O0 = { ...XF_DEF(), ...(g.xf || {}) };
+    const c0 = (r0 && r0.xfC) || xfCenter(O0, (r0 && r0.own0) || []);
+    const f0 = xfMake({ ...O0, cmode:"custom", cx:c0.x, cy:c0.y, cz:c0.z }, [c0]);
+    D = { ...D, pivot:f0 ? f0(c0) : c0 };
+  }
+  /* 形狀完全由上游決定的複本(偏置、對接、從某個節點拉出來的扇出、垂落):
+     上游已經一起複製、也已經做過這次的變換,自己**不能再做一次** ——
+     v3.44 以前會再轉一次,整套旋轉複製時邊樑轉了 180°。
+     垂落的下端高程是絕對值,只有「繞 Z 轉 / 對 X、Y 鏡射」時才保持鉛直,其餘照舊合成。 */
+  const flatD = !!D && mirOf(D) !== "Z" && (tiny(D.rot) || (D.axis || "Z") === "Z");
+  const derived = c => {
+    const ds = depIds(c);
+    if (!ds.length || !ds.every(id => newIds.has(id))) return false;
+    if (c.type === "OFFSET" || c.type === "LINK2") return true;
+    if (c.type === "FAN") return c.srcMode === "node" || c.srcMode === "gnode";
+    if (c.type === "LINKZ") return flatD && !xfActive(c.xf);
+    return false;
+  };
+  // 垂落的斜面 / 固定高程跟著 D 走:點用 D 變換,坡度向量先鏡射再轉
+  const moveLinkZ = c => {
+    c.targetZ = rnd12((num(c.targetZ) || 0) + (num(D.dz) || 0));
+    const fD = xfMake({ ...XF_DEF(), mir:mirOf(D), mirAt:num(D.mirAt) || 0, rot:num(D.rot) || 0, axis:"Z",
+      cmode:"custom", cx:D.pivot ? D.pivot.x : 0, cy:D.pivot ? D.pivot.y : 0, cz:D.pivot ? D.pivot.z : 0,
+      dx:num(D.dx) || 0, dy:num(D.dy) || 0, dz:num(D.dz) || 0 }, []);
+    const P = fD ? fD({ x:num(c.px) || 0, y:num(c.py) || 0, z:num(c.pz) || 0 }) : null;
+    if (P){ c.px = rnd12(P.x); c.py = rnd12(P.y); c.pz = rnd12(P.z); }
+    let gr = { x:num(c.sx) || 0, y:num(c.sy) || 0, z:0 };
+    if (mirOf(D) === "X") gr.x = -gr.x;
+    if (mirOf(D) === "Y") gr.y = -gr.y;
+    gr = rotVec("Z", num(D.rot) || 0, gr);
+    c.sx = rnd12(gr.x); c.sy = rnd12(gr.y);
+  };
+  if (xfDelta){
+    // 先全部算好:任何一個組合不出來就整批不做,不能留半套
+    const xfs = copies.map((c, i) => {
+      if (pureShift && depIds(c).every(id => newIds.has(id)) && bakeShift(c, shift0)) return undefined;
+      if (derived(c)){ if (c.type === "LINKZ") moveLinkZ(c); return undefined; }
+      const O = { ...XF_DEF(), ...(c.xf || {}) };
+      // 沒有旋轉也沒有鏡射的這一次只是平移:直接加,旋轉中心的設定(自動 / 起點…)原樣保留
+      if (!xfDelta.mir && Math.abs(num(xfDelta.rot) || 0) < 1e-12)
+        return { ...O, dx:rnd12((num(O.dx) || 0) + shift0.dx), dy:rnd12((num(O.dy) || 0) + shift0.dy),
+                 dz:rnd12((num(O.dz) || 0) + shift0.dz) };
+      const r = MODEL.byId && MODEL.byId.get(src[i].id);
+      const cO = (r && r.xfC) || xfCenter(O, (r && r.own0) || []);
+      return composeXf(O, cO, D);
+    });
+    const badI = xfs.findIndex(x => x === null);
+    if (badI >= 0){
+      alert(`「${src[badI].name}」原本的旋轉 / 鏡射和這次的變換沒辦法合成一個「平移與旋轉」` +
+        `(兩個不同軸的旋轉,或兩個不同軸的鏡射)。請先把其中一個變換併進幾何,或分兩次做。`);
+      return null;
     }
-    if (xfDelta.mir){ xf.mir = xfDelta.mir; xf.mirAt = num(xfDelta.mirAt) || 0; }  // 鏡射是設定,不疊加
-    c.xf = xf;
-  });
+    copies.forEach((c, i) => { if (xfs[i]) c.xf = xfs[i]; });
+  }
   // 一般插在原群組後面;連續複製多份時由呼叫端指定插入點,順序才不會反過來
   const anchor = afterG && state.groups.includes(afterG) ? afterG : g;
   state.groups.splice(state.groups.indexOf(anchor) + 1, 0, ...copies);
@@ -4384,6 +4719,12 @@ function openOffsetDlg(gsOrG){
           <option value="Z">Z(俯視轉)</option><option value="X">X</option><option value="Y">Y</option>
         </select></label>
         <label class="f"><span>份數</span><input type="number" step="1" min="1" id="od-n" value="1"></label></div>
+      <div class="fields g4" style="margin-top:8px">
+        <label class="f"><span>旋轉中心</span><select id="od-c">
+          <option value="">群組自己的中心</option><option value="custom">自訂座標</option></select></label>
+        ${F(`中心 X (${UL()})`, "od-cx", 0) + F(`中心 Y (${UL()})`, "od-cy", 0) + F(`中心 Z (${UL()})`, "od-cz", 0)}</div>
+      <div class="hint" style="margin-top:4px">旋轉中心預設是<b>群組自己的旋轉中心</b>(轉過的群組用它原本的中心;
+        沒轉過的用範圍中心),一起複製的整套群組繞同一點轉。要繞圓心、墩中心等特定點轉就選自訂座標。</div>
       <div class="fields g3" style="margin-top:8px">
         <label class="f" style="grid-column:span 2"><span>鏡射</span><select id="od-m">
           <option value="">不鏡射</option>
@@ -4393,7 +4734,9 @@ function openOffsetDlg(gsOrG){
         </select></label>
         ${F(`平面位置 (${UL()})`, "od-ma", 0)}</div>
       <div class="hint" style="margin-top:7px">要做<b>鏡射複製</b>就選一個平面、填它的位置,
-        平移量全部留 0 即可(這時複本不會和原本重疊,所以允許)。</div>
+        平移量全部留 0 即可(這時複本不會和原本重疊,所以允許)。
+        鏡射時名稱裡的<b>左 / 右、_L / _R</b>(對 Y 鏡射)或<b>東 / 西、_E / _W</b>(對 X 鏡射)會自動互換,
+        複本也會加進原群組所在的施工階段。</div>
       ${deepRow}
       <div class="hint" style="margin-top:9px">份數 &gt; 1 會<b>連續疊加</b>同一組位移量
         (例如 dY = 5、份數 3 → 產生 +5 / +10 / +15 三個群組)。</div>
@@ -4423,11 +4766,39 @@ function openOffsetDlg(gsOrG){
     close();
     snapshot("offdup:" + Date.now());
     // 每一份都從「原組」複製,偏置量乘上份序 —— 不用前一份接力,名字才不會越疊越長
+    const pv = m.querySelector("#od-c").value === "custom"
+      ? { x:gv("od-cx"), y:gv("od-cy"), z:gv("od-cz") } : null;
+    const before = new Set(state.groups.map(g2 => g2.id));
     for (let k = 1; k <= cnt; k++)
-      dupGroups(gs, n => `${n} ${mir ? "鏡射" : "位移"}${cnt > 1 ? k : ""}`,
-        { dx:dx*k, dy:dy*k, dz:dz*k, rot:rot*k, axis, mir, mirAt }, deep, k < cnt);
+      dupGroups(gs, n => { const sw = mir && cnt === 1 ? swapSide(n, mir) : n;
+          return sw !== n ? sw : `${n} ${mir ? "鏡射" : "位移"}${cnt > 1 ? k : ""}`; },
+        { dx:dx*k, dy:dy*k, dz:dz*k, rot:rot*k, axis, mir, mirAt, pivot:pv }, deep, k < cnt);
     recompute(true);
+    // 複本排進原群組所在的施工階段(UX-02)—— 不然 midas 的階段分析裡它永遠不啟用
+    if ((state.stages || []).length){
+      const nm = new Map(MODEL.groups.map(r => [r.g.id, r.gname]));
+      const copies = state.groups.filter(g2 => !before.has(g2.id));
+      copies.forEach(c => {
+        const src = gs.find(o => c.name.indexOf(o.name) === 0 || swapSide(o.name, mir) === c.name) ||
+          state.groups.find(o => before.has(o.id) && (c.name.indexOf(o.name) === 0 || swapSide(o.name, mir) === c.name));
+        if (!src) return;
+        const sn = nm.get(src.id), cn = nm.get(c.id);
+        state.stages.forEach(sg => { if ((sg.on || []).includes(sn) && !sg.on.includes(cn)) sg.on.push(cn); });
+      });
+      recompute(true);
+    }
   };
+}
+
+/* 鏡射複製的預設名稱:對 Y 鏡射左右互換、對 X 鏡射東西互換(UX-02) */
+function swapSide(name, mir){
+  const pairs = mir === "Y" ? [["左","右"],["_L","_R"]] : mir === "X" ? [["西","東"],["_W","_E"]] : [];
+  let out = String(name);
+  pairs.forEach(([a, b]) => {
+    const re = a.charAt(0) === "_" ? new RegExp(`${a}(?![A-Za-z0-9])|${b}(?![A-Za-z0-9])`, "g") : new RegExp(`${a}|${b}`, "g");
+    out = out.replace(re, t => t === a ? b : a);
+  });
+  return out;
 }
 
 /* ---------- 自訂連接方式對話框(對接的「自訂」)----------
@@ -5379,6 +5750,13 @@ function paneFor(g){
          <div class="fields g3">${
            fld("類型", "etype", g.etype, { select:[["","(未設定)"], ...ELEM_TYPES] }) +
            matField(g, "mat", "材料", g.mat) + matField(g, "sect", "斷面", g.sect)}</div>
+         <div class="fields g3" style="margin-top:8px">${
+           fld("Beta Angle (°)", "beta", g.beta || 0) +
+           fld("不與其他群組合併", "noWeld", !!g.noWeld, { check:true })}</div>
+         <div class="hint"><b>Beta Angle</b> 寫進每根元素的 ANGLE 欄(I 型梁強弱軸、斜塔、墩柱斷面朝向);
+           放在這裡,重新匯入覆蓋時才不會變回 0。
+           <b>不與其他群組合併</b>:這一組的節點和別組座標重合時<b>保留成兩個節點</b>(可滑動索鞍、零長度支承),
+           重合的節點對列在「編號總表」,匯入 midas 後以 Elastic Link 連接。</div>
          <div class="hint">個別段可在自己的「分割與元素覆寫」裡蓋掉。<b>留空就照 BEAM / 材料 1 / 斷面 1 匯出</b>。${
            libTotal() ? "" : `<br>想讓材料 / 斷面直接顯示 <b>midas 裡的名稱</b>而不是編號?
              到右上角<b>「匯入 → midas 的材料與斷面名稱」</b>讀一份 midas 匯出的 .mct
@@ -5472,6 +5850,10 @@ function paneFor(g){
            <span class="pn">${esc(t)}</span>${h ? `<span class="ph">${esc(h)}</span>` : ""}</button>`).join("")}</div>
       ${pm === "free" ? freeRow : rangeRow}
       <div class="hint">${PAIR_HINT[pm] || ""}</div>
+      <div class="fields g4" style="margin-top:8px">${fld("每根分割 N", "div", g.div || 1)}</div>
+      ${(num(g.div) || 1) > 1 ? `<div class="hint">每一根連桿等分成 <b>${Math.round(num(g.div))}</b> 個元素,
+        中間點是這一組自己的節點;落在別的群組的節點上時會被「合併重合節點」接過去
+        (例如橫梁分割 2,中點就接上橋面中心線)。</div>` : ""}
       ${extFields(g, ["extA","起始群組端延伸"], ["extB","目標群組端延伸"],
         "<b>每一根連桿</b>都會在選到的那一端多接一根,原本的連桿仍然接在兩個群組的節點上")}`);
   }
@@ -5486,11 +5868,15 @@ function paneFor(g){
           fld("沿 Y 的坡度(每單位升高)", "sy", g.sy)}</div>`
       : `<div class="fields g4" style="margin-top:8px">${
           fld("取高程的群組", "zRef", g.zRef, { select:[["","(未選)"], PICK_OPT, ...refOptions(g.id)], span:2 }) +
-          (sideField(g.zRef, "zRefSide", g.zRefSide) || "")}</div>
+          (sideField(g.zRef, "zRefSide", g.zRefSide) || "") +
+          fld("對應方式", "zMap", g.zMap === "index" ? "index" : "plan",
+            { select:[["plan","依平面位置(內插)"],["index","依節點序號(舊)"]] })}</div>
          ${pickNote(g, "zRef", "取高程的群組")}`;
     const zHint = { abs:"所有下端落在<b>同一個高程</b>。",
       plane:"下端落在一個<b>斜面</b>上:過指定點,沿 X / Y 各給一個坡度(0.02 = 2%)。坡地上的墩柱、傾斜橋面用這個。",
-      ref:"下端的高程取自<b>另一個群組對應的那個節點</b>(第 1 個對第 1 個),X、Y 仍照來源節點 —— 也就是垂直落到另一條線的高度。" }[zm];
+      ref:(g.zMap === "index"
+        ? "下端的高程取自<b>另一個群組同一個序號的節點</b>(第 1 個對第 1 個,舊做法)。兩個群組節點數或起點不同時會整串錯開。"
+        : "下端的高程取自<b>另一個群組在同一個平面位置的高程</b>(投影到那條線上內插),X、Y 仍照來源節點 —— 有預拱、縱坡的橋面用這個。") }[zm];
     const NR = chainCount(g.ref, g.refSide);
     const rSideF = sideField(g.ref, "refSide", g.refSide);
     body = SEC("連接", "垂直投影", `<div class="fields g4">${
@@ -5503,8 +5889,9 @@ function paneFor(g){
         fld("起算節點", "from", idxShow(g.from, NR, 1), { idxMax:NR }) +
         fld("到第幾個節點", "to", idxShow(g.to, NR, NR), { idxMax:NR }) +
         fld("每 n 個節點取一次", "every", g.every, { stepMax:NR }) +
-        fld("下端節點", "bottom", g.bottom, { select:[["new","新增節點"],["snap","貼附既有節點"]] })}</div>
-      ${g.bottom === "snap" ? `<div class="fields g4" style="margin-top:8px">${
+        fld("下端節點", "bottom", g.bottom, { select:[["new","新增節點"],["snap","貼附既有節點(找不到就新增)"],
+          ["snapOnly","貼附既有節點(找不到就報錯)"]] })}</div>
+      ${g.bottom === "snap" || g.bottom === "snapOnly" ? `<div class="fields g4" style="margin-top:8px">${
         fld(`貼附容差 (${UL()})`, "snapTol", g.snapTol)}</div>` : ""}
       <div class="hint">${zHint}已低於目標高程的節點<b>自動略過</b>。
         來源群組有多段時(例如主索的直線引段),用<b>節點範圍</b>只掛在需要的那一段上。</div>
@@ -5695,6 +6082,51 @@ function tgtSection(){
        並向上取整到號段增量的倍數 —— 留一段緩衝,不緊貼著最後一號。</div>`);
 }
 
+/* 自由端與刻意不合併的節點對(FEAT-01 / 02):邊界、支承要選的就是這些節點 */
+function freeSection(){
+  const fr = MODEL.free || [], kp = MODEL.kept || [];
+  const f3 = v => (+v.toFixed(4)).toString();
+  const rows = fr.slice(0, 400).map(f => `<tr><td>${f.n.num}</td><td>${f3(f.n.x)}, ${f3(f.n.y)}, ${f3(f.n.z)}</td>
+      <td class="n">${esc(f.r.gname)}</td></tr>`).join("");
+  const prow = kp.slice(0, 200).map(([a, b]) => `<tr><td>${a.num} – ${b.num}</td><td>${f3(a.x)}, ${f3(a.y)}, ${f3(a.z)}</td></tr>`).join("");
+  return SEC("自由端與節點對", `自由端 ${fr.length}${kp.length ? ` · 節點對 ${kp.length}` : ""}`,
+    `<div class="hint">自由端 = 只連一根元素的節點。它們應該<b>全部</b>是要設邊界的位置(錨碇、塔底、橋台);
+      出現別的(例如吊索下端)就是該接沒接。匯出時可勾「自由端節點群組」,在 midas 裡以群組選取節點設邊界。</div>
+     <div class="btns" style="margin:6px 0 8px"><button class="btn" data-op="csvfree"${fr.length || kp.length ? "" : " disabled"}>下載自由端與節點對 CSV</button></div>
+     ${fr.length ? `<div data-ro><table class="t"><thead><tr><th>節點</th><th>X, Y, Z</th><th>所屬群組</th></tr></thead><tbody>${rows}</tbody></table></div>` : ""}
+     ${kp.length ? `<div class="lbl2" style="margin-top:10px">座標重合但刻意不合併的節點對(Elastic Link 用)</div>
+       <div data-ro><table class="t"><thead><tr><th>節點對</th><th>X, Y, Z</th></tr></thead><tbody>${prow}</tbody></table></div>` : ""}`);
+}
+/* 角色設定檔範本(FEAT-03):tools/cable_pretension.py 要的 roles.json。
+   群組角色由元素類型與群組關係推:CABLE 的垂落 = 吊索;被吊索掛著的 CABLE 線 = 主纜;
+   CABLE 的對接 = 繫索(抗風支索),它另一端的 CABLE 線 = 耐風索。載重、EA 留 0 待填 —— 那是工程判斷。 */
+function rolesTemplate(){
+  const R = MODEL.groups, isC = r => (r.g.etype || "BEAM") === "CABLE";
+  const byId = id => R.find(r => r.g.id === id);
+  const hanger = R.filter(r => isC(r) && r.g.type === "LINKZ");
+  const mainIds = new Set(hanger.map(r => r.g.ref));
+  const tie = R.filter(r => isC(r) && r.g.type === "LINK2");
+  const windIds = new Set(tie.flatMap(r => [r.g.a, r.g.b]).filter(id => { const x = byId(id); return x && isC(x) && !mainIds.has(id); }));
+  const main = R.filter(r => mainIds.has(r.g.id)), wind = R.filter(r => windIds.has(r.g.id));
+  const other = R.filter(r => isC(r) && !hanger.includes(r) && !tie.includes(r) && !main.includes(r) && !wind.includes(r));
+  const o = { "_說明":`由 midas-curve-gen 依群組關係產生的範本。單位與 .mct 相同:力 ${UF()}、長度 ${UL()}(不換算)。` +
+      `loads 與 EA 填 0 的地方都要換成設計值;角色請再核對一次。`,
+    main:main.map(r => r.gname), hanger:hanger.map(r => r.gname) };
+  if (wind.length) o.wind = wind.map(r => r.gname);
+  if (tie.length) o.tie = tie.map(r => r.gname);
+  if (other.length) o["_未判定的纜索群組"] = other.map(r => r.gname);
+  o.loads = { deck_per_len:0, band:0, w_main:0, w_hang:0, ...(wind.length ? { w_wind:0 } : {}) };
+  o.EA = { main:0, hanger:0, ...(wind.length ? { wind:0 } : {}), ...(tie.length ? { tie:0 } : {}) };
+  if (wind.length){ o.wind_H = 0; o.tie_T = 0; o.fix_wind = true; }
+  o.output_kind = "Lu"; o.fix_main_z = true;
+  return JSON.stringify(o, null, 2) + "\n";
+}
+function freeCsv(){
+  const L = ["kind,node,node2,X,Y,Z,group"];
+  (MODEL.free || []).forEach(f => L.push(`free,${f.n.num},,${f.n.x},${f.n.y},${f.n.z},${f.r.gname}`));
+  (MODEL.kept || []).forEach(([a, b]) => L.push(`pair,${a.num},${b.num},${a.x},${a.y},${a.z},`));
+  return L.join("\r\n") + "\r\n";
+}
 function paneNumbering(){
   const rows = MODEL.groups.map(r => `<tr>
     <td class="n">${esc(r.g.name)}</td><td class="n">${TYPES[r.g.type].name}</td>
@@ -5702,6 +6134,7 @@ function paneNumbering(){
     <td>${numRange(r.elems)}</td>
     <td>${r.nodes.length} / ${r.elems.length}</td>
     <td class="n">${esc(r.gname)}</td></tr>`).join("");
+  const outOfOrder = (state.groups || []).some((g, i) => g.slot !== i);
   return `<div class="ptitle"><span class="nm">編號總表</span><span class="fam geo">全域</span></div>` +
     SEC("配置", MODEL.clash ? `<span style="color:var(--err)">${MODEL.clash} 個群組編號衝突</span>` : "無衝突 ✓",
       `<div class="fields g4">${
@@ -5723,8 +6156,13 @@ function paneNumbering(){
          —— 等同 midas 的 <b>Merge Nodes</b>。段互相參照、連接族接到既有節點時最容易產生重合節點,
          不併的話在 midas 裡看起來相連、其實是兩個獨立的節點。<br>
          合併後<b>節點編號會跳號</b>(這是正常的),兩端併成同一點的元素會退化成零長度,一併刪除並回報。</div>`) +
+    freeSection() +
     SEC("各群組", `${MODEL.groups.length} 群組 · 節點 ${MODEL.tot.n} · 元素 ${MODEL.tot.e}`,
-      `<div data-ro><table class="t"><thead><tr><th>群組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>匯出群組名</th></tr></thead>
+      `<div class="hint">每個群組的號段<b>固定在群組上</b>:插入、刪除、停用或拖動群組,其他群組的編號都不會變
+        (把新的 .mct 匯入覆蓋原 midas 模型時才安全)。${outOfOrder
+          ? `目前號段與清單順序不一致 —— 要整理成依清單順序,按下面的按鈕(<b>會改變編號</b>)。` : ""}</div>
+      ${outOfOrder ? `<div class="btns" style="margin:6px 0 10px"><button class="btn d" data-op="renum">依目前清單順序重新編號…</button></div>` : ""}
+      <div data-ro><table class="t"><thead><tr><th>群組</th><th>型別</th><th>節點</th><th>元素</th><th>數量</th><th>匯出群組名</th></tr></thead>
        <tbody>${rows || `<tr><td colspan="6" class="n" style="color:var(--ink-3)">尚無任何群組</td></tr>`}</tbody></table></div>`);
 }
 
@@ -5967,17 +6405,22 @@ function paneOutput(){
         滾輪縮放;<b>左鍵只做點選</b>,不會不小心把畫面拖走。
         仰角 <b>90° = 俯視</b>(北上、東右),<b>0° = 立面</b>;方位角是<b>螢幕橫軸</b>的方位,
         相機所在的方位 = 方位角 + 90°。</div>`) +
-    SEC("下載", "", `<div class="btns">
-      <button class="btn p" data-op="mct">下載 .mct</button>
+    SEC("下載", `單位 ${UF()}, ${UL()}`, `<div class="btns">
+      <button class="btn p" data-op="mct" title="寫進 *UNIT 的單位:${UF()}, ${UL()}(不換算)">下載 .mct(${UF()}, ${UL()})</button>
       <button class="btn" data-op="mctcopy">複製 MCT 文字</button>
       <button class="btn" data-op="csvn">節點 CSV</button>
       <button class="btn" data-op="csve">元素 CSV</button>
       <button class="btn" data-op="dxf">CAD 圖 .dxf</button>
-      <button class="btn" data-op="json">參數 JSON</button></div>
+      <button class="btn" data-op="json">參數 JSON</button>
+      <button class="btn" data-op="roles" title="tools/cable_pretension.py 用的角色設定檔,依群組關係預填">初張力角色設定檔範本</button></div>
       <div class="fields g3" style="margin-top:9px">${
         fld("DXF:輸出節點", "out.dxf.pts", !!state.out.dxf.pts, { check:true }) +
         fld("DXF:節點編號", "out.dxf.ntxt", !!state.out.dxf.ntxt, { check:true }) +
         fld("DXF:元素編號", "out.dxf.etxt", !!state.out.dxf.etxt, { check:true })}</div>
+      <div class="fields g3" style="margin-top:6px">${
+        fld("MCT:自由端節點群組", "out.freeGrp", !!state.out.freeGrp, { check:true })}
+        <span class="hint" style="grid-column:span 2;margin:0">每個群組的自由端寫成一個只有節點的 <code>*GROUP</code>(例如
+        <code>N_CABLE_L_END</code>),在 midas 裡以群組選取節點設邊界(元素清單留空的寫法尚待實機樣本核對)。</span></div>
       <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟,長度欄位標題會標上目前單位。
         <b>.mct 檔頭嵌了完整參數(含單位),拖回本頁面即可還原重編。</b><br>
         <b>DXF</b> 是 R12 ASCII:每根元素一條 3D 線、每個節點一個點,<b>圖層 = 匯出群組名</b>,
@@ -6138,6 +6581,7 @@ function assignFromEl(root, key, el){
 const HIST = { past:[], future:[], key:"", t:0 };
 function snapshot(key){
   const now = Date.now();
+  DIRTY = true;                                        // 有沒匯出的變更(離開頁面時提醒)
   // 同一個欄位連續輸入視為一次操作(700 ms 內)
   if (key && key === HIST.key && now - HIST.t < 700){ HIST.t = now; return; }
   HIST.past.push(JSON.stringify(state));
@@ -6343,18 +6787,26 @@ $("#pane").addEventListener("click", e => {
   const gi = state.groups.findIndex(g => g.id === SEL);
   const g = state.groups[gi];
   if (op === "demo"){ loadState(demoState()); return; }
-  if (op === "mct")     { download(`model_${stamp()}.mct`, mctText(), "text/plain;charset=utf-8"); return; }
+  if (op === "mct")     { noteExport(); download(`model_${stamp()}.mct`, mctText(), "text/plain;charset=utf-8"); DIRTY = false; recompute(true); return; }
   if (op === "mctcopy") { copyText(mctText(), b); return; }
   if (op === "csvn")    { download(`nodes_${stamp()}.csv`, nodeCSV(), "text/csv;charset=utf-8"); return; }
   if (op === "csve")    { download(`elements_${stamp()}.csv`, elemCSV(), "text/csv;charset=utf-8"); return; }
   if (op === "dxf")     { download(`model_${stamp()}.dxf`, dxfText(), "application/dxf"); return; }
-  if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); return; }
+  if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); DIRTY = false; return; }
   if (op === "load")    { $("#file-in").click(); return; }
   if (op === "pastein") { openPasteDlg(); return; }
   if (op === "clearlib"){ snapshot("clearlib:" + Date.now()); state.lib = { mat:{}, sect:{} };
     recompute(true); return; }
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
   if (op === "weldtog"){ state.weld.on = (state.weld.on === false); recompute(true); return; }
+  if (op === "roles"){ download(`roles_${stamp()}.json`, rolesTemplate(), "application/json;charset=utf-8"); return; }
+  if (op === "csvfree"){ download(`free_nodes_${stamp()}.csv`, freeCsv(), "text/csv;charset=utf-8"); return; }
+  if (op === "renum"){
+    if (!confirm("依目前的清單順序重新指定所有群組的號段?\n編號會改變 —— 已經匯入 midas 的模型不能再用匯入覆蓋更新。")) return;
+    snapshot("renum:" + Date.now());
+    state.groups.forEach((g, i) => { g.slot = i; });
+    recompute(true); return;
+  }
   if (op === "tgtsafe"){
     const sb = safeBase();
     if (!sb){ alert("目標模型裡沒有可用的編號。"); return; }
@@ -6709,6 +7161,7 @@ function changeLenUnit(nu){
       `【取消】數值原封不動,直接當成新單位讀(等於重新定義尺寸)`);
   snapshot("unit:" + Date.now());
   state.units.length = nu;
+  rememberUnits();
   if (scale) scaleModel(state, k);
   view.locked = false;
   recompute(true);
@@ -6719,7 +7172,7 @@ function changeLenUnit(nu){
   fill($("#u-len"), UNIT_LENGTH); fill($("#u-force"), UNIT_FORCE);
   $("#u-len").addEventListener("change", e => changeLenUnit(e.target.value));
   $("#u-force").addEventListener("change", e => {
-    snapshot("unitF:" + Date.now()); state.units.force = e.target.value; recompute(true); });
+    snapshot("unitF:" + Date.now()); state.units.force = e.target.value; rememberUnits(); recompute(true); });
   syncUnitUI();
 })();
 
@@ -6880,6 +7333,10 @@ function loadText(txt, name){
     if (!Array.isArray(s.groups)){ alert(`「${name}」不是本工具 v3 的參數檔(找不到 groups)`); return; }
     if (obj.formatVersion && obj.formatVersion > FORMAT_VERSION)
       alert(`檔案格式版本 ${obj.formatVersion} 比本工具(${FORMAT_VERSION})新,可能無法完整載入`);
+    /* v3.46(檢查報告 WF-03):帶參數的 .mct 若資料列被別的程式改過(例如 cable_pretension.py
+       填了 EXVAL、把主纜移到索多邊形),依參數還原會把這些改動全部丟掉 —— 先講清楚、讓使用者選。 */
+    const d = M.nodes.length ? mctDrift(s, M) : null;
+    if (d && (d.nodes || d.elems)){ openDriftDlg(d, name, s, M, nMat, nSec); return; }
     loadState(s);
     return;
   }
@@ -6892,6 +7349,50 @@ function loadText(txt, name){
     return;
   }
   alert(`「${name}」中找不到參數`);
+}
+
+/* 依參數重建一次,和檔案裡的 *NODE / *ELEMENT 逐列比對 */
+function mctDrift(s, M){
+  let md;
+  try { md = buildModel(normState(clone(s)), [], []); } catch (e){ return null; }
+  const pos = new Map(), el = new Map();
+  md.groups.forEach(r => { r.nodes.forEach(n => pos.set(n.num, n)); r.elems.forEach(e => el.set(e.num, e)); });
+  const norm = t => String(t).replace(/\s+/g, "");
+  let nodes = 0, maxD = 0, elems = 0, exv = 0;
+  M.nodes.forEach(n => {
+    const q = pos.get(n.num); if (!q) return;
+    const dd = Math.max(Math.abs(q.x - n.x), Math.abs(q.y - n.y), Math.abs(q.z - n.z));
+    if (dd > 1e-5){ nodes++; if (dd > maxD) maxD = dd; }
+  });
+  M.elems.forEach(e => {
+    const q = el.get(e.num); if (!q || !e.raw) return;
+    if (norm(elemLine(q)) !== norm(e.raw)){ elems++; if (/TENSTR/i.test(e.raw)) exv++; }
+  });
+  return { nodes, maxD, elems, exv };
+}
+function openDriftDlg(d, name, s, M, nMat, nSec){
+  const m = document.createElement("div");
+  m.className = "mask";
+  m.innerHTML = `<div class="dlg" style="width:min(560px, calc(100vw - 32px))">
+      <h3>「${esc(name)}」的資料列被改過</h3>
+      <div class="sub">這個檔帶有本工具的參數,但檔案裡有 <b>${d.nodes}</b> 個節點座標(最大差
+        ${(+d.maxD.toPrecision(3))} ${UL()})與 <b>${d.elems}</b> 個元素列${d.exv ? `(其中 ${d.exv} 根纜索的初張力 / L<sub>u</sub>)` : ""}
+        和依參數重建的結果不同 —— 看起來是 <code>cable_pretension.py</code> 之類的程式處理過的輸出。<br><br>
+        <b>依參數還原會捨棄這些改動</b>:纜索 EXVAL 回到 0、修正過的節點回到原本的曲線上。
+        要改幾何就照常還原、修改、重新匯出,再跑一次那支程式;只是想避開編號,就改設為目標模型。</div>
+      <div class="btns">
+        <button class="btn" data-k="cancel">取消</button>
+        <button class="btn" data-k="target">設為目標模型(不動目前的模型)</button>
+        <button class="btn p" data-k="load">依參數還原(捨棄這些改動)</button></div></div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click", e => {
+    const b = e.target.closest("[data-k]");
+    if (e.target !== m && !b) return;
+    m.remove();
+    const k = b ? b.dataset.k : "cancel";
+    if (k === "load") loadState(s);
+    if (k === "target"){ snapshot("tgt:" + Date.now()); setTarget(M, name); recompute(true); }
+  });
 }
 
 /* ---- midas 模型檔進來時要做什麼(SPEC §16.3 / §16.4)----
@@ -7038,7 +7539,7 @@ $("#btn-demo").onclick = () => {
 window.addEventListener("keydown", e => { if (e.key === "Escape") closeDemoMenu(); });
 $("#btn-clear").onclick = () => {
   if (!(state.groups && state.groups.length)) return;
-  if (confirm("清空畫布上的所有內容?")) loadState(DEF_STATE());
+  if (confirm("清空畫布上的所有內容?")) loadState(newState());
 };
 $("#vhelp").onclick = () => {
   const t = $("#vhelptext"), on = t.hidden;
@@ -7080,28 +7581,39 @@ const MSG_SEEN = new Set();
 let MSG_OPEN = true;
 const msgKey = t => String(t).replace(/[0-9]+(\.[0-9]+)?/g, "#");
 
+/* 三級訊息(v3.46,檢查報告 UX-01):以「ℹ」開頭的是資訊(合併節點數、自由端數),
+   不算在警告數裡,也不會讓訊息列自己攤開 —— 正常模型就不會一開檔就掛著「⚠ 1 個警告」。 */
+const isInfo = t => String(t).charAt(0) === "ℹ";
+let MSG_INFO_OPEN = false;
 function renderMsgs(){
-  const all = ERRS.map(t => ({ t, err:true })).concat(WARNS.map(t => ({ t, err:false })));
-  const fresh = new Set(all.map(m => msgKey(m.t)).filter(k => !MSG_SEEN.has(k)));
+  const all = ERRS.map(t => ({ t, err:true }))
+    .concat(WARNS.filter(t => !isInfo(t)).map(t => ({ t, err:false })))
+    .concat(WARNS.filter(isInfo).map(t => ({ t:t.replace(/^ℹ\s*/, ""), err:false, info:true })));
+  const fresh = new Set(all.filter(m => !m.info).map(m => msgKey(m.t)).filter(k => !MSG_SEEN.has(k)));
   if (fresh.size) MSG_OPEN = true;                   // 有沒讀過的訊息就自己攤開
   all.forEach(m => MSG_SEEN.add(msgKey(m.t)));
-  const ne = ERRS.length, nw = WARNS.length;
+  const ne = ERRS.length, nw = WARNS.filter(t => !isInfo(t)).length, ni = WARNS.length - nw;
+  // 只有資訊時預設收起(使用者自己點開過才展開)
+  const open = MSG_OPEN && (ne || nw || MSG_INFO_OPEN);
   $("#msgs").innerHTML = !all.length ? "" :
     `<button type="button" class="msghead" id="msgtog"
-       title="${MSG_OPEN ? "收起檢核訊息" : "展開檢核訊息"}">
-       <span class="cav">${MSG_OPEN ? "▾" : "▸"}</span>
+       title="${open ? "收起檢核訊息" : "展開檢核訊息"}">
+       <span class="cav">${open ? "▾" : "▸"}</span>
        ${ne ? `<span class="c e">✕ ${ne} 個錯誤</span>` : ""}
        ${nw ? `<span class="c w">⚠ ${nw} 個警告</span>` : ""}
+       ${ni ? `<span class="c i">ℹ ${ni} 則資訊</span>` : ""}
        <span class="sp"></span>
-       <span class="sub">${MSG_OPEN ? "點一下收起來" : "有新的訊息會自己展開"}</span></button>` +
-    (MSG_OPEN ? `<div class="msglist">` + all.map(m =>
-      `<div class="msg ${m.err ? "err" : "warn"}">${m.err ? "✕" : "⚠"}${
+       <span class="sub">${open ? "點一下收起來" : "有新的訊息會自己展開"}</span></button>` +
+    (open ? `<div class="msglist">` + all.map(m =>
+      `<div class="msg ${m.err ? "err" : m.info ? "info" : "warn"}">${m.err ? "✕" : m.info ? "ℹ" : "⚠"}${
         fresh.has(msgKey(m.t)) ? ` <b class="nw"><span>新</span></b>` : ""
       } <span>${esc(m.t)}</span></div>`).join("") + `</div>` : "");
 }
 $("#msgs").addEventListener("click", e => {
   if (!e.target.closest("#msgtog")) return;
-  MSG_OPEN = !MSG_OPEN;
+  const onlyInfo = !ERRS.length && !WARNS.some(t => !isInfo(t));
+  if (onlyInfo){ MSG_INFO_OPEN = !(MSG_OPEN && MSG_INFO_OPEN); MSG_OPEN = true; }
+  else MSG_OPEN = !MSG_OPEN;
   renderMsgs();                                      // 只重畫訊息,不必再掃一次整個模型
 });
 
@@ -7469,6 +7981,7 @@ function drawPieceTags(r){
 function draw(){
   const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
   if (!W || !H) return;
+  cv.parentElement.classList.toggle("narrow", W < 560);   // 窄畫布:視圖工具列收起數值欄、九宮格縮小(LAY-01)
   cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
   camUpdate();
@@ -7983,9 +8496,27 @@ window.addEventListener("resize", () => { if (!view.locked) fitView(); draw(); }
 /* ==========================================================================
    主流程
    ========================================================================== */
+/* 改名(或改匯出名前綴)時,施工階段表跟著改(v3.46,檢查報告 WF-04)。
+   階段表存的是匯出名;同一個群組 id 的匯出名變了,就把階段表裡的舊名換成新名。
+   只在「同一份 state」上做 —— 換模型、復原、測試換 state 時不碰。 */
+let LAST_GN = null;
+function followRenames(){
+  const now = new Map(MODEL.groups.map(r => [r.g.id, r.gname]));
+  if (LAST_GN && LAST_GN.st === state && (state.stages || []).length){
+    const ren = new Map();
+    LAST_GN.map.forEach((old, id) => { const nw = now.get(id); if (nw && nw !== old) ren.set(old, nw); });
+    if (ren.size){
+      let hit = false;
+      state.stages.forEach(sg => { sg.on = (sg.on || []).map(n => { if (ren.has(n)){ hit = true; return ren.get(n); } return n; }); });
+      if (hit){ ERRS = []; WARNS = []; MODEL = buildModel(state, ERRS, WARNS); }
+    }
+  }
+  LAST_GN = { st:state, map:now };
+}
 function recompute(reTree){
   ERRS = []; WARNS = [];
   MODEL = buildModel(state, ERRS, WARNS);
+  followRenames();
   if (SELELEM){                                        // 選取的元素可能已經不在了
     const rr = MODEL.byId.get(SELELEM.gid);
     if (!rr || !rr.elems.some(e => e.num === SELELEM.num)) SELELEM = null;
@@ -7997,6 +8528,8 @@ function recompute(reTree){
   if (!view.locked) fitView();
   draw();
   syncHistBtns();
+  autoSave();
+  renderEmpty();
 }
 function render(){ renderTree(); renderPane(); if (!view.locked) fitView(); draw(); }
 
@@ -10147,6 +10680,238 @@ function runTests(){
     MSG_SEEN.clear(); MSG_OPEN = true;                 // 收尾:交還給啟動流程
   }
   {
+    /* ---- v3.45:吊橋範例的三個問題(SPEC §16.19)----
+       1. 橋面中心線懸空 → 對接加「每根分割 N」,橫梁分割 2,中點接上中心線;模型連通性檢核
+       2. 塔上沒有橋面高度的節點 → 範例塔架加塔下橫梁(Z = 8.0),與下弦端點錯開 0.4 m
+       3. 已旋轉的群組再鏡射複製,錨碇飛走 → 位移複製改成真正的變換合成 D∘O            */
+    const LN = (id, y, n) => ({ ...defaultGroup("CURVE"), id, name:id, pieces:[
+      { ...defaultPiece("LINE"), sRef:"", x1:0,y1:y,z1:0, endMode:"point", x2:10,y2:y,z2:0,
+        split:{ ...SPLIT_DEF, mode:"count", count:n || 2 } }] });
+    const md1 = buildModel(normState({ ...DEF_STATE(), groups:[LN("C", 0), LN("L", -1), LN("R", 1),
+      { ...defaultGroup("LINK2"), id:"X", name:"X", a:"L", b:"R", pair:"same", div:2 }] }), [], []);
+    const rx = md1.byId.get("X");
+    chk("W3","對接分割 2:3 對 → 6 根元素", rx.elems.length, 6, 0, "");
+    yes("W3","對接分割 2:中點併到中心線的節點上(自己的節點全部被併掉)",
+      rx.nodes.length === 0 && rx.elems.every(e3 => e3.a.gid === "C" || e3.b.gid === "C"),
+      `自有節點 ${rx.nodes.length}`, "0,每根都有一端在中心線");
+    chk("W3","中心線接起來之後模型只有 1 塊", md1.pieces, 1, 0, "");
+    const w2 = [];
+    const md0 = buildModel(normState({ ...DEF_STATE(), groups:[LN("C", 0), LN("L", -1), LN("R", 1),
+      { ...defaultGroup("LINK2"), id:"X", name:"X", a:"L", b:"R", pair:"same" }] }), [], w2);
+    chk("W3","不分割時中心線懸空:模型 2 塊", md0.pieces, 2, 0, "");
+    yes("W3","懸空的那一塊會被點名", w2.some(t => t.indexOf("互不相連") >= 0 && t.indexOf("C(") >= 0),
+      w2.filter(t => t.indexOf("互不相連") >= 0).join("|") || "無", "有,而且點到 C");
+    const md3 = buildModel(normState({ ...DEF_STATE(), groups:[LN("C", 0, 1), LN("L", -1, 1), LN("R", 1, 1),
+      { ...defaultGroup("LINK2"), id:"X", name:"X", a:"L", b:"R", pair:"same", div:3 }] }), [], []);
+    yes("W3","分割 3:中間兩點等分,不在中心線上就留下來",
+      md3.byId.get("X").nodes.length === 4 &&
+      md3.byId.get("X").nodes.every(n => Math.abs(Math.abs(n.y) - 1/3) < 1e-9),
+      md3.byId.get("X").nodes.map(n => n.y.toFixed(3)).join(","), "±0.333 × 2 對");
+
+    // 範例本身
+    const st = demoSuspension(); normState(st);
+    const ws = [];
+    const SU = buildModel(st, [], ws);
+    const gN = nm => SU.groups.find(r => r.g.name.indexOf(nm) === 0);
+    const deg = new Map();
+    SU.groups.forEach(r => r.elems.forEach(e3 => [e3.i, e3.j].forEach(k => deg.set(k, (deg.get(k) || 0) + 1))));
+    yes("W3","範例:橋面中心線每個節點都接到橫梁",
+      gN("橋面中心線").nodes.every(n => deg.get(n.num) >= 3),
+      gN("橋面中心線").nodes.map(n => deg.get(n.num)).slice(0, 4).join(",") + "…", "≥ 3");
+    chk("W3","範例:全橋只有 1 塊", SU.pieces, 1, 0, "");
+    yes("W3","範例:沒有「互不相連」的警告", !ws.some(t => t.indexOf("互不相連") >= 0),
+      ws.length + " 則", "沒有");
+    const tw = gN("塔架西"), bl = gN("下弦左"), br = gN("下弦右");
+    [[bl, 1.2], [br, -1.2]].forEach(([b2, y]) => {
+      const e0 = b2.nodes[0];
+      const sup = tw.nodes.find(n => Math.abs(n.y - y) < 1e-9 && Math.abs(n.z - 8) < 1e-9);
+      yes("W3",`範例:塔上 Y = ${y} 有橋面支承節點(Z = 8.0)`, !!sup, sup ? sup.num : "無", "有");
+      chk("W3",`範例:支承節點與下弦端點錯開 0.4 m(不會被併成剛接)`,
+        sup ? e0.z - sup.z : 0, 0.4, 1e-9, "m");
+    });
+    chk("W3","範例:塔架西 16 個元素(兩柱各 6、塔頂與塔下橫梁各 2)", tw.elems.length, 16, 0, "");
+
+    // 變換合成:隨機的 O、D,比對「先 O 再 D」與合成後的單一 xf
+    const P0 = [{ x:3, y:-2, z:5 }, { x:-7, y:4, z:1 }, { x:10, y:9, z:-3 }];
+    const appl = (xf, c, p) => xfMake({ ...xf, cmode:"custom", cx:c.x, cy:c.y, cz:c.z }, [p])(p);
+    const cases = [
+      [{ rot:45, axis:"X" }, { mir:"Y", mirAt:0 }],
+      [{ rot:30, axis:"Z", dx:5, dy:-1 }, { mir:"X", mirAt:2 }],
+      [{ rot:20, axis:"Y", dz:2 }, { mir:"Y", mirAt:-3, dx:1 }],
+      [{ mir:"Z", mirAt:1, dx:2 }, { mir:"Z", mirAt:4 }],
+      [{ rot:15, axis:"Z" }, { rot:25, axis:"Z", pivot:{ x:4, y:4, z:0 }, dx:3 }],
+      [{ mir:"X", mirAt:1, rot:10, axis:"Y", dy:3 }, { rot:-40, axis:"Y" }],
+      [{ dx:1, dy:2 }, { rot:90, axis:"X", pivot:{ x:0, y:1, z:1 } }]
+    ];
+    const cO = { x:1, y:2, z:-1 };
+    cases.forEach(([o, d], i) => {
+      const O = { ...XF_DEF(), ...o };
+      const C = composeXf(O, cO, { dx:0, dy:0, dz:0, rot:0, axis:"Z", ...d });
+      const cD = d.pivot || appl(O, cO, cO);             // 沒給中心:O 的旋轉中心變換之後的位置
+      let err = 0;
+      P0.forEach(p => {
+        const want = appl({ ...XF_DEF(), ...d, pivot:undefined }, cD, appl(O, cO, p));
+        const cu = C.cmode === "custom";                // 沒有旋轉時中心無關,隨便給
+        const got = xfMake({ ...C, cmode:"custom", cx:cu ? C.cx : cO.x, cy:cu ? C.cy : cO.y,
+          cz:cu ? C.cz : cO.z }, [p]);
+        const q = got ? got(p) : p;
+        err = Math.max(err, Math.abs(q.x - want.x), Math.abs(q.y - want.y), Math.abs(q.z - want.z));
+      });
+      chk("W4",`變換合成 ${i+1}:合成後的 xf = 先 O 再 D`, err, 0, 1e-9, "m");
+    });
+    yes("W4","兩個不同軸的旋轉合成不了 → null(要擋下來,不能悄悄做錯)",
+      composeXf({ ...XF_DEF(), rot:30, axis:"X" }, cO, { rot:20, axis:"Z" }) === null, "null", "null");
+
+    // 範例的抗風索左鏡射複製,要和抗風索右一模一樣
+    const sv = { st:state, md:MODEL, sel:SEL, ss:new Set(SELSET) };
+    state = st; MODEL = SU;
+    const wl = state.groups.find(g2 => g2.name.indexOf("抗風索左") === 0);
+    const cp = dupGroups([wl], n => n + " M", { dx:0, dy:0, dz:0, rot:0, axis:"Z", mir:"Y", mirAt:0 }, false, true);
+    const SU2 = buildModel(state, [], []);
+    const own = id => { const r = SU2.byId.get(id); return r.own0; };
+    const wr = state.groups.find(g2 => g2.name.indexOf("抗風索右") === 0);
+    const A = own(cp.id), B = own(wr.id);
+    let dm = 0;
+    A.forEach((n, i) => { dm = Math.max(dm, Math.abs(n.x - B[i].x), Math.abs(n.y - B[i].y), Math.abs(n.z - B[i].z)); });
+    chk("W4","抗風索左「鏡射 Y = 0」複製 = 抗風索右(錨碇不飛走)", dm, 0, 1e-9, "m");
+    chk("W4","鏡射複本的錨碇在 (10, −8, 2)", A[0].y, -8, 1e-9, "m");
+    // 整套旋轉複製:偏置(邊樑)的形狀由上游決定,上游轉過了,自己不能再轉一次
+    const el = state.groups.find(g2 => g2.name.indexOf("邊樑左") === 0);
+    MODEL = buildModel(state, [], []);
+    const ce = dupGroups([el], n => n + " R", { dx:0, dy:0, dz:0, rot:90, axis:"Z", pivot:{ x:0, y:0, z:0 } }, true, true);
+    const SU3 = buildModel(state, [], []);
+    const e0 = SU3.byId.get(ce.id).own0;
+    yes("W4","整套旋轉 90° 複製:邊樑複本在轉過的中心線左側(x = −1.2),不是轉了 180°",
+      e0.every(n => Math.abs(n.x + 1.2) < 1e-9) && Math.abs(e0[1].y - 2.5) < 1e-9,
+      `(${e0[0].x.toFixed(2)}, ${e0[0].y.toFixed(2)}) (${e0[1].x.toFixed(2)}, ${e0[1].y.toFixed(2)})`,
+      "(−1.20, 0.00) (−1.20, 2.50)");
+    state = sv.st; MODEL = sv.md; SEL = sv.sel; SELSET = sv.ss;
+  }
+  {
+    /* ---- v3.46:檢查報告 COR-01 / 02 / 03 ---- */
+    const sus = mut => { const st = demoSuspension(); mut(st); normState(st); const e = [], w = [];
+      const md = buildModel(st, e, w); return { md, e, w, h:md.groups.find(r => r.g.name.indexOf("吊索左") === 0) }; };
+    // COR-01:貼附失敗
+    const a1 = sus(st => { const h = st.groups.find(g => g.name.indexOf("吊索左") === 0); h.targetZ = 10.02; h.bottom = "snap"; });
+    yes("W5","貼附失敗(找不到就新增):一定有警告,寫出根數與最近距離",
+      a1.w.some(t => t.indexOf("31 根下端") >= 0 && t.indexOf("0.02") >= 0), a1.w.filter(t => t.indexOf("貼附") >= 0).join("|") || "無", "有");
+    const a2 = sus(st => { st.groups.find(g => g.name.indexOf("吊索左") === 0).targetZ = 10.02; });
+    yes("W5","貼附失敗(找不到就報錯):不建懸空吊索,報錯",
+      a2.h.elems.length === 0 && a2.h.nodes.length === 0 && a2.e.some(t => t.indexOf("沒有建立") >= 0),
+      `${a2.h.elems.length} 根 / ${a2.e.length} 則錯誤`, "0 根 / 有錯誤");
+    const a0 = sus(() => {});
+    yes("W5","範例吊索預設「找不到就報錯」且全部貼附", a0.h.g.bottom === "snapOnly" && a0.h.elems.length === 31 && !a0.e.length,
+      `${a0.h.g.bottom} ${a0.h.elems.length} 根`, "snapOnly 31 根");
+    // COR-02:預拱橋面 + 依平面位置取高程
+    const camber = (st, map) => {
+      const dk = st.groups[0];
+      dk.pieces = [{ ...dk.pieces[0], type:"SAG", curve:"parabola", fMode:"abs", f:-0.4, split:{ ...SPLIT_DEF, mode:"count", count:32 } }];
+      ["左","右"].forEach(sd => {
+        const h = st.groups.find(g => g.name.indexOf("吊索" + sd) === 0);
+        h.zMode = "ref"; h.zRef = st.groups.find(g => g.name.indexOf("邊樑" + sd) === 0).id; if (map) h.zMap = map;
+      });
+    };
+    const b1 = sus(st => camber(st));
+    yes("W5","預拱 0.4 m 橋面:依平面位置取高程,31 根全部貼附", b1.h.elems.length === 31 && !b1.e.length,
+      `${b1.h.elems.length} 根 / ${b1.e.length} 則錯誤`, "31 根 / 0");
+    const e275 = b1.h.elems.find(e3 => Math.abs(e3.a.x - 27.5) < 1e-9);
+    chk("W5","X = 27.5 的吊索下端高程 = 拋物線在 27.5 的高程", e275 ? e275.b.z : 0,
+      10 + 4*0.4*(27.5/80)*(1 - 27.5/80), 1e-9, "m");
+    const b2 = sus(st => camber(st, "index"));
+    yes("W5","舊的「依序號」仍保留(會對錯,所以有錯誤)", b2.e.length > 0, b2.e.length + " 則", "> 0");
+    yes("W5","舊檔沒有 zMap 時維持依序號", normState({ ...DEF_STATE(), groups:[{ type:"LINKZ", id:"z", name:"z", zMode:"ref" }] }).groups[0].zMap === "index", "index", "index");
+    // COR-03:對接分割用在纜索
+    const LN = (id, y) => ({ ...defaultGroup("CURVE"), id, name:id, pieces:[{ ...defaultPiece("LINE"), sRef:"", x1:0,y1:y,z1:0, endMode:"point", x2:10,y2:y,z2:0, split:{ ...SPLIT_DEF, mode:"count", count:2 } }] });
+    const w3 = [], w4 = [];
+    buildModel(normState({ ...DEF_STATE(), groups:[LN("A",0), LN("B",5), { ...defaultGroup("LINK2"), id:"X", name:"X", a:"A", b:"B", div:4, etype:"CABLE" }] }), [], w3);
+    buildModel(normState({ ...DEF_STATE(), groups:[LN("A",0), LN("B",5), { ...defaultGroup("LINK2"), id:"X", name:"X", a:"A", b:"B", div:4, etype:"BEAM" }] }), [], w4);
+    yes("W5","對接分割 4 用在 CABLE:警告共線", w3.some(t => t.indexOf("共線") >= 0), w3.join("|") || "無", "有");
+    yes("W5","對接分割 4 用在 BEAM:不警告", !w4.some(t => t.indexOf("共線") >= 0), w4.join("|") || "無", "無");
+  }
+  {
+    /* ---- v3.46:檢查報告 WF-02 / 03 / 04 / 05 ---- */
+    const st = demoSuspension(); normState(st);
+    const nb = (md, nm) => md.groups.find(r => r.g.name.indexOf(nm) === 0).nodes[0].num;
+    const m0 = buildModel(st, [], []);
+    st.groups.splice(1, 0, { ...defaultGroup("CURVE"), name:"欄杆 RAIL", pieces:[{ ...defaultPiece("LINE"), sRef:"",
+      x1:0,y1:3,z1:11, endMode:"point", x2:80,y2:3,z2:11, split:{ ...SPLIT_DEF, mode:"count", count:4 } }] });
+    const m1 = buildModel(st, [], []);
+    yes("W6","插入一個群組:其他群組編號不變(號段固定在群組上)", nb(m0, "主索左") === 15001 && nb(m1, "主索左") === 15001,
+      `${nb(m0, "主索左")} → ${nb(m1, "主索左")}`, "15001 → 15001");
+    chk("W6","新插入的群組接在最大號段後面", nb(m1, "欄杆"), 25001, 0, "");
+    const old = normState({ ...DEF_STATE(), groups:[{ type:"CURVE", id:"a", name:"a" }, { type:"CURVE", id:"b", name:"b" }] });
+    ensureSlots(old.groups);
+    yes("W6","舊檔沒有號段序號:依清單順序(與 v3.45 相同)", old.groups[0].slot === 0 && old.groups[1].slot === 1,
+      old.groups.map(g => g.slot).join(","), "0,1");
+    // WF-05
+    const e5 = [];
+    buildModel(normState({ ...DEF_STATE(), groups:[
+      { ...defaultGroup("CURVE"), name:"主梁 GIRDER", pieces:[{ ...defaultPiece("LINE"), sRef:"", x1:0,y1:0,z1:0, endMode:"point", x2:1200,y2:0,z2:0, split:{ ...SPLIT_DEF, mode:"count", count:1200 } }] },
+      { ...defaultGroup("CURVE"), name:"橫梁 XB", pieces:[{ ...defaultPiece("LINE"), sRef:"", x1:0,y1:5,z1:0, endMode:"point", x2:10,y2:5,z2:0, split:{ ...SPLIT_DEF, mode:"count", count:2 } }] }] }), e5, []);
+    yes("W6","號段溢位:點名溢位的群組並給增量建議,不怪被撞的群組",
+      e5.length === 1 && e5[0].indexOf("主梁") >= 0 && e5[0].indexOf("2000") >= 0, e5.join("|"), "主梁…2000");
+    // WF-03
+    const st3 = demoSuspension(); normState(st3);
+    const sv = { st:state, md:MODEL };
+    state = clone(st3); normState(state); MODEL = buildModel(state, [], []);
+    const txt = mctText();
+    const M0 = parseMct(txt);
+    const d0 = mctDrift(st3, M0);
+    yes("W6","原樣匯出的 .mct 讀回:沒有差異", d0 && d0.nodes === 0 && d0.elems === 0, JSON.stringify(d0), "0 / 0");
+    const M1 = parseMct(txt.replace(/^(\s*17016,.*), 0, 3\s*$/m, "$1, 2.399445, 3").replace(/^(\s*15010, 15, 1\.2, )[\d.]+/m, "$116.176629"));
+    const d1 = mctDrift(st3, M1);
+    yes("W6","EXVAL 與節點座標被改過:偵測得到", d1 && d1.nodes === 1 && d1.exv === 1, JSON.stringify(d1), "1 節點 / 1 纜索");
+    state = sv.st; MODEL = sv.md;
+    // WF-04
+    {
+      const sv2 = { st:state, md:MODEL, lg:LAST_GN, sel:SEL };
+      state = demoSuspension(); normState(state); recompute(false);
+      state.groups.find(g => g.name.indexOf("主索左") === 0).name = "主纜左 MAIN_L"; recompute(false);
+      yes("W6","改名後施工階段表自動改成新的匯出名", state.stages[1].on.indexOf("G_MAIN_L") >= 0 && state.stages[1].on.indexOf("G_CABLE_L") < 0,
+        state.stages[1].on.join(","), "G_MAIN_L,G_CABLE_R");
+      state = sv2.st; MODEL = sv2.md; LAST_GN = sv2.lg; SEL = sv2.sel;
+    }
+  }
+  {
+    /* ---- v3.46:檢查報告 FEAT-01 / 02 / 03 / 04、UX-01 / 02 ---- */
+    const st = demoSuspension(); normState(st);
+    const md = buildModel(st, [], []);
+    const fr = md.free.map(f => f.n.num).join(",");
+    yes("W7","自由端 = 錨碇 8 個 + 塔底 4 個(範例)", fr === "15001,15039,16001,16039,19001,19025,20001,20025,23007,23014,24007,24014",
+      fr, "15001…24014(12 個)");
+    const st2 = demoSuspension(); normState(st2);
+    st2.groups.find(g => g.name.indexOf("塔架西") === 0).noWeld = true;
+    const m2 = buildModel(st2, [], []);
+    yes("W7","塔架設「不與其他群組合併」:塔頂與主纜保留成兩個節點(可滑動索鞍)",
+      m2.kept.length === 2 && m2.kept.every(([a, b]) => Math.abs(a.z - 22) < 1e-9 && a.num !== b.num),
+      m2.kept.map(([a, b]) => a.num + "-" + b.num).join(","), "2 對(Z = 22)");
+    const tw = m2.groups.find(r => r.g.name.indexOf("塔架西") === 0);
+    yes("W7","塔架自己內部仍然合併(塔頂橫梁接柱頂;柱頂不再併進主纜 → 16 個)", tw.nodes.length === 16, tw.nodes.length, 16);
+    // FEAT-03
+    const sv = { st:state, md:MODEL };
+    state = clone(st); normState(state); MODEL = buildModel(state, [], []);
+    const rj = JSON.parse(rolesTemplate());
+    yes("W7","角色設定檔範本:主纜 / 吊索 / 耐風索 / 繫索都判對",
+      rj.main.join() === "G_CABLE_L,G_CABLE_R" && rj.hanger.join() === "G_HANG_L,G_HANG_R" &&
+      rj.wind.join() === "G_WIND_L,G_WIND_R" && rj.tie.join() === "G_WSTAY_L,G_WSTAY_R" && rj.fix_wind === true,
+      [rj.main, rj.hanger, rj.wind, rj.tie].map(a => a.join("/")).join(" | "), "CABLE / HANG / WIND / WSTAY");
+    // FEAT-04
+    state.groups.find(g => g.name.indexOf("塔架西") === 0).beta = 90; MODEL = buildModel(state, [], []);
+    const tl = mctText().split(/\r?\n/).find(l => /^\s*23001,/.test(l));
+    yes("W7","Beta Angle 寫進 ANGLE 欄", /^\s*23001, BEAM, 3, 4, \d+, \d+, 90, 0$/.test(tl || ""), tl, "23001, BEAM, 3, 4, i, j, 90, 0");
+    // FEAT-02 node groups
+    state.out.freeGrp = true; MODEL = buildModel(state, [], []);
+    const gl = mctText().split(/\r?\n/).find(l => /^\s*N_TOWER_W_END,/.test(l));
+    yes("W7","自由端節點群組:N_TOWER_W_END = 塔底兩點", /N_TOWER_W_END, 23007 23014, , 0/.test(gl || ""), gl, "N_TOWER_W_END, 23007 23014, , 0");
+    state = sv.st; MODEL = sv.md;
+    // UX-01
+    const w = []; buildModel(normState(demoSuspension()), [], w);
+    yes("W7","正常範例:沒有警告,只有資訊(合併節點、自由端)", w.length > 0 && w.every(isInfo), w.map(t => t.slice(0, 12)).join(" | "), "全部 ℹ");
+    // UX-02
+    yes("W7","鏡射命名:對 Y 鏡射左右互換", swapSide("抗風索左 WIND_L", "Y") === "抗風索右 WIND_R" && swapSide("塔架西 TOWER_W", "X") === "塔架東 TOWER_E",
+      swapSide("抗風索左 WIND_L", "Y") + " / " + swapSide("塔架西 TOWER_W", "X"), "抗風索右 WIND_R / 塔架東 TOWER_E");
+  }
+  {
     /* ---- v3.44.2:合併重合節點不可以讓「第 k 個節點」跳號(回歸測試)----
        P 先建(編號小)佔住 x=50,A 在 x=50 的節點會被併掉。
        建模時解析參照是在合併之前,面板與圖上點選卻是看合併之後的陣列 ——
@@ -10746,17 +11511,99 @@ function renderTests(rows){
 }
 
 /* ==========================================================================
+   自動暫存、離開提醒、空白畫面的起始卡片(v3.46,檢查報告 WF-01 / WF-06 / UX-04)
+   - 每次重算後(延遲 0.8 秒)把參數存進這台電腦的瀏覽器;正式存檔仍是匯出的 .mct / 參數 JSON。
+   - 開檔時**不自動還原**:空白畫面上給一張「還原上次的工作」卡片,由使用者決定。
+   - 有沒匯出的變更時,關閉 / 重新整理分頁會先問一次。
+   - 單位記在瀏覽器裡,新模型(全部清空、起始卡片)沿用上次選的單位。
+   ========================================================================== */
+const AUTO_KEY = "mcg.autosave.v1", UNIT_KEY = "mcg.units.v1";
+let DIRTY = false, AUTO_ON = false, AUTO_T = 0, LAST_AUTO = null;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e){ return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e){} };
+// 匯出時記下各群組的號段與數量,寫進參數區塊;下次匯出前比對(WF-02)
+function noteExport(){
+  const g = {};
+  MODEL.groups.forEach(r => { g[r.g.id] = [r.nodeBase, r.nTot, r.elemBase, r.eTot]; });
+  state.lastExport = { at:localStampText(), groups:g };
+}
+function rememberUnits(){ lsSet(UNIT_KEY, JSON.stringify(state.units)); }
+function newState(){
+  const s = DEF_STATE();
+  try { const u = JSON.parse(lsGet(UNIT_KEY) || "null"); if (u && u.force && u.length) s.units = { ...s.units, ...u }; } catch (e){}
+  return s;
+}
+function autoSave(){
+  if (!AUTO_ON) return;
+  clearTimeout(AUTO_T);
+  AUTO_T = setTimeout(() => {
+    if (!AUTO_ON || !(state.groups && state.groups.length)) return;
+    lsSet(AUTO_KEY, JSON.stringify({ at:localStampText(), n:state.groups.length, state }));
+  }, 800);
+}
+window.addEventListener("beforeunload", e => {
+  if (!DIRTY || !(state.groups && state.groups.length)) return;
+  e.preventDefault(); e.returnValue = "";             // 瀏覽器會顯示自己的「確定要離開?」
+});
+function renderEmpty(){
+  const wrap = document.querySelector(".cvwrap"); if (!wrap) return;
+  let box = $("#empty-start");
+  const empty = !(state.groups && state.groups.length);
+  if (!empty || !AUTO_ON){ if (box) box.remove(); return; }
+  let saved = null;
+  try { saved = JSON.parse(lsGet(AUTO_KEY) || "null"); } catch (e){ saved = null; }
+  if (!box){ box = document.createElement("div"); box.id = "empty-start"; wrap.appendChild(box); }
+  const uOpt = (opts, v) => opts.map(([k, t]) => `<option value="${esc(k)}"${k === v ? " selected" : ""}>${esc(t)}</option>`).join("");
+  box.innerHTML = `<div class="es-in">
+      <div class="es-h">開始一個模型</div>
+      <div class="es-u">單位 <select data-es="len">${uOpt(UNIT_LENGTH, state.units.length)}</select>
+        <select data-es="force">${uOpt(UNIT_FORCE, state.units.force)}</select>
+        <span>匯出的 .mct 就是這組單位,工具不換算 —— 先決定好,載重與 EA 都用同一組。</span></div>
+      <div class="es-cards">
+        ${saved && saved.state && (saved.state.groups || []).length ? `<button data-es="restore" class="es-c es-r">
+          <b>還原上次的工作</b><span>${esc(saved.at || "")} · ${saved.n} 個群組(暫存在這台電腦的瀏覽器)</span></button>` : ""}
+        ${DEMOS.map(([k, nm, tip]) => `<button data-es="demo" data-k="${k}" class="es-c"><b>範例:${esc(nm)}</b><span>${esc(tip)}</span></button>`).join("")}
+        <button data-es="add" class="es-c"><b>新增第一條線</b><span>直線、圓弧、懸垂、線形鏈…</span></button>
+        <button data-es="imp" class="es-c"><b>匯入既有 Midas 模型</b><span>設為目標模型(避免撞號)或反向匯入幾何</span></button>
+      </div></div>`;
+  box.onchange = e => {
+    const k = e.target.dataset.es;
+    if (k === "len"){ state.units.length = e.target.value; rememberUnits(); recompute(true); }
+    if (k === "force"){ state.units.force = e.target.value; rememberUnits(); recompute(true); }
+  };
+  box.onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const k = b.dataset.es;
+    if (k === "restore" && saved){ loadState(saved.state); DIRTY = true; }
+    if (k === "demo"){ const it = DEMOS.find(o => o[0] === b.dataset.k);
+      if (it){ const s0 = it[3](); s0.units = { ...s0.units, ...state.units }; loadState(s0); } }
+    if (k === "add"){ const ab = $("#add-btn"); if (ab) ab.click(); }
+    if (k === "imp") $("#btn-imp").click();
+  };
+}
+
+/* ==========================================================================
    啟動
    ========================================================================== */
+state = newState();
 normState(state);
 recompute(true);
-runTests();
-// 驗收測試會借用真正的 state / MODEL 跑一堆模型,途中的 renderTree() / renderPane()
-// 會把最後一個測試模型留在畫面上(state 本身有還原,只是畫面沒跟著回來)。
-// 測完再畫一次,開檔看到的就一定是真正的狀態。
-// 「讀過的檢核訊息」也要一起清掉 —— 測試途中冒出來的警告不算使用者讀過。
-MSG_SEEN.clear(); MSG_OPEN = true;
-recompute(true);
+/* 驗收測試改成展開「驗收測試」時才跑(v3.46,檢查報告 ARC-01):開頁快約 0.4 秒,
+   也免去測試途中借用真正的 state / MODEL、畫面留下測試模型的風險。
+   CI(.github/workflows/tests.yml)以 headless 瀏覽器展開這一欄跑全部測試。 */
+let TESTS_RAN = false;
+$("#tests-wrap").addEventListener("toggle", e => {
+  if (!e.target.open || TESTS_RAN) return;
+  TESTS_RAN = true;
+  const sv = { st:state, dirty:DIRTY, sel:SEL, ss:new Set(SELSET), on:AUTO_ON };
+  AUTO_ON = false;
+  runTests();
+  state = sv.st; SEL = sv.sel; SELSET = sv.ss; DIRTY = sv.dirty; AUTO_ON = sv.on;
+  MSG_SEEN.clear(); MSG_OPEN = true;
+  recompute(true);
+});
+AUTO_ON = true;
+renderEmpty();
 
 </script>
 </body>
