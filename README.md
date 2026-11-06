@@ -258,8 +258,10 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 - 主纜節點可選擇移到**索多邊形**上(依吊索載重,不是理想拋物線 / 懸鏈線)
 - 耐風索可選擇以**力密度法**重算,使它成為繫索的平衡形狀(內建範例的「懸垂」段與繫索方向差約 7.7°,程式會警告)
 - 省略 `saddles` 時取主纜最高的兩個局部極大值為塔頂;主纜群組不含控索(兩端點就是塔頂)時自動改用兩端點
-- 繫索離同側最近吊點超過容許距離(吊索間距 × 0.6 + 0.5 m)時不計入吊索力,並印出警告
-- 純 Python 標準函式庫;14 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+- 繫索先找全橋最近的吊點,屬於另一條主纜的不計入(窄橋時不會把對側繫索算兩次);同側但離吊點超過容許距離(吊索間距 × 0.6 + 0.5 m,依 `*UNIT` 換算)時不計入並印出警告
+- 主纜與控索以「沿橋軸的投影長」計算張力 T = H·L/Lx,控索在平面上外展時塔頂沿橋軸仍平衡
+- 一個耐風索節點接兩根以上繫索時直接報錯;`output_kind = Horizontal` 遇到接近鉛直的纜索(吊索)會警告
+- 純 Python 標準函式庫;19 項測試 `python3 -m unittest tools/test_cable_pretension.py`
 
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。

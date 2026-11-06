@@ -165,5 +165,57 @@ class T05_EdgeCases(unittest.TestCase):
         self.assertIn("垂直分力未計入", out.getvalue())
 
 
+class T06_ReviewFixes(unittest.TestCase):
+    """2026-11 書稿第三、四篇審查後的修正"""
+    def _mct(self):
+        with open(MCT, encoding="utf-8") as fi:
+            return cp.Mct(fi.read())
+
+    def _cfg(self):
+        with open(ROLES, encoding="utf-8") as fi:
+            return json.load(fi)
+
+    def test_tie_on_other_side_not_counted(self):
+        # 窄橋（橋寬 1.2 m < 容許距離 2.0 m）：另一側的繫索不能算進這一條主纜
+        def ptie(deck):
+            m = self._mct()
+            for n in m.nodes:
+                m.nodes[n][1] *= 0.5
+            ties = {99999: {"deck": deck, "force": [0.0, 0.0, -100.0]}}
+            with contextlib.redirect_stdout(io.StringIO()):
+                return cp.main_system(m, self._cfg(), ties, [], "G_CABLE_L")["ptie"]
+        self.assertAlmostEqual(ptie(2017), 100.0)             # 同側
+        self.assertAlmostEqual(ptie(3017), 0.0)               # 另一側
+
+    def test_horizontal_output_warns_for_vertical_hangers(self):
+        cfg, m, rep, ties, d, log = run({"output_kind": "Horizontal"})
+        self.assertIn("接近鉛直", log)
+
+    def test_hanger_report_has_real_horizontal_length(self):
+        cfg, m, rep, ties, d, log = run()
+        for r in rep:
+            if r["role"] == "hanger":
+                e = m.elems[r["elem"]]
+                self.assertAlmostEqual(r["Lh"], cp.hlen(cp.sub(m.nodes[e["j"]], m.nodes[e["i"]])), places=9)
+
+    def test_zero_wind_H_does_not_crash(self):
+        with open(ROLES, encoding="utf-8") as fi:
+            loads = dict(json.load(fi)["loads"], w_wind=0.0)
+        cfg, m, rep, ties, d, log = run({"wind_H": 0.0, "loads": loads})   # 耐風索不受力：舊版除以 0
+        self.assertTrue(all(v["t"] == 0.0 for v in ties.values()))
+
+    def test_two_ties_on_one_wind_node_is_rejected(self):
+        m = self._mct()
+        cfg = self._cfg()
+        g = cfg["tie"][0]
+        es = m.group_elems(g)
+        e0, e1 = es[0], es[1]
+        w0 = m.elems[e0]["i"] if m.elems[e0]["i"] in m.groups[cfg["wind"][0]]["nodes"] else m.elems[e0]["j"]
+        f = list(m.elems[e1]["f"]); f[4] = str(w0); m.elems[e1]["i"] = w0
+        with self.assertRaises(ValueError):
+            with contextlib.redirect_stdout(io.StringIO()):
+                cp.wind_system(m, cfg, [])
+
+
 if __name__ == "__main__":
     unittest.main()

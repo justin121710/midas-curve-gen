@@ -220,13 +220,18 @@ def wind_system(mct, cfg, rep):
     """依 H_w 求每根繫索的張力與它作用在橋面節點的力（向量）"""
     Hw, out = cfg.get("wind_H", 0.0), {}
     w_w = cfg["loads"].get("w_wind", 0.0)
-    tie_of, tie_grp = {}, {}                          # 耐風索節點 → (繫索元素, 橋面節點)
+    tie_of, tie_grp, n_tie = {}, {}, {}               # 耐風索節點 → (繫索元素, 橋面節點)
     for g in cfg.get("tie", []):
         for e in mct.group_elems(g):
             i, j = mct.elems[e]["i"], mct.elems[e]["j"]
             tie_of[i] = (e, j); tie_of[j] = (e, i); tie_grp[e] = g
+            n_tie[i] = n_tie.get(i, 0) + 1; n_tie[j] = n_tie.get(j, 0) + 1
     for g in cfg.get("wind", []):
         ns, el = chain(mct, g)
+        dup = [n for n in ns[1:-1] if n_tie.get(n, 0) > 1]
+        if dup:
+            raise ValueError(f"{g}：耐風索節點 {dup[0]} 等 {len(dup)} 處接了兩根以上繫索；"
+                             "本程式假設每個耐風索節點只接一根繫索，請拆開節點或改以 3D 模型找形")
         if cfg.get("fix_wind") and "tie_T" in cfg:
             it = wind_form_finding(mct, cfg, ns, tie_of)
             print(f"{g}：以力密度法重算耐風索節點（{it} 次迭代收斂）")
@@ -250,8 +255,11 @@ def wind_system(mct, cfg, rep):
             e, deck = tie_of[n]
             d = unit(sub(mct.nodes[deck], mct.nodes[n]))
             t = norm(F)
-            cosang = -(F[0] * d[0] + F[1] * d[1] + F[2] * d[2]) / t
-            mis = math.degrees(math.acos(max(-1.0, min(1.0, cosang))))
+            if t < 1e-12:                            # wind_H = 0 或節點恰好平衡：繫索不受力
+                mis = 0.0
+            else:
+                cosang = -(F[0] * d[0] + F[1] * d[1] + F[2] * d[2]) / t
+                mis = math.degrees(math.acos(max(-1.0, min(1.0, cosang))))
             out[e] = dict(deck=deck, t=t, force=mul(d, -t), mis=mis)   # 繫索把橋面節點拉向耐風索
             dv = sub(mct.nodes[deck], mct.nodes[n])
             rep.append(dict(group=tie_grp[e], elem=e, role="tie", L=norm(dv), Lh=hlen(dv), T=t,
@@ -287,7 +295,7 @@ def main_system(mct, cfg, ties, rep, gname):
             if i in ns[s1 + 1:s2]: hang[i] = (e, j)
             elif j in ns[s1 + 1:s2]: hang[j] = (e, i)
     hx = sorted((xl(mct.nodes[n]), n) for n in hang)
-    # 橋面恆載的分擔長度：相鄰吊點各一半，端吊點另加到塔的一半（梁在塔處有支承）
+    # 橋面恆載的分擔長度：到前、後吊點距離各取一半；端吊點的「前一點」是塔（梁在塔處有支承，另一半由支承承受）
     trib = {}
     for k, (x, n) in enumerate(hx):
         xa = hx[k - 1][0] if k else 0.0
@@ -295,15 +303,27 @@ def main_system(mct, cfg, ties, rep, gname):
         trib[n] = (xb - xa) / 2
     # 繫索的垂直分力：指派給同側、橋軸位置最近的吊點
     ptie = {n: 0.0 for n in hang}
-    tol = 0.6 * (hx[1][0] - hx[0][0]) + 0.5 if len(hx) > 1 else 2.0
+    um = {"M": 1.0, "CM": 100.0, "MM": 1000.0, "FT": 3.28084, "IN": 39.3701}.get(mct.unit[1].upper(), 1.0)
+    tol = 0.6 * (hx[1][0] - hx[0][0]) + 0.5 * um if len(hx) > 1 else 2.0 * um   # 0.5 m、2.0 m 換成模型長度單位
+    # 全橋所有吊索的下端（較低的端點）：繫索先找全橋最近的吊點，屬於另一條主纜的就不在這裡計入
+    low_all = set()
+    for g in cfg["hanger"]:
+        for e in mct.group_elems(g):
+            i, j = mct.elems[e]["i"], mct.elems[e]["j"]
+            low_all.add(i if mct.nodes[i][2] < mct.nodes[j][2] else j)
+    mine = {d for (e, d) in hang.values()}
     for e, tv in ties.items():
         dn = mct.nodes[tv["deck"]]
+        if low_all:
+            g_best = min(low_all, key=lambda d: hlen(sub(mct.nodes[d], dn)))
+            if g_best not in mine:                    # 另一側（另一條主纜）的吊點較近
+                continue
         best = min(hang, key=lambda n: hlen(sub(mct.nodes[hang[n][1]], dn)))
         d = hlen(sub(mct.nodes[hang[best][1]], dn))
         if d < tol:
             ptie[best] += -tv["force"][2]
-        elif abs(dn[1] - mct.nodes[hang[best][1]][1]) < 2.0:   # 同側卻離吊點太遠
-            print(f"  ! 繫索 {e}（橋面節點 {tv['deck']}）距最近吊點 {d:.2f} m，"
+        else:                                         # 同側（全橋最近的吊點在這條主纜上）卻離吊點太遠
+            print(f"  ! 繫索 {e}（橋面節點 {tv['deck']}）距最近吊點 {d:.2f} {mct.unit[1].lower()}，"
                   "垂直分力未計入吊索與主纜初張力")
     over = cfg.get("hanger_loads", {})
 
@@ -338,15 +358,20 @@ def main_system(mct, cfg, ties, rep, gname):
         for n in ns[s1 + 1:s2]:
             p = mct.nodes[n]
             mct.set_node(n, [p[0], p[1], p[2] - dz[n]])
-    # 張力：主纜（含控索）T = H·L/Lh（水平分量各處相同）；吊索 T = Nh
+    # 張力：主纜（含控索）T = H·L/Lx，Lx 為沿橋軸（塔頂連線）的投影長——塔頂沿橋軸的分量平衡；
+    # 控索在平面上外展（與橋軸夾角不為 0）時，它的水平分量 T·Lh/L 會大於 H
     for k, e in enumerate(el):
         d = sub(mct.nodes[ns[k + 1]], mct.nodes[ns[k]])
+        lx = abs(d[0] * ax[0] + d[1] * ax[1])
+        if lx < 1e-9:
+            raise ValueError(f"{gname} 的元素 {e} 與橋軸垂直，無法以沿橋軸的 H 計算張力")
         rep.append(dict(group=gname, elem=e, role="main" if s1 <= k < s2 else "backstay",
-                        L=norm(d), Lh=hlen(d), T=H * norm(d) / hlen(d), EA=cfg["EA"]["main"]))
+                        L=norm(d), Lh=hlen(d), T=H * norm(d) / lx, EA=cfg["EA"]["main"]))
     for n, (e, d) in hang.items():
-        L = norm(sub(mct.nodes[d], mct.nodes[n]))
+        dv = sub(mct.nodes[d], mct.nodes[n])
+        L = norm(dv)
         g = next(x for x in cfg["hanger"] if e in mct.group_elems(x))
-        rep.append(dict(group=g, elem=e, role="hanger", L=L, Lh=0.0, T=Nh[n],
+        rep.append(dict(group=g, elem=e, role="hanger", L=L, Lh=hlen(dv), T=Nh[n],
                         EA=cfg["EA"]["hanger"], ptie=ptie[n]))
     return dict(H=H, f=f, span=span, dz=dz0, n_hang=len(hang), ptie=sum(ptie.values()),
                 Wtot=sum(Q.values()))
@@ -375,6 +400,11 @@ def run_mct(path, roles, prefix):
               f"吊索 {r['n_hang']} 根，繫索向下分力合計 {r['ptie']:.3f}；"
               f"原始主纜節點與索多邊形最大差 {dzmax:.1f} mm"
               + ("（已移到索多邊形上）" if cfg.get("fix_main_z") else "（未修正）"))
+    if kind == "Horizontal":
+        steep = [r["elem"] for r in rep if r["Lh"] < 0.05 * r["L"]]
+        if steep:
+            print(f"  ! {len(steep)} 根纜索接近鉛直（例如 {steep[0]}），水平分量無法代表張力；"
+                  "這些元素請改用 output_kind = Lu 或 Pretension")
     for row in rep:
         v = exval(kind, row["L"], row["Lh"], row["T"], row["EA"])
         mct.set_exval(row["elem"], KIND[kind], v)
