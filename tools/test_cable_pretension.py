@@ -217,5 +217,38 @@ class T06_ReviewFixes(unittest.TestCase):
                 cp.wind_system(m, cfg, [])
 
 
+class T07_ParserAndInputs(unittest.TestCase):
+    """2026-11 書稿第一、七篇審查後的修正"""
+    def test_list_syntax_case_and_bad_token(self):
+        self.assertEqual(cp.expand_list("1TO3 5To9BY2"), [1, 2, 3, 5, 7, 9])
+        with self.assertRaises(ValueError):
+            cp.expand_list("1to3 abc")
+
+    def test_group_continuation_line(self):
+        txt = "*NODE\n 1, 0, 0, 0\n 2, 1, 0, 0\n 3, 2, 0, 0\n*GROUP\n G1, 1 \\\n 2to3, , 0\n"
+        m = cp.Mct(txt)
+        self.assertEqual(m.groups["G1"]["nodes"], [1, 2, 3])
+
+    def test_saddles_in_reverse_order(self):
+        with open(MCT, encoding="utf-8") as fi:
+            m = cp.Mct(fi.read())
+        ns, el = cp.chain(m, "G_CABLE_L")
+        z = [m.nodes[n][2] for n in ns]
+        pk = [k for k in range(1, len(ns) - 1) if z[k] >= z[k - 1] and z[k] >= z[k + 1]]
+        a, b = ns[pk[0]], ns[pk[-1]]
+        cfg, *_ , log = run({"saddles": {"G_CABLE_L": [b, a], "G_CABLE_R": [b + 1000, a + 1000]}})
+        self.assertIn("H = 29052.140", log)
+
+    def test_hanger_loads_on_deck_node_is_reported(self):
+        cfg, m, rep, ties, d, log = run({"hanger_loads": {"2017": 700.0}})
+        self.assertIn("不是任何吊索的上端節點", log)
+
+    def test_tie_eq_one_row_per_deck_node(self):
+        cfg, m, rep, ties, d, log = run({"fix_wind": True, "tie_T": 250.0})
+        with open(os.path.join(d, "out_tie_eq.csv"), encoding="utf-8-sig") as fi:
+            nodes = [r.split(",")[0] for r in fi.read().splitlines()[1:]]
+        self.assertEqual(len(nodes), len(set(nodes)))
+
+
 if __name__ == "__main__":
     unittest.main()

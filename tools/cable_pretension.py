@@ -45,15 +45,17 @@ def fmt(v):
 
 # ---------------------------------------------------------------- MCT 讀寫
 def expand_list(text):
-    """midas 的清單語法：1001to1011、1001to1051by2、單一編號，以空白分隔"""
+    """midas 的清單語法：1001to1011、1001to1051by2、單一編號，以空白分隔（大小寫不拘）"""
     out = []
     for tok in text.split():
-        m = re.fullmatch(r"(\d+)to(\d+)(?:by(\d+))?", tok)
+        m = re.fullmatch(r"(\d+)to(\d+)(?:by(\d+))?", tok, re.I)
         if m:
             a, b, s = int(m.group(1)), int(m.group(2)), int(m.group(3) or 1)
             out.extend(range(a, b + 1, s))
         elif tok.isdigit():
             out.append(int(tok))
+        else:
+            raise ValueError(f"無法解析的節點／元素清單項目：{tok!r}")
     return out
 
 
@@ -67,13 +69,17 @@ class Mct:
         self.nodes, self.node_line = {}, {}
         self.elems, self.elem_line = {}, {}
         self.groups = {}
-        sec = None
+        sec, cont = None, ""
         for k, raw in enumerate(self.lines):
             s = raw.strip()
-            if s.startswith("*"):
+            if s.startswith("*") and not cont:
                 sec = s.split()[0].split(";")[0].upper()
                 continue
             data = s.split(";")[0].strip()
+            if data.endswith("\\"):                 # midas 的續行符號：長清單分成多行
+                cont += data[:-1] + " "
+                continue
+            data, cont = cont + data, ""
             if not data:
                 continue
             f = [x.strip() for x in data.split(",")]
@@ -277,7 +283,7 @@ def main_system(mct, cfg, ties, rep, gname):
     z = [mct.nodes[n][2] for n in ns]
     sad = cfg.get("saddles", {}).get(gname)
     if sad:
-        s1, s2 = ns.index(sad[0]), ns.index(sad[1])
+        s1, s2 = sorted((ns.index(sad[0]), ns.index(sad[1])))   # 填的順序與節點串方向無關
     else:                                            # 兩個最高的局部極大值
         peaks = [k for k in range(1, len(ns) - 1) if z[k] >= z[k - 1] and z[k] >= z[k + 1]]
         if len(peaks) < 2:                           # 群組不含控索：兩端點就是塔頂
@@ -326,6 +332,15 @@ def main_system(mct, cfg, ties, rep, gname):
             print(f"  ! 繫索 {e}（橋面節點 {tv['deck']}）距最近吊點 {d:.2f} {mct.unit[1].lower()}，"
                   "垂直分力未計入吊索與主纜初張力")
     over = cfg.get("hanger_loads", {})
+    up_all = set()                                    # 全橋所有吊索的上端（較高的端點）
+    for g in cfg["hanger"]:
+        for e in mct.group_elems(g):
+            i, j = mct.elems[e]["i"], mct.elems[e]["j"]
+            up_all.add(i if mct.nodes[i][2] >= mct.nodes[j][2] else j)
+    bad = [k for k in over if int(k) not in up_all]
+    if bad and gname == cfg["main"][0]:
+        print(f"  ! hanger_loads 的鍵 {bad[:3]} 不是任何吊索的上端節點，已略過"
+              "（鍵要填吊索上端、主纜上的節點編號，不是橋面節點）")
 
     for it in range(100):
         Pn = [mct.nodes[n] for n in ns]
@@ -429,9 +444,14 @@ def run_mct(path, roles, prefix):
     with open(prefix + "_tie_eq.csv", "w", newline="", encoding="utf-8-sig") as fo:
         wr = csv.writer(fo)
         wr.writerow(["Node", "Load Case", "FX", "FY", "FZ", "MX", "MY", "MZ"])
+        tot = {}                                      # 同一橋面節點接多根繫索時合併成一列
         for e, v in sorted(ties.items()):
-            fx, fy, fz = v["force"]
-            wr.writerow([v["deck"], "TIE_EQ", fmt(fx), fmt(fy), fmt(fz), 0, 0, 0])
+            t = tot.setdefault(v["deck"], [0.0, 0.0, 0.0])
+            for c in range(3):
+                t[c] += v["force"][c]
+        for n in sorted(tot):
+            fx, fy, fz = tot[n]
+            wr.writerow([n, "TIE_EQ", fmt(fx), fmt(fy), fmt(fz), 0, 0, 0])
     print(f"已輸出 {prefix}.mct、{prefix}_report.csv、{prefix}_tie_eq.csv")
     return mct, rep, ties
 
