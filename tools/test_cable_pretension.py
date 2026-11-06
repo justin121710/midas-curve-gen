@@ -131,5 +131,39 @@ class T04_WindSystem(unittest.TestCase):
             run({"fix_wind": True, "tie_T": 5000.0})
 
 
+class T05_EdgeCases(unittest.TestCase):
+    def test_main_group_without_backstay(self):
+        # 主纜群組只含主跨（兩端點就是塔頂、內部沒有局部極大值）時不能當掉，H 要與完整群組相同
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        m = cp.Mct(txt)
+        for g in ("G_CABLE_L", "G_CABLE_R"):
+            ns, el = cp.chain(m, g)
+            z = [m.nodes[n][2] for n in ns]
+            pk = [k for k in range(1, len(ns) - 1) if z[k] >= z[k - 1] and z[k] >= z[k + 1]]
+            old = "   %s, %dto%d, %dto%d, 0" % (g, ns[0], ns[-1], el[0], el[-1])
+            new = "   %s, %dto%d, %dto%d, 0" % (g, ns[pk[0]], ns[pk[-1]], el[pk[0]], el[pk[-1] - 1])
+            self.assertIn(old, txt)
+            txt = txt.replace(old, new)
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "nobs.mct")
+        with open(p, "w", encoding="utf-8") as fo:
+            fo.write(txt)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            cp.run_mct(p, ROLES, os.path.join(d, "out"))
+        self.assertIn("H = 29052.140", out.getvalue())
+
+    def test_far_tie_is_reported(self):
+        # 同側但離吊點太遠的繫索不計入，且必須印出警告（不可默默丟掉）
+        with open(ROLES, encoding="utf-8") as fi:
+            cfg = json.load(fi)
+        with open(MCT, encoding="utf-8") as fi:
+            m = cp.Mct(fi.read())
+        ties = {99999: {"deck": 2001, "force": [0.0, 0.0, -100.0]}}
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            cp.main_system(m, cfg, ties, [], "G_CABLE_L")
+        self.assertIn("垂直分力未計入", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

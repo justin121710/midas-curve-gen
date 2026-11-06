@@ -272,6 +272,8 @@ def main_system(mct, cfg, ties, rep, gname):
         s1, s2 = ns.index(sad[0]), ns.index(sad[1])
     else:                                            # 兩個最高的局部極大值
         peaks = [k for k in range(1, len(ns) - 1) if z[k] >= z[k - 1] and z[k] >= z[k + 1]]
+        if len(peaks) < 2:                           # 群組不含控索：兩端點就是塔頂
+            peaks = sorted(set(peaks + [0, len(ns) - 1]))
         s1, s2 = sorted(sorted(peaks, key=lambda k: -z[k])[:2])
     P0, P1 = mct.nodes[ns[s1]], mct.nodes[ns[s2]]
     ax = sub(P1, P0); span = hlen(ax); ax = [ax[0] / span, ax[1] / span, 0.0]
@@ -293,11 +295,16 @@ def main_system(mct, cfg, ties, rep, gname):
         trib[n] = (xb - xa) / 2
     # 繫索的垂直分力：指派給同側、橋軸位置最近的吊點
     ptie = {n: 0.0 for n in hang}
+    tol = 0.6 * (hx[1][0] - hx[0][0]) + 0.5 if len(hx) > 1 else 2.0
     for e, tv in ties.items():
         dn = mct.nodes[tv["deck"]]
         best = min(hang, key=lambda n: hlen(sub(mct.nodes[hang[n][1]], dn)))
-        if hlen(sub(mct.nodes[hang[best][1]], dn)) < 0.6 * (hx[1][0] - hx[0][0]) + 0.5:
+        d = hlen(sub(mct.nodes[hang[best][1]], dn))
+        if d < tol:
             ptie[best] += -tv["force"][2]
+        elif abs(dn[1] - mct.nodes[hang[best][1]][1]) < 2.0:   # 同側卻離吊點太遠
+            print(f"  ! 繫索 {e}（橋面節點 {tv['deck']}）距最近吊點 {d:.2f} m，"
+                  "垂直分力未計入吊索與主纜初張力")
     over = cfg.get("hanger_loads", {})
 
     for it in range(100):
