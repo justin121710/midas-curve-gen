@@ -269,6 +269,32 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。
 
+## 接到 RC 構件設計工具:一個設計構件一個群組
+
+分析完要用 [RC 構件設計工具](https://justin121710.github.io/rc-member-designer/) 設計配筋時,
+它的「從 Midas 匯入」是**依 `.mct` 的 `*GROUP` 把元素歸到構件**的:一個群組 = 一個構件,
+群組名就是構件名(會印在計算書上,也會進 StructAudit-AI 的審查報告)。所以建模時先把群組分好,後面就不用再對元素編號。
+整條流程(本工具 → midas → RC 構件設計工具 → StructAudit-AI)見
+[rc-member-designer/docs/INTEGRATION.md](https://github.com/justin121710/rc-member-designer/blob/main/docs/INTEGRATION.md)。
+
+| 構件 | 建議 | 群組名範例 |
+|---|---|---|
+| 墩柱、橋塔柱 | 每根柱一組(只含柱元素,不含帽梁) | `P1_COL`、`P2_COL_L`、`PY1_LEG_R` |
+| 帽梁、橫梁 | 每支梁一組;懸臂帽梁左右可分開 | `P1_CAP`、`P1_CAP_L`、`XB03` |
+| 基樁 | 每根樁一組 | `P1_PL1`…`P1_PL6` |
+| 橋面版、基礎版(midas 裡建) | 依配筋區分組,同一組厚度相同 | `S1_DECK`、`F1_MAT` |
+
+- **名稱用英數與底線,短一點**。全中文會退回 `G01` 序號(見下一節),計算書上就只剩序號。
+- **一組只放一種斷面**。變斷面的柱或梁請分段成幾組(例如 `PY1_LEG_L1`、`PY1_LEG_L2`),
+  RC 構件設計工具以單一斷面設計,群組內斷面不只一種時會警示。
+  長構件可用上面的「施工階段群組」(每 n 根一組、依樁號分界)一次切好。
+- **總群組留著沒關係**(`GEN_ALL`、整條主梁那組):RC 構件設計工具只列出含內力表元素的群組,勾選要設計的那幾組即可;
+  同一個元素可以同時在總群組與構件群組裡。
+- **柱的元素方向不用管**:頂、底是依節點 Z 座標判定的。斷面朝向(beta angle)在 midas 裡設定,
+  若斷面寬 B、高 H 與 midas 局部 y、z 相反,在 RC 構件設計工具勾「x/y 對調」。
+- **midas 裡指定斷面、材料後,從 midas 匯出完整的 `.mct`**(含 `*SECTION`、`*MATERIAL`、`*THICKNESS`)給 RC 構件設計工具,
+  它才讀得到斷面尺寸與版厚;在 midas 裡新增或改過的群組也一併帶過去。本工具輸出的 `.mct` 只有幾何與群組。
+
 ## 幾個要知道的事
 
 - **單位:輸入什麼單位就算什麼單位,匯出也是同一個單位,全程不換算。** 單位在最上方標題列設定,預設 `m` / `kgf`。

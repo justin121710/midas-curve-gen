@@ -1938,6 +1938,11 @@ P_global = R·(P_local − P1) + Q1
 
 > 群組是「模型須重建」的止血帶:使用者可一鍵選取整批舊元素刪除,不必在 3D 視圖裡框選。
 
+> **下游耦合(2026-11-07,工具整合 M5)**:RC 構件設計工具的「從 Midas 匯入」以 `*GROUP` 的 NAME 與 ELEM_LIST
+> 把元素歸到構件(一個群組 = 一個構件,群組名即構件名)。`*GROUP` 的格式(`NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE`、
+> `1to10by2` 清單語法、行末 `\` 續行)不可更動;建議的命名規則見 README「接到 RC 構件設計工具」,
+> 串接規格見 rc-member-designer `docs/INTEGRATION.md`。
+
 ---
 
 ## 9. 輸出
