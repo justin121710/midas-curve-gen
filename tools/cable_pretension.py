@@ -152,6 +152,12 @@ def chain(mct, gname):
             break
         m, e = nxt[0]
         ns.append(m); el.append(e); prev = e
+    if len(el) != len(es) or len(set(ns)) != len(ns):      # 走不到的元素：群組分成好幾段或含閉環
+        raise ValueError(f"群組 {gname} 有 {len(es) - len(el)} 根元素沒有連在同一條節點串上"
+                         "（分成好幾段或含閉環）")
+    miss = len(mct.groups[gname]["elems"]) - len(es)
+    if miss:
+        raise ValueError(f"群組 {gname} 列了 {miss} 個 *ELEMENT 中不存在的元素編號")
     return ns, el
 
 
@@ -217,6 +223,9 @@ def wind_form_finding(mct, cfg, ns, tie_of):
             P[n] = q
         if move < 1e-10:
             break
+    else:                                            # 用完迭代次數仍未收斂：不寫回節點
+        raise ValueError(f"耐風索力密度法 200 次未收斂（最後一次節點移動 {move:.3g}）；"
+                         "請檢查 wind_H、tie_T 與幾何，未輸出 .mct")
     for n in free:
         mct.set_node(n, P[n])
     return it + 1
@@ -370,6 +379,8 @@ def main_system(mct, cfg, ties, rep, gname):
             break
         if max(abs(v) for v in dz.values()) < 1e-9:
             break
+        if it == 99:
+            raise ValueError(f"{gname}：主纜索多邊形 100 次未收斂（最大差 {max(abs(v) for v in dz.values()):.3g}）")
         for n in ns[s1 + 1:s2]:
             p = mct.nodes[n]
             mct.set_node(n, [p[0], p[1], p[2] - dz[n]])
@@ -410,7 +421,10 @@ def run_mct(path, roles, prefix):
             print("  ! 夾角大於 2°：耐風索的幾何與繫索方向不一致，繫索張力不可靠")
     for g in cfg["main"]:
         r = main_system(mct, cfg, ties, rep, g)
-        dzmax = max(abs(v) for v in r["dz"].values()) * 1000
+        to_mm = {"M": 1000.0, "CM": 10.0, "MM": 1.0, "FT": 304.8, "IN": 25.4}.get(mct.unit[1].upper())
+        if to_mm is None:
+            raise ValueError(f"不認得的長度單位 {mct.unit[1]}（可用 M、CM、MM、FT、IN）")
+        dzmax = max(abs(v) for v in r["dz"].values()) * to_mm
         print(f"{g}：主跨 {r['span']:.3f}，垂度 {r['f']:.4f}，H = {r['H']:.3f}；"
               f"吊索 {r['n_hang']} 根，繫索向下分力合計 {r['ptie']:.3f}；"
               f"原始主纜節點與索多邊形最大差 {dzmax:.1f} mm"

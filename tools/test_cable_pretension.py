@@ -250,5 +250,54 @@ class T07_ParserAndInputs(unittest.TestCase):
         self.assertEqual(len(nodes), len(set(nodes)))
 
 
+class T08_Robustness(unittest.TestCase):
+    """2026-11-07 附錄審查：未收斂、群組不連續、長度單位"""
+    def test_disconnected_group_is_rejected(self):
+        txt = ("*NODE\n 1,0,0,0\n 2,1,0,0\n 3,5,0,0\n 4,6,0,0\n 5,5,1,0\n"
+               "*ELEMENT\n 1, TENSTR, 1, 1, 1, 2, 0, 3, 0, 3\n 2, TENSTR, 1, 1, 3, 4, 0, 3, 0, 3\n"
+               " 3, TENSTR, 1, 1, 4, 5, 0, 3, 0, 3\n 4, TENSTR, 1, 1, 5, 3, 0, 3, 0, 3\n"
+               "*GROUP\n G, 1to5, 1to4, 0\n")
+        with self.assertRaises(ValueError):
+            cp.chain(cp.Mct(txt), "G")
+
+    def test_form_finding_not_converged_is_rejected(self):
+        orig = cp.solve
+        calls = {"n": 0}
+        def wobble(A, b):
+            calls["n"] += 1
+            x = orig(A, b)
+            return [v + (0.01 if calls["n"] % 2 else -0.01) for v in x]
+        cp.solve = wobble
+        try:
+            with self.assertRaises(ValueError):
+                run({"fix_wind": True, "tie_T": 250.0})
+        finally:
+            cp.solve = orig
+
+    def test_length_unit_in_report(self):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        m = cp.Mct(txt)
+        lines = txt.splitlines()
+        for n, k in m.node_line.items():
+            x, y, z = m.nodes[n]
+            lines[k] = f" {n}, {x*100:.6f}, {y*100:.6f}, {z*100:.6f}"
+        cm = "\n".join(lines).replace("KGF, M, KJ", "KGF, CM, KJ", 1)
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "cm.mct")
+        with open(p, "w", encoding="utf-8") as fo:
+            fo.write(cm)
+        with open(ROLES, encoding="utf-8") as fi:
+            cfg = json.load(fi)
+        cfg["loads"] = {k: v / 100 for k, v in cfg["loads"].items()}
+        cfg["loads"]["band"] = cfg["loads"]["band"] * 100          # 集中力不換算
+        rp = os.path.join(d, "r.json")
+        with open(rp, "w", encoding="utf-8") as fo:
+            json.dump(cfg, fo)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            cp.run_mct(p, rp, os.path.join(d, "o"))
+        self.assertIn("最大差 72.1 mm", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

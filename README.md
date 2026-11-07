@@ -262,7 +262,8 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 - 主纜與控索以「沿橋軸的投影長」計算張力 T = H·L/Lx,控索在平面上外展時塔頂沿橋軸仍平衡
 - 一個耐風索節點接兩根以上繫索時直接報錯;`output_kind = Horizontal` 遇到接近鉛直的纜索(吊索)會警告
 - 清單語法 `to`/`by` 不分大小寫、`*GROUP` 支援 `\` 續行;`saddles` 兩節點順序不拘;`hanger_loads` 鍵不是吊索上端時警告;`_tie_eq.csv` 同一橋面節點合併成一列
-- 純 Python 標準函式庫;24 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+- 力密度法或主纜索多邊形用完迭代仍未收斂時報錯、不輸出 .mct;群組分段或含閉環時報錯;幾何差報表依 `*UNIT` 換算成 mm
+- 純 Python 標準函式庫;27 項測試 `python3 -m unittest tools/test_cable_pretension.py`
 
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。
