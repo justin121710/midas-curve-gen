@@ -241,6 +241,9 @@ def wind_system(mct, cfg, rep):
             i, j = mct.elems[e]["i"], mct.elems[e]["j"]
             tie_of[i] = (e, j); tie_of[j] = (e, i); tie_grp[e] = g
             n_tie[i] = n_tie.get(i, 0) + 1; n_tie[j] = n_tie.get(j, 0) + 1
+    if cfg.get("tie") and not cfg.get("wind"):
+        raise ValueError("設定了繫索（tie）群組卻沒有耐風索（wind）群組：本程式只處理型式 A（耐風索＋繫索）；"
+                         "型式 B 的直線支索請以設計初張力手算各附掛點的向下分力，填入 hanger_loads")
     for g in cfg.get("wind", []):
         ns, el = chain(mct, g)
         dup = [n for n in ns[1:-1] if n_tie.get(n, 0) > 1]
@@ -396,6 +399,9 @@ def main_system(mct, cfg, ties, rep, gname):
     for n, (e, d) in hang.items():
         dv = sub(mct.nodes[d], mct.nodes[n])
         L = norm(dv)
+        if hlen(dv) > 0.01 * L:                      # 本程式以 T = Nh 計吊索張力，只適用鉛直吊索
+            raise ValueError(f"吊索 {e} 不是鉛直（水平投影 {hlen(dv):.3f}、長 {L:.3f}）；"
+                             "本程式只處理鉛直吊索與鉛直索面，傾斜吊索須以 3D 節點平衡另行計算")
         g = next(x for x in cfg["hanger"] if e in mct.group_elems(x))
         rep.append(dict(group=g, elem=e, role="hanger", L=L, Lh=hlen(dv), T=Nh[n],
                         EA=cfg["EA"]["hanger"], ptie=ptie[n]))
@@ -431,9 +437,9 @@ def run_mct(path, roles, prefix):
               + ("（已移到索多邊形上）" if cfg.get("fix_main_z") else "（未修正）"))
     if kind == "Horizontal":
         steep = [r["elem"] for r in rep if r["Lh"] < 0.05 * r["L"]]
-        if steep:
-            print(f"  ! {len(steep)} 根纜索接近鉛直（例如 {steep[0]}），水平分量無法代表張力；"
-                  "這些元素請改用 output_kind = Lu 或 Pretension")
+        if steep:                                    # 鉛直吊索的水平分量為 0：寫出去就是錯的初張力
+            raise ValueError(f"{len(steep)} 根纜索接近鉛直（例如 {steep[0]}），水平分量無法代表張力；"
+                             "請改用 output_kind = Lu 或 Pretension，未輸出 .mct")
     for row in rep:
         v = exval(kind, row["L"], row["Lh"], row["T"], row["EA"])
         mct.set_exval(row["elem"], KIND[kind], v)

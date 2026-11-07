@@ -187,9 +187,9 @@ class T06_ReviewFixes(unittest.TestCase):
         self.assertAlmostEqual(ptie(2017), 100.0)             # 同側
         self.assertAlmostEqual(ptie(3017), 0.0)               # 另一側
 
-    def test_horizontal_output_warns_for_vertical_hangers(self):
-        cfg, m, rep, ties, d, log = run({"output_kind": "Horizontal"})
-        self.assertIn("接近鉛直", log)
+    def test_horizontal_output_rejected_for_vertical_hangers(self):
+        with self.assertRaises(ValueError):                   # 鉛直吊索的水平分量為 0，不可輸出
+            run({"output_kind": "Horizontal"})
 
     def test_hanger_report_has_real_horizontal_length(self):
         cfg, m, rep, ties, d, log = run()
@@ -297,6 +297,27 @@ class T08_Robustness(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as out:
             cp.run_mct(p, rp, os.path.join(d, "o"))
         self.assertIn("最大差 72.1 mm", out.getvalue())
+
+
+class T09_ScopeChecks(unittest.TestCase):
+    """2026-11-07 第二輪附錄審查：程式適用範圍外的輸入要報錯"""
+    def test_inclined_hanger_is_rejected(self):
+        txt = ("*UNIT\n KGF, M, KJ, C\n*NODE\n 1,0,0,2\n 2,5,0,1\n 3,10,0,2\n 4,5,1,0\n"
+               "*ELEMENT\n 1, TENSTR, 1, 1, 1, 2, 0, 3, 0, 3\n 2, TENSTR, 1, 1, 2, 3, 0, 3, 0, 3\n"
+               " 3, TENSTR, 1, 1, 2, 4, 0, 3, 0, 3\n*GROUP\n M, 1to3, 1to2, 0\n H, , 3, 0\n")
+        cfg = {"main": ["M"], "hanger": ["H"], "loads": {"deck_per_len": 20.0},
+               "EA": {"main": 1e7, "hanger": 1e6}, "saddles": {"M": [1, 3]}}
+        with self.assertRaises(ValueError):
+            with contextlib.redirect_stdout(io.StringIO()):
+                cp.main_system(cp.Mct(txt), cfg, {}, [], "M")
+
+    def test_tie_without_wind_group_is_rejected(self):
+        with self.assertRaises(ValueError):
+            run({"wind": []})
+
+    def test_vertical_hangers_still_accepted(self):
+        cfg, m, rep, ties, d, log = run()
+        self.assertTrue(any(r["role"] == "hanger" for r in rep))
 
 
 if __name__ == "__main__":
