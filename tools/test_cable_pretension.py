@@ -320,5 +320,72 @@ class T09_ScopeChecks(unittest.TestCase):
         self.assertTrue(any(r["role"] == "hanger" for r in rep))
 
 
+class T10_FullReview(unittest.TestCase):
+    """2026-11-07 全文技術審查（F03、F04、F16、F17）"""
+    PLANE = ("*UNIT\n KN, M, KJ, C\n*NODE\n 1,0,0,7\n 2,30,{y},1\n 3,60,0,7\n 4,30,{y},0\n"
+             "*ELEMENT\n 1, TENSTR, 1, 1, 1, 2, 0, 3, 0, 3\n 2, TENSTR, 1, 1, 2, 3, 0, 3, 0, 3\n"
+             " 3, TENSTR, 1, 1, 2, 4, 0, 3, 0, 3\n*GROUP\n M, 1to3, 1to2, 0\n H, , 3, 0\n")
+    CFG = {"main": ["M"], "hanger": ["H"], "loads": {"deck_per_len": 1.0},
+           "EA": {"main": 1e6, "hanger": 1e5}, "saddles": {"M": [1, 3]}, "fix_main_z": True}
+
+    def test_F03_main_node_off_saddle_plane_is_rejected(self):
+        # 審查反例：B 點偏離 A–C 鉛直面 1 m，y 向分力 −5 kN 無法平衡，舊版仍宣告收斂
+        with self.assertRaises(ValueError) as cm:
+            with contextlib.redirect_stdout(io.StringIO()):
+                cp.main_system(cp.Mct(self.PLANE.format(y=1)), self.CFG, {}, [], "M")
+        self.assertIn("鉛直面", str(cm.exception))
+
+    def test_F03_in_plane_still_balances(self):
+        rep = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = cp.main_system(cp.Mct(self.PLANE.format(y=0)), self.CFG, {}, rep, "M")
+        self.assertAlmostEqual(r["H"], 30 * 60 / (4 * 6), places=9)   # H = PL/(4f)，P = 30 kN
+
+    def _with_groups(self, enc):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        txt = txt.replace("*GROUP\n", "*GROUP\n   上游, , 1001to1002, 0\n   下游, , 3001to3002, 0\n", 1)
+        d = tempfile.mkdtemp(); p = os.path.join(d, "in.mct")
+        with open(p, "w", encoding=enc, newline="") as fo:
+            fo.write(txt)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            cp.run_mct(p, ROLES, os.path.join(d, "o"))
+        return open(os.path.join(d, "o.mct"), "rb").read(), out.getvalue()
+
+    def test_F04_non_ascii_group_names_are_kept(self):
+        for enc in ("utf-8", "cp950"):
+            raw, log = self._with_groups(enc)
+            t = raw.decode(enc)
+            self.assertIn("上游, , 1001to1002", t)
+            self.assertIn("下游, , 3001to3002", t)
+            self.assertNotIn("??", t)
+            self.assertIn(enc, log)
+
+    def test_F04_ascii_input_still_ascii(self):
+        cfg, m, rep, ties, d, log = run()
+        open(os.path.join(d, "out.mct"), "rb").read().decode("ascii")
+
+    def test_F16_lu_keeps_low_tension(self):
+        # 審查反例：L = 0.1 m、T = 0.003 kN、EA = 10,000 kN：6 位小數寫成 0.1，T 反算為 0
+        s = cp.fmt_lu(0.1, 0.003, 1e4)
+        self.assertNotEqual(s, "0.1")
+        self.assertAlmostEqual(1e4 * (0.1 / float(s) - 1), 0.003, delta=0.003e-3)
+        self.assertEqual(cp.fmt_lu(10.0, 1000.0, 1e7), cp.fmt(cp.unstressed(10.0, 1000.0, 1e7)))  # 6 位夠用時不變
+
+    def test_F17_physical_inputs(self):
+        for L, T, EA in ((1, -1000, 100), (1, 1, 0), (0, 1, 1), (1, float("nan"), 1), (1, 1, float("inf"))):
+            with self.assertRaises(ValueError):
+                cp.unstressed(L, T, EA)
+        with self.assertRaises(ValueError):
+            run({"EA": {"main": -1, "hanger": 4.1e6, "wind": 1e7, "tie": 2.85e6}})
+
+    def test_F17_duplicate_role_and_unhandled_cable(self):
+        with self.assertRaises(ValueError) as cm:
+            run({"main": ["G_CABLE_L", "G_CABLE_R", "G_CABLE_L"]})
+        self.assertIn("同時屬於", str(cm.exception))
+        cfg, m, rep, ties, d, log = run({"wind": ["G_WIND_L"], "tie": ["G_WSTAY_L"]})   # 未指定角色：警告並列出
+        self.assertIn("不屬於角色設定檔", log)
+
+
 if __name__ == "__main__":
     unittest.main()

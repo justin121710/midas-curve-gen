@@ -23,14 +23,29 @@ KIND = {"Pretension": 1, "Horizontal": 2, "Lu": 3}   # Cable 的 EXVAL2 種類�
 
 
 def unstressed(L, T, EA):
-    """無應力長度 Lu = L / (1 + T/EA)"""
+    """無應力長度 Lu = L / (1 + T/EA)；L、EA 須為正的有限值，T 須為非負的有限值（纜索不受壓）"""
+    check_phys(L, T, EA)
     return L / (1.0 + T / EA)
+
+
+def check_phys(L, T, EA, where=""):
+    """物理輸入篩選：不合理的值直接報錯，不寫出看似可用的結果"""
+    w = f"{where}：" if where else ""
+    for name, v in (("長度 L", L), ("張力 T", T), ("EA", EA)):
+        if not isinstance(v, (int, float)) or not math.isfinite(v):
+            raise ValueError(f"{w}{name} = {v!r} 不是有限的數值")
+    if L <= 0:
+        raise ValueError(f"{w}長度 L = {L} 必須大於 0（零長元素）")
+    if EA <= 0:
+        raise ValueError(f"{w}EA = {EA} 必須大於 0")
+    if T < 0:
+        raise ValueError(f"{w}張力 T = {T} 為負：纜索不能受壓，請檢查載重與 hanger_loads 的正負號")
 
 
 def exval(kind, L, Lh, T, EA):
     """依輸出種類回傳 EXVAL：Lu（長度）、Pretension（力）、Horizontal（張力的水平分量）"""
     if kind == "Lu":
-        return unstressed(L, T, EA)
+        return unstressed(L, T, EA)              # 寫入 MCT 時以 fmt_lu 決定位數
     if kind == "Pretension":
         return T
     if kind == "Horizontal":
@@ -41,6 +56,19 @@ def exval(kind, L, Lh, T, EA):
 def fmt(v):
     s = f"{v:.6f}".rstrip("0").rstrip(".")
     return s if s not in ("", "-0") else "0"
+
+
+def fmt_lu(L, T, EA, rel=1e-3):
+    """Lu 的輸出字串：小數 6 位不夠時逐位加到 12 位，直到以寫出的 Lu 反算的張力
+    EA·(L/Lu − 1) 與 T 的差在 rel·T 以內（低張力、短構件時 6 位會把 T 捨成 0）"""
+    Lu = unstressed(L, T, EA)
+    tol = max(rel * abs(T), 1e-12 * EA)
+    for nd in range(6, 13):
+        s = f"{Lu:.{nd}f}".rstrip("0").rstrip(".")
+        if abs(EA * (L / float(s) - 1.0) - T) <= tol:
+            return s
+    raise ValueError(f"Lu = {Lu!r} 以 12 位小數寫出仍無法保留張力 T = {T}（相對誤差要求 {rel:g}）；"
+                     "請改用 output_kind = Pretension，或改用較小的長度單位")
 
 
 # ---------------------------------------------------------------- MCT 讀寫
@@ -108,7 +136,7 @@ class Mct:
             raise ValueError(f"元素 {e} 不是 TENSTR（{f[1]}）")
         while len(f) < 10:
             f.append("0")
-        f[7], f[8], f[9] = "3", fmt(value), str(kind_code)
+        f[7], f[8], f[9] = "3", value if isinstance(value, str) else fmt(value), str(kind_code)
         f = f[:10]                                   # Cable（iSUB=3）固定 10 欄
         self.lines[self.elem_line[e]] = "   " + ", ".join(f)
 
@@ -304,6 +332,12 @@ def main_system(mct, cfg, ties, rep, gname):
     P0, P1 = mct.nodes[ns[s1]], mct.nodes[ns[s2]]
     ax = sub(P1, P0); span = hlen(ax); ax = [ax[0] / span, ax[1] / span, 0.0]
     xl = lambda p: (p[0] - P0[0]) * ax[0] + (p[1] - P0[1]) * ax[1]
+    # 本程式是平面索多邊形：主跨節點必須在兩索鞍決定的鉛直面上，否則橫向分力無法平衡
+    off = max((abs(-(mct.nodes[n][0] - P0[0]) * ax[1] + (mct.nodes[n][1] - P0[1]) * ax[0]), n)
+              for n in ns[s1 + 1:s2])
+    if off[0] > 1e-4 * span:
+        raise ValueError(f"{gname}：主跨節點 {off[1]} 偏離兩索鞍（節點 {ns[s1]}、{ns[s2]}）的鉛直面 {off[0]:.4g}；"
+                         "本程式只處理平面主纜，空間主纜須以三維找形計算，未輸出 .mct")
 
     # 吊索：上端在這條主纜上的 hanger 元素
     hang = {}
@@ -387,6 +421,19 @@ def main_system(mct, cfg, ties, rep, gname):
         for n in ns[s1 + 1:s2]:
             p = mct.nodes[n]
             mct.set_node(n, [p[0], p[1], p[2] - dz[n]])
+    if not (math.isfinite(H) and H > 0 and f > 0):
+        raise ValueError(f"{gname}：垂度 f = {f:.4g}、H = {H:.4g} 不合理（主纜須在塔頂連線下方、"
+                         "載重向下），請檢查節點座標、索鞍節點與載重符號")
+    if cfg.get("fix_main_z", False):                 # 修正後逐節點檢查三方向的殘差，達標才算平衡
+        res = 0.0
+        for k in range(s1 + 1, s2):
+            a, b = sub(mct.nodes[ns[k - 1]], mct.nodes[ns[k]]), sub(mct.nodes[ns[k + 1]], mct.nodes[ns[k]])
+            la, lb = abs(a[0] * ax[0] + a[1] * ax[1]), abs(b[0] * ax[0] + b[1] * ax[1])
+            F = add(mul(a, H / la), mul(b, H / lb))
+            F[2] -= Q[ns[k]]
+            res = max(res, norm(F))
+        if res > 1e-6 * H:
+            raise ValueError(f"{gname}：修正後主纜節點的三方向殘差 {res:.4g} 超過 1e-6·H，未輸出 .mct")
     # 張力：主纜（含控索）T = H·L/Lx，Lx 為沿橋軸（塔頂連線）的投影長——塔頂沿橋軸的分量平衡；
     # 控索在平面上外展（與橋軸夾角不為 0）時，它的水平分量 T·Lh/L 會大於 H
     for k, e in enumerate(el):
@@ -409,13 +456,28 @@ def main_system(mct, cfg, ties, rep, gname):
                 Wtot=sum(Q.values()))
 
 
+def read_text(path):
+    """依序以 UTF-8、cp950（繁中 Windows 的 ANSI）解碼；都不行就報錯，不默默替換字元"""
+    raw = open(path, "rb").read()
+    for enc in ("utf-8-sig", "cp950"):
+        try:
+            return raw.decode(enc).replace("\r\n", "\n").replace("\r", "\n"), enc   # 與文字模式讀檔相同的換行處理
+        except UnicodeDecodeError:
+            pass
+    raise ValueError(f"{path} 不是 UTF-8 或 cp950 編碼，無法保證原樣寫回；請由 midas 重新匯出")
+
+
 def run_mct(path, roles, prefix):
-    with open(path, encoding="utf-8", errors="replace") as fi:
-        mct = Mct(fi.read())
+    text, enc = read_text(path)
+    mct = Mct(text)
     with open(roles, encoding="utf-8") as fi:
         cfg = json.load(fi)
     kind = cfg.get("output_kind", "Lu")
     print(f"單位：力 {mct.unit[0]}、長度 {mct.unit[1]}（設定檔的載重與 EA 必須用同一組單位）")
+    for r in ("main", "hanger") + (("wind", "tie") if cfg.get("wind") else ()):
+        ea = cfg.get("EA", {}).get(r)
+        if not isinstance(ea, (int, float)) or not math.isfinite(ea) or ea <= 0:
+            raise ValueError(f"角色設定檔 EA.{r} = {ea!r}：必須是正的有限數值")
     rep = []
     ties = wind_system(mct, cfg, rep)
     if ties:
@@ -440,17 +502,36 @@ def run_mct(path, roles, prefix):
         if steep:                                    # 鉛直吊索的水平分量為 0：寫出去就是錯的初張力
             raise ValueError(f"{len(steep)} 根纜索接近鉛直（例如 {steep[0]}），水平分量無法代表張力；"
                              "請改用 output_kind = Lu 或 Pretension，未輸出 .mct")
+    seen = {}
+    for row in rep:                                   # 同一元素被歸到兩種角色：初張力會互相覆蓋
+        if row["elem"] in seen:
+            raise ValueError(f"元素 {row['elem']} 同時屬於 {seen[row['elem']]} 與 {row['group']}（{row['role']}），"
+                             "請檢查角色設定檔的群組，未輸出 .mct")
+        seen[row["elem"]] = f"{row['group']}（{row['role']}）"
+        check_phys(row["L"], row["T"], row["EA"], f"{row['group']} 元素 {row['elem']}")
+    left = sorted(e for e, v in mct.elems.items() if v["type"].upper() == "TENSTR" and e not in seen)
+    if left:                                          # 沒有角色的纜索留著原本的 EXVAL，不會填入初張力
+        print(f"  ! {len(left)} 根 TENSTR 元素不屬於角色設定檔的任何群組（例如 {left[:5]}），"
+              "EXVAL 原樣保留、沒有填入初張力；若是控索等另成群組的纜索，請在 midas 另行輸入")
     for row in rep:
-        v = exval(kind, row["L"], row["Lh"], row["T"], row["EA"])
+        if kind == "Lu":
+            v = fmt_lu(row["L"], row["T"], row["EA"])
+        else:
+            v = exval(kind, row["L"], row["Lh"], row["T"], row["EA"])
         mct.set_exval(row["elem"], KIND[kind], v)
-    # 檔頭註解用英文：.mct 以 ASCII 寫出（midas 以系統 ANSI 讀取），中文會變成 ?
+    # 檔頭註解用英文。原檔全為 ASCII 就以 ASCII 寫出（midas 以系統 ANSI 讀取）；
+    # 原檔含中文等非 ASCII 字元（群組名、載重名稱、註解）時沿用原編碼寫回，不把它們換成 ?——
+    # 換成 ? 會讓不同的中文群組名變成同名群組
+    out_enc = "ascii" if text.isascii() else enc.replace("-sig", "")
+    if out_enc != "ascii":
+        print(f"  ! 原檔含非 ASCII 字元，以原編碼 {out_enc} 寫回（midas 以系統 ANSI 讀取：繁中 Windows 為 cp950）")
     hdr = [";",
            f"; cable_pretension.py: EXVAL filled for {len(rep)} cable elements"
            f" (kind {kind}, EXVAL2 = {KIND[kind]})",
            "; NOTE: dropping this file back onto midas-curve-gen rebuilds the geometry",
            ";       from the parameter block; EXVAL and moved nodes are NOT kept.",
            ";"]
-    with open(prefix + ".mct", "w", encoding="ascii", errors="replace", newline=mct.newline) as fo:
+    with open(prefix + ".mct", "w", encoding=out_enc, newline=mct.newline) as fo:
         fo.write(mct.text(hdr))
     with open(prefix + "_report.csv", "w", newline="", encoding="utf-8-sig") as fo:
         wr = csv.writer(fo)
@@ -460,7 +541,7 @@ def run_mct(path, roles, prefix):
             Lu = unstressed(r["L"], r["T"], r["EA"])
             wr.writerow([r["group"], r["elem"], r["role"], fmt(r["L"]), fmt(r["Lh"]),
                          fmt(r["T"]), fmt(r["T"] * r["Lh"] / r["L"]), fmt(r["EA"]),
-                         fmt(Lu), f"{Lu / r['L']:.8f}"])
+                         fmt_lu(r["L"], r["T"], r["EA"]), f"{Lu / r['L']:.8f}"])
     with open(prefix + "_tie_eq.csv", "w", newline="", encoding="utf-8-sig") as fo:
         wr = csv.writer(fo)
         wr.writerow(["Node", "Load Case", "FX", "FY", "FZ", "MX", "MY", "MZ"])

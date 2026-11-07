@@ -264,7 +264,7 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 - 清單語法 `to`/`by` 不分大小寫、`*GROUP` 支援 `\` 續行;`saddles` 兩節點順序不拘;`hanger_loads` 鍵不是吊索上端時警告;`_tie_eq.csv` 同一橋面節點合併成一列
 - 力密度法或主纜索多邊形用完迭代仍未收斂時報錯、不輸出 .mct;群組分段或含閉環時報錯;幾何差報表依 `*UNIT` 換算成 mm
 - 只處理鉛直吊索與型式 A 耐風系統:傾斜吊索、只有繫索沒有耐風索(型式 B 直線支索)、`Horizontal` 遇鉛直吊索時一律報錯而不輸出
-- 純 Python 標準函式庫;30 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+- 純 Python 標準函式庫;37 項測試 `python3 -m unittest tools/test_cable_pretension.py`
 
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。
