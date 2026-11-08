@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>線形建模器 — 線形表轉 midas Civil 幾何</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%20-7%2044%2044'%3E%3Cpath%20d='M4%205C11%205%2013%2025%2022%2025s11%20-20%2018%20-20'%20fill='none'%20stroke='%230f62fe'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%20-7%2044%2044'%3E%3Cpath%20d='M4%205C11%205%2013%2025%2022%2025s11%20-20%2018%20-20'%20fill='none'%20stroke='%231E7F86'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root{
-    --paper:#f4f5f7; --ink:#161a20; --ink-2:#525a66; --ink-3:#868e9a;
-    --line:#d5d9e0; --line-2:#e6e9ee; --panel:#fff;
-    --accent:#0f62fe; --accent-soft:#e7f0ff;
-    --ok:#198038; --warn:#8a6116; --err:#da1e28;
+    --paper:#F3F4F6; --ink:#151C24; --ink-2:#4B5563; --ink-3:#6B7280;
+    --line:#DCE0E5; --line-2:#E8EBEF; --panel:#fff;
+    --brand:#1F3A5F;   /* 書稿 navy：標題 */
+    --accent:#1E7F86; --accent-soft:#E3F1F2; --accent-h:#17666C;   /* 書稿 teal */
+    --hl:#C2502A;   /* 書稿 accent：圖上強調（滑鼠所指群組） */
+    --ok:#1E7A44; --warn:#9A5E10; --err:#B03A2E;
     --mono:"Cascadia Mono","Consolas","SF Mono",ui-monospace,monospace;
   }
   *{box-sizing:border-box}
@@ -24,7 +26,7 @@
 
   header{display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel)}
-  header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em}
+  header h1{font-size:15px; margin:0; font-weight:650; letter-spacing:.02em; color:var(--brand)}
   /* 標誌就是「線」的圖示上下顛倒 —— 一條垂下來的線,三個節點 */
   /* 標誌:只有那條線,排在標題文字裡當一個字,對齊就交給行內排版 */
   header h1 .logo{color:var(--accent); vertical-align:-3px; margin-right:5px}
@@ -132,7 +134,7 @@
   #tree .it.msel{background:#eef4ff; color:var(--accent); box-shadow:inset 2px 0 0 #8ab0ff}
   #tree .it.err{color:var(--err)}
   /* 圖上掃到這一組(和 3D 視圖裡的打亮同一個藍) */
-  #tree .it.hot{background:#e8f0ff; box-shadow:inset 2px 0 0 #0f62fe}
+  #tree .it.hot{background:var(--accent-soft); box-shadow:inset 2px 0 0 var(--accent)}
   #tree .it.hot .meta{display:inline}
   #tree .it .sw{width:8px; height:8px; border-radius:2px; flex:0 0 auto}
   #tree .it .sw.off{background:#c9cfd8 !important}
@@ -160,6 +162,13 @@
   .addmenu .mcards button:hover{border-color:var(--accent); background:#fff; color:var(--accent)}
   .addmenu .mcards .mn{font-size:12.5px; font-weight:600}
   .addmenu .mcards .mh2{font-size:10px; color:var(--ink-3); line-height:1.35}
+  .arprev{margin-top:9px; padding:6px 9px; border-radius:3px; background:var(--accent-soft); color:var(--ink); font-size:12px}
+  .xchk td{padding:3px 6px; vertical-align:top} .xchk td.ic{width:18px; font-weight:800}
+  .xchk tr.ok td.ic{color:var(--ok)} .xchk tr.warn td.ic{color:var(--warn)} .xchk tr.err td.ic{color:var(--err)} .xchk tr.err td{color:var(--err)}
+  .addmenu .mcards .mt{font-size:10px; color:var(--accent); font-weight:600; letter-spacing:.04em}
+  .addmenu .mcards button:disabled{opacity:.45; cursor:default}
+  .addmenu{width:min(420px, calc(100vw - 16px))}
+  .use-tag{font-size:9.5px; color:var(--brand); background:#e8edf3; border-radius:3px; padding:0 4px; margin-left:4px; font-weight:600; white-space:nowrap}
   .addmenu .mcards button:hover .mh2{color:var(--accent)}
 
   /* ---- 面板 ---- */
@@ -247,7 +256,7 @@
     background:#fff; color:var(--ink); cursor:pointer}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
   .btn.p{background:var(--accent); border-color:var(--accent); color:#fff}
-  .btn.p:hover{background:#0043ce; color:#fff}
+  .btn.p:hover{background:var(--accent-h); color:#fff}
   .btn.d:hover{border-color:var(--err); color:var(--err)}
   /* 啟用 / 停用:狀態直接寫在按鈕上,不用再去看小方框 */
   .btn.tog{padding-left:22px; position:relative}
@@ -264,7 +273,7 @@
   .tgl:hover{border-color:var(--accent); color:var(--accent)}
   .tgl .dot{width:9px; height:9px; border-radius:50%; border:1.5px solid currentColor; flex:0 0 auto}
   .tgl.on{background:var(--accent); border-color:var(--accent); color:#fff}
-  .tgl.on:hover{background:#0043ce; color:#fff}
+  .tgl.on:hover{background:var(--accent-h); color:#fff}
   .tgl.on .dot{background:#fff; border-color:#fff}
   /* 目前選取的節點/元素:整個區塊高亮,才看得出要在哪裡編輯 */
   .sec.hot{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
@@ -486,7 +495,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.46</span>
+  <span class="stage">群組架構 v3.47</span>
   <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -504,7 +513,7 @@
   <button id="btn-num" class="gset" title="節點與元素的編號起始、號段增量、重合節點合併">⚙ 編號設定</button>
   <button id="btn-stg" class="gset" title="施工階段表與 3D 時間軸滑桿">▤ 施工階段</button>
   <button id="btn-imp" class="gset" title="載入參數檔、貼上 .mct 文字、讀 midas 的材料與斷面名稱"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 10.2V1.8"/><path d="M5.2 7.4 8 10.2l2.8-2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯入</button>
-  <button id="btn-out" class="gset" title="單位、.mct 預覽與下載、CSV"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 1.8v8.4"/><path d="M5.2 4.6 8 1.8l2.8 2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 匯出</button>
+  <button id="btn-out" class="gset" title="匯出前檢查、單位、.mct 預覽與下載、CSV"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 1.8v8.4"/><path d="M5.2 4.6 8 1.8l2.8 2.8"/><path d="M3.4 8.8v3.9a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V8.8"/></svg> 檢查與匯出</button>
 </header>
 
 <div id="app">
@@ -1519,11 +1528,15 @@ function splitLineExt(cv, sp, ex, tag, warns){
    6. 組模型
    ========================================================================== */
 const TYPES = {
-  CURVE: { fam:"geo", name:"線",       en:"CURVE",  color:"#1c5d99", hint:"直線・圓弧・懸垂・螺旋・線形鏈" },
+  CURVE: { fam:"geo", name:"線",       en:"CURVE",  color:"#1c5d99", hint:"直線・圓弧・懸垂・螺旋・線形鏈",
+           act:"新增線形", eg:"主梁中心線、主纜、拱肋、邊梁" },
   OFFSET:{ fam:"geo", name:"偏置(舊)", en:"OFFSET", color:"#0f7c8f", legacy:true, hint:"依附另一條線橫向偏移" },
-  LINK2: { fam:"con", name:"對接",     en:"LINK2",  color:"#3f8f5f", hint:"兩排節點逐一連" },
-  LINKZ: { fam:"con", name:"垂落",     en:"LINKZ",  color:"#b3406b", hint:"垂直落到指定高程" },
-  FAN:   { fam:"con", name:"扇出",     en:"FAN",    color:"#c1673d", hint:"一點連到一段節點" },
+  LINK2: { fam:"con", name:"對接",     en:"LINK2",  color:"#3f8f5f", hint:"兩排節點逐一連",
+           act:"把兩排節點接起來", eg:"兩側邊梁間的橫梁、斜撐;一對一或交叉" },
+  LINKZ: { fam:"con", name:"垂落",     en:"LINKZ",  color:"#b3406b", hint:"垂直落到指定高程",
+           act:"從節點往下接到高程", eg:"吊索、墩柱:接到橋面或基礎高程" },
+  FAN:   { fam:"con", name:"扇出",     en:"FAN",    color:"#c1673d", hint:"一點連到一段節點",
+           act:"從一點放射連線", eg:"斜張橋鋼索:塔上一點連到一段梁節點" },
   // 反向匯入(SPEC §16.4):從 midas 的 .mct 讀回來的節點與元素。有清單、沒有參數,
   // 所以不能改半徑、不能重新分割;但可以被別的群組參照、可以整組平移旋轉鏡射複製。
   // noAdd:不出現在「+ 新增群組」選單 —— 它只能從匯入產生。
@@ -3332,7 +3345,7 @@ function mctText(){
   L.push(`${C} ${MCT_FMT.hint.NODE}`);
   MODEL.groups.forEach(r => {
     if (!r.nodes.length) return;
-    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---`);
+    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${r.g.use ? " use=" + r.g.use : ""}`);
     r.nodes.forEach(n => L.push(`${I}${n.num}, ${mlen(n.x)}, ${mlen(n.y)}, ${mlen(n.z)}`));
   });
   L.push("");
@@ -3341,7 +3354,7 @@ function mctText(){
   MCT_FMT.hint.ELEMENT.forEach(l => L.push(`${C} ${l}`));
   MODEL.groups.forEach(r => {
     if (!r.elems.length) return;
-    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---`);
+    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${r.g.use ? " use=" + r.g.use : ""}`);
     r.elems.forEach(e => L.push(I + elemLine(e)));
   });
   L.push("");
@@ -4103,6 +4116,10 @@ function groupSummary(g){
 // 清單第一行只放中文部分,英數(匯出名)放在第二行小字 —— 不再被截成「橋面中心線 …」(LAY-02)
 const nameMain = n => { const t = String(n).replace(/\s+[A-Za-z0-9_]+$/, ""); return t || n; };
 let ADD_MENU_HTML = "";
+// 設計用途:名稱與用途分開標記(降低學習成本報告第 6 頁)
+const USES = [["","(未指定)"],["deck","主梁／橋面"],["xbeam","橫梁／橫隔"],["pier","墩柱／塔柱"],["cap","帽梁"],["pile","基樁"],
+  ["cable","主纜／鋼索"],["hanger","吊索"],["arch","拱肋"],["brace","斜撐／桁架"],["other","其他"]];
+const useName = k => (USES.find(u => u[0] === k) || ["", ""])[1];
 function renderTree(){
   const rows = state.groups.map((g, i) => {
     const T = TYPES[g.type], r = MODEL.byId ? MODEL.byId.get(g.id) : null;
@@ -4112,21 +4129,29 @@ function renderTree(){
       <span class="ic${g.on === false ? " off" : ""}" style="color:${colorOfGroup(g)}" title="${
         esc(T.name + (soloPiece(g) ? "(" + PIECES[soloPiece(g)].name + ")" : ""))}">${iconFor(g)}</span>
       <span class="nm" title="${esc(g.name)}${r ? " · " + esc(r.gname) + " · " + r.nodeBase + "～" : ""}">${esc(nameMain(g.name))}${
+        g.use ? `<span class="use-tag">${esc(useName(g.use))}</span>` : ""}${
         r ? `<small class="gn">${esc(r.gname)}</small>` : ""}</span>
       <span class="meta">${esc(groupSummary(g))}</span>
       <button class="kebab" data-menu="${g.id}" title="更多(也可以直接右鍵)">⋯</button></div>`;
   }).join("");
   // 偏置已改成「對任一組做偏置複製」(組的 ⋯ / 右鍵選單),不再是一種組別;
   // 舊檔裡既有的偏置組仍照常運作,只是不給新增。
+  // 依工程動作命名(降低學習成本報告):卡片標題是「要做的事」,下面一行是原本的型別名與例子
   ADD_MENU_HTML = ["geo","con"].map(fam => {
     const items = Object.entries(TYPES).filter(([,T]) => T.fam === fam && !T.legacy && !T.noAdd);
-    return `<div class="mh">${fam === "geo" ? "畫出節點" : "連接既有節點"}</div>` +
+    return `<div class="mh">${fam === "geo" ? "畫線形(產生節點)" : "連接既有節點"}</div>` +
       `<div class="mcards" style="grid-template-columns:repeat(${items.length},minmax(0,1fr))">` +
-      items.map(([k,T]) => `<button data-new="${k}">
+      items.map(([k,T]) => `<button data-new="${k}" title="${esc(T.hint || "")}">
          <span class="ic" style="color:${T.color}">${icon(k, "big")}</span>
-         <span class="mn">${T.name}</span><span class="mh2">${esc(T.hint || "")}</span></button>`).join("") +
+         <span class="mn">${esc(T.act || T.name)}</span><span class="mt">${esc(T.name)}</span><span class="mh2">${esc(T.eg || T.hint || "")}</span></button>`).join("") +
       `</div>`;
-  }).join("");
+  }).join("") + (() => {
+    const g = state.groups.find(x => x.id === SEL), nm = g ? esc(nameMain(g.name)) : "";
+    return `<div class="mh">複製既有群組${g ? `(目前選取:${nm})` : "(先在清單選一個群組)"}</div>` +
+      `<div class="mcards" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <button data-copy="arr"${g ? "" : " disabled"}><span class="mn">沿線等距放置</span><span class="mt">沿線陣列</span><span class="mh2">橫隔板、橫繫、等距墩柱</span></button>
+        <button data-copy="off"${g ? "" : " disabled"}><span class="mn">平移、旋轉、鏡射複製</span><span class="mt">位移複製</span><span class="mh2">另一側的主纜、對稱的塔</span></button></div>`;
+  })();
   $("#treelist").innerHTML =
     `<div class="grp">群組(${state.groups.length})</div>` +
     (rows || `<div class="grp" style="font-weight:400;text-transform:none;letter-spacing:0;padding:2px 12px 8px">尚無任何群組</div>`) +
@@ -4155,6 +4180,9 @@ function openAddMenu(box){
   d.style.left = Math.min(Math.max(8, box.left), Math.max(8, window.innerWidth - w - 8)) + "px";
   d.style.top  = Math.min(box.bottom + 4, Math.max(8, window.innerHeight - h - 8)) + "px";
   d.addEventListener("click", ev => {
+    const c = ev.target.closest("[data-copy]");
+    if (c && !c.disabled){ const g = state.groups.find(x => x.id === SEL); closeAddMenu(); if (!g) return;
+      if (c.dataset.copy === "arr") openArrayDlg(g); else openOffsetDlg(g); return; }
     const b = ev.target.closest("[data-new]"); if (!b) return;
     closeAddMenu();
     snapshot("new:" + Date.now());
@@ -4586,6 +4614,7 @@ function openArrayDlg(g){
           </select></label>
         <label class="chk" style="margin-top:14px"><input type="checkbox" id="ar-turn" checked> 跟著線轉向</label></div>
       ${deepRow}
+      <div id="ar-prev" class="arprev"></div>
       <div class="hint" style="margin-top:9px">「跟著線轉向」會繞基準點轉,角度是各站切線方位角<b>減掉第一站的</b>
         —— 所以第一份維持原本的朝向,後面才跟著彎。最多 200 份。</div>
       <div class="btns">
@@ -4605,7 +4634,20 @@ function openArrayDlg(g){
     m.querySelector("#ar-count").disabled = md !== "count";
     m.querySelector("#ar-sp").disabled    = md !== "spacing";
   };
-  m.querySelector("#ar-mode").onchange = sync; sync();
+  // 套用前先看會建立幾份、幾個群組與節點(降低學習成本報告:預覽後才套用)
+  const prev = () => {
+    const box = m.querySelector("#ar-prev"), gv = id => num(m.querySelector("#" + id).value) || 0;
+    const pr = MODEL.byId.get(m.querySelector("#ar-path").value), pn = pr ? chainOf(pr) : null;
+    if (!pn || pn.length < 2){ box.innerHTML = "先選一條線當路徑。"; return; }
+    let st = [];
+    try { st = pathStations(pn, m.querySelector("#ar-mode").value, { every:gv("ar-every"), count:gv("ar-count"), spacing:gv("ar-sp") }); } catch (e){ st = []; }
+    const dsel = m.querySelector("#ar-deep"), set = dsel && dsel.value === "1" ? depChain(g) : [g];
+    const nodes = set.reduce((a, o) => { const r = MODEL.byId.get(o.id); return a + (r ? r.nodes.filter(n => n.gid === o.id).length : 0); }, 0);
+    box.innerHTML = st.length ? `將建立 <b>${st.length}</b> 份:新增 <b>${st.length * set.length}</b> 個群組、約 <b>${st.length * nodes}</b> 個節點` +
+      (st.length > 200 ? "(超過 200 份上限)" : "") : "算不出放置位置,請檢查份數或間距。";
+  };
+  m.addEventListener("input", prev); m.addEventListener("change", prev);
+  m.querySelector("#ar-mode").onchange = () => { sync(); prev(); }; sync(); prev();
   setTimeout(() => { const f = m.querySelector("#ar-path"); if (f) f.focus(); }, 0);
 
   m.querySelector("#ar-ok").onclick = () => {
@@ -5740,6 +5782,9 @@ function paneFor(g){
     `<div class="fields g3">${fld("名稱", "name", g.name, { text:true, span:2 }) +
        fld("顏色", "color", isHex(g.color) ? g.color : colorOfGroup(g),
            { colorPick:true, auto:!isHex(g.color) })}</div>
+     <div class="fields g3" style="margin-top:8px">${fld("設計用途", "use", g.use || "", { select:USES })}
+       <span class="hint" style="grid-column:span 2;margin:0">只是標記(清單上顯示、寫進 .mct 註解),不影響幾何與匯出群組名;
+       墩柱、帽梁、基樁等要給 RC 構件設計工具設計的構件,一個群組放一根。</span></div>
      <div class="hint" style="margin-top:8px">匯出的 .mct <b>一律純英數</b>(中文在 midas 匯入會變亂碼),
        所以 <code>*GROUP</code> 用的匯出群組名是 <b>${r ? esc(r.gname) : "—"}</b>。
        ${fellBack ? "目前名稱沒有可用的英數字,只能<b>用序號代替</b>;想在 midas 裡看到有意義的匯出群組名,請在名稱裡加上英數(例如「主曲線 MAIN」)。" : ""}</div>
@@ -6389,8 +6434,25 @@ function paneStages(){
          三行(<b>本工具不輸出</b>)。第一次匯進 midas 時請先確認階段有沒有正確建起來。</div>`);
 }
 
+/* 匯出前檢查(降低學習成本報告):編號、單位、衝突、互不相連等「匯出前一定要知道的事」集中在面板最上方 */
+function exportChecks(){
+  const errs = ERRS.length, warns = WARNS.filter(t => !isInfo(t));
+  const split = WARNS.find(t => t.indexOf("互不相連") >= 0);
+  const noType = state.groups.filter(g => g.on !== false && g.type !== "IMPORT" && !elemDone(g)).length;
+  const L = [
+    [errs ? "err" : "ok", "錯誤", errs ? `${errs} 項(下方訊息列),修正前匯出的模型不能用` : "無"],
+    [MODEL.clash ? "err" : "ok", "編號衝突", MODEL.clash ? `${MODEL.clash} 群(編號設定或目標模型重複)` : "無"],
+    [split ? "warn" : "ok", "模型連續性", split ? "分成多塊互不相連(見訊息)" : "全部相連"],
+    [noType ? "warn" : "ok", "元素類型", noType ? `${noType} 個群組尚未設定類型／材料／斷面(匯出後要在 midas 補)` : "全部已設定"],
+    [warns.length ? "warn" : "ok", "警告", warns.length ? `${warns.length} 項` : "無"],
+    ["ok", "規模", `${MODEL.groups.length} 群組、${MODEL.tot.n} 節點、${MODEL.tot.e} 元素、匯出群組名 ${MODEL.names.length} 個`],
+    ["ok", "單位", `${UF()}, ${UL()}(不換算,寫進 *UNIT)`]];
+  const ic = { ok:"✓", warn:"⚠", err:"✕" }, bad = L.some(x => x[0] === "err");
+  return SEC("匯出前檢查", bad ? "有錯誤" : L.some(x => x[0] === "warn") ? "有提醒" : "可以匯出",
+    `<table class="t xchk"><tbody>${L.map(([st, k, v]) => `<tr class="${st}"><td class="ic">${ic[st]}</td><td>${k}</td><td>${esc(v)}</td></tr>`).join("")}</tbody></table>`);
+}
 function paneOutput(){
-  return `<div class="ptitle"><span class="nm">匯出</span><span class="fam geo">全域</span></div>` +
+  return `<div class="ptitle"><span class="nm">檢查與匯出</span><span class="fam geo">全域</span></div>` + exportChecks() +
     SEC("單位", `目前 <b>${esc(UF())}, ${esc(UL())}</b>`,
       `<div class="hint" style="margin:0">單位在<b>最上方標題列</b>設定。
         <b>輸入什麼單位,就算什麼單位</b> —— 畫面、CSV、檢核、匯出的 .mct 座標全部是同一組數字,
@@ -8097,7 +8159,7 @@ function draw(){
     const rr = MODEL.byId.get(hoverE.gid);
     if (rr){
       ctx.save();
-      ctx.strokeStyle = "#0f62fe";
+      ctx.strokeStyle = "#C2502A";
       ctx.lineWidth = 4; ctx.globalAlpha = .38; ctx.lineCap = "round";
       rr.elems.forEach(e2 => { const a2 = toS(e2.a), b2 = toS(e2.b);
         ctx.beginPath(); ctx.moveTo(a2.x,a2.y); ctx.lineTo(b2.x,b2.y); ctx.stroke(); });
@@ -8116,7 +8178,7 @@ function draw(){
     const rr = MODEL.byId.get(hoverGid);
     if (rr){
       ctx.save();
-      ctx.strokeStyle = "#0f62fe"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.strokeStyle = "#C2502A"; ctx.lineCap = "round"; ctx.lineJoin = "round";
       ctx.lineWidth = 4.5; ctx.globalAlpha = .3;
       ctx.beginPath();
       rr.elems.forEach(e2 => { const a2 = toS(e2.a), b2 = toS(e2.b);
@@ -8125,7 +8187,7 @@ function draw(){
       // 連接族(對接 / 垂落 / 扇出)自己不產生節點,打亮時就借用兩端的既有節點
       const pts = rr.nodes.length ? rr.nodes
                 : rr.elems.flatMap(e2 => [e2.a, e2.b]);
-      ctx.fillStyle = "#0f62fe"; ctx.globalAlpha = .32;
+      ctx.fillStyle = "#C2502A"; ctx.globalAlpha = .32;
       const rr2 = Math.min(4.5, Math.max(2.2, nodeRad(pts.length, true) + 1.6));
       pts.forEach(n => { const s2 = toS(n);
         ctx.beginPath(); ctx.arc(s2.x, s2.y, rr2, 0, 7); ctx.fill(); });
@@ -8136,7 +8198,7 @@ function draw(){
     if (he){                                          // 指著的那一根:濃一層
       ctx.save();
       const a2 = toS(he.a), b2 = toS(he.b);
-      ctx.strokeStyle = "#0f62fe"; ctx.lineWidth = 5; ctx.globalAlpha = .45;
+      ctx.strokeStyle = "#C2502A"; ctx.lineWidth = 5; ctx.globalAlpha = .45;
       ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
       ctx.restore();
@@ -11492,6 +11554,32 @@ function runTests(){
   yes("P4","*GROUP 群組名為 ASCII",
     OUTF.md.names.every(n => /^[A-Za-z0-9_]+$/.test(n)), OUTF.md.names.join(" "), "全為英數底線");
   MODEL = sv.MODEL; state = sv.state;
+
+  /* ---- v3.47:工程動作命名、複製既有群組、檢查與匯出、設計用途(降低學習成本報告) ---- */
+  {
+    const svU = { M:MODEL, s:state, sel:SEL };
+    yes("U1","新增選單的卡片以工程動作命名,原型別名留在下一行",
+      ["CURVE","LINK2","LINKZ","FAN"].every(k => TYPES[k].act && ADD_MENU_HTML.indexOf(TYPES[k].act) >= 0 && ADD_MENU_HTML.indexOf(TYPES[k].name) >= 0),
+      ["CURVE","LINK2","LINKZ","FAN"].map(k => TYPES[k].act).join("、"), "四個動作名稱與原名都在選單裡");
+    yes("U1","型別名稱不變(預設群組名、舊檔沿用)", defaultGroup("LINKZ", 2).name === "垂落2", defaultGroup("LINKZ", 2).name, "垂落2");
+    state = newState(); normState(state);
+    state.groups = [{ ...defaultGroup("CURVE", 1), name:"主梁 DECK", use:"deck" }];
+    recompute(true); SEL = state.groups[0].id; renderTree();
+    yes("U2","有選取群組時「複製既有群組」可用,並點名選取的群組",
+      ADD_MENU_HTML.indexOf("目前選取:主梁") >= 0 && ADD_MENU_HTML.indexOf('data-copy="arr" disabled') < 0, "可用", "可用");
+    SEL = null; renderTree();
+    yes("U2","沒有選取時「複製既有群組」停用並提示先選群組",
+      ADD_MENU_HTML.indexOf("先在清單選一個群組") >= 0 && ADD_MENU_HTML.indexOf('data-copy="arr" disabled') >= 0, "停用", "停用");
+    const xc = exportChecks();
+    yes("U3","檢查與匯出:最上方列出錯誤、編號衝突、連續性、元素類型、規模與單位",
+      ["錯誤","編號衝突","模型連續性","元素類型","規模","單位"].every(k => xc.indexOf(k) >= 0), "六項都在", "六項都在");
+    yes("U3","檢查與匯出:未設定元素類型時提醒(不擋匯出)", xc.indexOf("尚未設定類型") >= 0 || elemDone(state.groups[0]), "有提醒", "有提醒");
+    yes("U4","設計用途寫成 .mct 註解(ASCII 代號),不影響群組名", mctText().indexOf("use=deck") >= 0 &&
+      ![...mctText()].some(c => c.charCodeAt(0) > 126), "use=deck", "use=deck");
+    state.groups[0].use = ""; recompute(true);
+    yes("U4","沒有設定用途時 .mct 不多出註解", mctText().indexOf("use=") < 0, "無", "無");
+    MODEL = svU.M; state = svU.s; SEL = svU.sel;
+  }
 
   renderTests(rows);
   return rows;
