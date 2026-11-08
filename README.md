@@ -294,6 +294,10 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
   若斷面寬 B、高 H 與 midas 局部 y、z 相反,在 RC 構件設計工具勾「x/y 對調」。
 - **midas 裡指定斷面、材料後,從 midas 匯出完整的 `.mct`**(含 `*SECTION`、`*MATERIAL`、`*THICKNESS`)給 RC 構件設計工具,
   它才讀得到斷面尺寸與版厚;在 midas 裡新增或改過的群組也一併帶過去。本工具輸出的 `.mct` 只有幾何與群組。
+- **多人共用時的檔名**:本工具另存的線形檔用 `{案號}_線形_{nn}.mct`(參數內嵌,可再開啟),放在專案資料夾 `01_線形與建模/`;
+  發給設計者的完整模型與內力表用 `{案號}_模型_R{nn}.mct`、`{案號}_BeamForce_R{nn}.txt`,放 `02_分析發行/R{nn}/`——
+  檔名會印在 RC 構件設計工具計算書的「內力來源」,看計算書就知道用哪一版分析。
+  資料夾範本、專案狀態表與流程見 [rc-member-designer/docs/TEAM_FOLDER.md](https://github.com/justin121710/rc-member-designer/blob/main/docs/TEAM_FOLDER.md)。
 
 ## 幾個要知道的事
 
