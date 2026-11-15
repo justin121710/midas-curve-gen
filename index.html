@@ -249,6 +249,7 @@
   .ibtn.on{background:var(--accent); border-color:var(--accent); color:#fff}
   .hintbar{display:flex; flex-direction:column; align-items:flex-start; gap:0}
   .hintbar > .ibtn{margin:7px 0 0}
+  .dlg h3 > .ibtn{margin:0 0 0 8px; vertical-align:middle}
   .hint:empty{display:none}   /* 唯讀的即時結果行沒內容時不佔位(syncRO 只換 innerHTML,不能靠 style 切換) */
   .hint b{color:var(--ink-2)}
 
@@ -495,8 +496,8 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">群組架構 v3.47</span>
-  <span class="note">線形表 → midas Civil 幾何 · X=東 · Y=北 · Z=高程</span>
+  <span class="stage">v3.48</span>
+  <span class="note">X 東 · Y 北 · Z 高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
     <select id="u-force" title="力的單位(寫進 .mct 的 *UNIT)"></select>
@@ -3228,6 +3229,7 @@ const MCT_FMT = {
            "iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iN5, iN6, iN7, iN8     ; Solid  Element",
          ],
          GROUP:"NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE",
+         SKEW:"iNODE, iMETHOD, ANGLE_X, ANGLE_Y, ANGLE_Z",
          STAGE:[
            "NAME=NAME, DURATION, bSAVESTAGE, bSAVESTEP",
            "STEP=DAY1, DAY2, ...",
@@ -3292,6 +3294,35 @@ function elemLine(e){
   return `${base}, 0`;
 }
 
+/* 支承節點的節點局部座標(Node Local Axis,*SKEW;預設關閉)。
+   自由端與刻意不合併的節點對 = 要設支承的位置。取接在該節點(節點對取兩點)上、水平投影最長的元素,
+   其平面方向角 θ 當作繞 Z 軸的旋轉角:局部 x 沿線形切線、局部 y 沿徑向,支承的 Dx／Dy 就是順橋向／橫橋向。
+   θ 化到 (−90°, 90°];θ = 0(與整體 X 平行)或找不到水平元素(塔柱)的不輸出。
+   *SKEW 的 iMETHOD 寫法(ANGLE)尚待實機樣本核對。 */
+function skewList(){
+  const pos = new Map(), adj = new Map();
+  MODEL.groups.forEach(r => {
+    r.nodes.forEach(n => pos.set(n.num, n));
+    r.elems.forEach(e => [e.i, e.j].forEach(k => { if (!adj.has(k)) adj.set(k, []); adj.get(k).push(e); }));
+  });
+  const best = nums => {
+    let ang = null, lh = 0;
+    nums.forEach(k => (adj.get(k) || []).forEach(e => {
+      const a = pos.get(e.i), b = pos.get(e.j); if (!a || !b) return;
+      const dx = b.x - a.x, dy = b.y - a.y, h = Math.hypot(dx, dy), l = Math.hypot(h, b.z - a.z);
+      if (h > lh && l > 0 && h / l > 0.1){ lh = h; ang = Math.atan2(dy, dx) * 180 / Math.PI; }
+    }));
+    if (ang === null) return null;
+    while (ang > 90) ang -= 180;
+    while (ang <= -90) ang += 180;
+    return Math.abs(ang) < 1e-6 ? null : +ang.toFixed(4);
+  };
+  const out = new Map();
+  (MODEL.free || []).forEach(f => { const a = best([f.n.num]); if (a !== null) out.set(f.n.num, a); });
+  (MODEL.kept || []).forEach(([p, q]) => { const a = best([p.num, q.num]);
+    if (a !== null){ out.set(p.num, a); out.set(q.num, a); } });
+  return [...out].sort((x, y) => x[0] - y[0]).map(([num, ang]) => ({ num, ang }));
+}
 const freeGrpName = gn => "N_" + (gn.indexOf(MODEL.prefix) === 0 ? gn.slice(MODEL.prefix.length) : gn) + "_END";
 function groupMembers(){
   const m = new Map();
@@ -3384,7 +3415,16 @@ function mctText(){
   }
   L.push("");
 
-
+  if (state.out.skew){
+    const sk = skewList();
+    if (sk.length){
+      L.push("*SKEW");
+      L.push(`${C} ${MCT_FMT.hint.SKEW}`);
+      L.push(`${C} supports: local x = alignment tangent (rotation about Z)`);
+      sk.forEach(o => L.push(`${I}${o.num}, ANGLE, 0, 0, ${mnum(o.ang)}`));
+      L.push("");
+    }
+  }
 
   /* 施工階段(SPEC §16.10)。欄位依 midas 官方手冊的 *STAGE 定義:
        NAME=NAME, DURATION, bSAVESTAGE, bSAVESTEP
@@ -3583,7 +3623,7 @@ const DEF_STATE = () => ({
   weld:{ on:true, tol:0 },       // 合併座標重合的節點(只留編號最小的那個)
 
   // stage:*STAGE 每個階段都一樣的那兩個欄位(逐階段填只是噪音,集中在一處設定)
-  out:{ dxf:DXF_DEF(), stage:{ on:true, save:true, step:false }, freeGrp:false },
+  out:{ dxf:DXF_DEF(), stage:{ on:true, save:true, step:false }, freeGrp:false, skew:false },
   // 施工階段表(SPEC §16.5 層二):一列一個階段,啟用哪些結構群組。
   // 目前只驅動 3D 視圖的時間軸滑桿 —— *STAGE 的實機格式還沒拿到樣本(§16.10)。
   stages:[],                      // [{ name, days, on:[群組名…] }]
@@ -4593,7 +4633,7 @@ function openArrayDlg(g){
       </select></label></div>` : "";
   m.innerHTML = `<div class="dlg" style="width:min(560px, calc(100vw - 32px))">
       <h3>沿線陣列「${esc(g.name)}」</h3>
-      <div class="sub">把這個群組沿<b>另一條線</b>複製好幾份,每一份落在線上的一個位置。
+      <div class="hint">把這個群組沿<b>另一條線</b>複製好幾份,每一份落在線上的一個位置。
         橫隔板、橫繫、等距的墩柱都是這樣鋪出來的。</div>
       <div class="fields g3">
         <label class="f" style="grid-column:span 2"><span>沿哪一條線</span>
@@ -4696,7 +4736,6 @@ function openPasteDlg(){
   m.className = "mask";
   m.innerHTML = `<div class="dlg" style="width:min(620px, calc(100vw - 32px))">
       <h3>貼上文字匯入</h3>
-      <div class="sub">把 midas 匯出的 .mct、或本工具的參數 JSON 整段貼進來就好,不必先存成檔案。</div>
       <textarea id="pi-txt" rows="12" placeholder="在這裡貼上 .mct 或 JSON 的全文…"
         style="font-family:var(--mono); font-size:11.5px; width:100%"></textarea>
       <div class="hint">文字裡若含本工具的參數檔頭,就直接還原整個模型。
@@ -4749,7 +4788,7 @@ function openOffsetDlg(gsOrG){
       ${esc(upNames.join("、"))} 上,原群組一改形狀複本就跟著變,複本自己只有偏移量能調。</div>` : "";
   m.innerHTML = `<div class="dlg">
       <h3>位移複製${many ? `這 ${gs.length} 個群組` : `「${esc(g.name)}」`}</h3>
-      <div class="sub">${many
+      <div class="hint">${many
         ? `<b>${esc(gs.map(o => o.name).join("、"))}</b> 會被當成一套一起複製 —— 它們之間互相的參照會改指到複本。`
         : `產生一個<b>同型別、內容完全相同</b>的新群組(${esc(TYPES[g.type].name)}),`}
         再整個群組平移 / 旋轉。<b>只有平移(旋轉角與鏡射都留白)時,位移會直接寫進複本的座標欄位</b>
@@ -4871,7 +4910,7 @@ function openLinkFreeDlg(g){
     <input type="number" step="1"${min !== undefined ? ` min="${min}"` : ""} id="${id}" value="${v}"></label>`;
   m.innerHTML = `<div class="dlg" style="width:min(600px, calc(100vw - 32px))">
       <h3>自訂連接方式「${esc(g.name)}」</h3>
-      <div class="sub">先決定<b>一個樣式單元怎麼連</b> —— 點上排一顆、再點下排一顆就連成一條,
+      <div class="hint">先決定<b>一個樣式單元怎麼連</b> —— 點上排一顆、再點下排一顆就連成一條,
         點同一條可以取消。畫好的單元會沿兩個群組的節點<b>一路重複</b>下去。</div>
       <div class="btns" style="justify-content:flex-start; margin:0 0 11px">
         <button class="btn" id="lf-pick">改用在 3D 視圖上點兩個節點…</button></div>
@@ -4889,7 +4928,7 @@ function openLinkFreeDlg(g){
         <button class="btn" id="lf-cancel">取消</button>
         <button class="btn p" id="lf-ok">套用</button></div>
     </div>`;
-  document.body.appendChild(m);
+  document.body.appendChild(m); foldHints(m, "dlg");
 
   const q = id => m.querySelector("#" + id);
   const gv = (id, d) => { const n = Math.round(num(q(id).value)); return Number.isFinite(n) ? n : d; };
@@ -5130,7 +5169,7 @@ function openXfDlg(g){
   m.className = "mask";
   m.innerHTML = `<div class="dlg" style="width:min(560px, calc(100vw - 32px))">
       <h3>平移與旋轉「${esc(g.name)}」(整個群組)</h3>
-      <div class="sub">只動<b>這個群組自己的節點</b>(含手動新增的),做<b>剛體變換</b>,編號不受影響。
+      <div class="hint">只動<b>這個群組自己的節點</b>(含手動新增的),做<b>剛體變換</b>,編號不受影響。
         旋轉角<b>逆時針為正</b>(俯視)。依附這個群組的連接群組會<b>跟著移動</b>。
         ${TYPES[g.type].fam === "con"
           ? "這是連接族,元素另一端在別的群組不會跟著動,所以<b>元素長度會改變</b>。"
@@ -5147,7 +5186,7 @@ function openXfDlg(g){
         <button class="btn" id="xfd-cancel">取消</button>
         <button class="btn p" id="xfd-ok">完成</button></div>
     </div>`;
-  document.body.appendChild(m);
+  document.body.appendChild(m); foldHints(m, "dlg");
   const paint = () => { m.querySelector("#xfd-body").innerHTML =
     xfFields("xf.", { ...XF_DEF(), ...(g.xf || {}) }, "group"); };
   paint();
@@ -6325,7 +6364,7 @@ function openStagePick(i){
   };
   m.innerHTML = `<div class="dlg" style="width:min(520px, calc(100vw - 32px))">
       <h3>第 ${i+1} 階段「${esc(s.name)}」啟用哪些結構群組</h3>
-      <div class="sub">勾起來就是這一階段要啟用的。<b>已經被別的階段收走的會標出來</b> ——
+      <div class="hint">勾起來就是這一階段要啟用的。<b>已經被別的階段收走的會標出來</b> ——
         同一組排在兩個階段通常是錯的。</div>
       <div class="btns" style="margin-bottom:8px">
         <button class="btn" id="sp-free">只勾還沒排入的</button>
@@ -6334,7 +6373,7 @@ function openStagePick(i){
       <div class="btns"><button class="btn" id="sp-cancel">取消</button>
         <button class="btn p" id="sp-ok">確定</button></div>
     </div>`;
-  document.body.appendChild(m);
+  document.body.appendChild(m); foldHints(m, "dlg");
   const close = () => { m.remove(); window.removeEventListener("keydown", esckey); };
   const esckey = ev => { if (ev.key === "Escape") close(); };
   window.addEventListener("keydown", esckey);
@@ -6453,42 +6492,29 @@ function exportChecks(){
 }
 function paneOutput(){
   return `<div class="ptitle"><span class="nm">檢查與匯出</span><span class="fam geo">全域</span></div>` + exportChecks() +
-    SEC("單位", `目前 <b>${esc(UF())}, ${esc(UL())}</b>`,
-      `<div class="hint" style="margin:0">單位在<b>最上方標題列</b>設定。
-        <b>輸入什麼單位,就算什麼單位</b> —— 畫面、CSV、檢核、匯出的 .mct 座標全部是同一組數字,
-        中間<b>不做任何換算</b>;.mct 開頭的 <code>*UNIT</code> 就寫這裡選的單位。
-        在標題列改單位時,會問要不要把既有數值一起換算(幾何大小不變)。</div>`) +
+    SEC("下載", "", `<div class="btns">
+      <button class="btn p" data-op="mct" title="*UNIT ${UF()}, ${UL()}(不換算)">下載 .mct</button>
+      <button class="btn" data-op="mctcopy">複製 MCT</button>
+      <button class="btn" data-op="csvn">節點 CSV</button>
+      <button class="btn" data-op="csve">元素 CSV</button>
+      <button class="btn" data-op="dxf">DXF</button>
+      <button class="btn" data-op="json">參數 JSON</button>
+      <button class="btn" data-op="roles" title="tools/cable_pretension.py 的角色設定檔,依群組關係預填">roles.json</button></div>
+      <div class="fields g3" style="margin-top:9px">${
+        fld("MCT:自由端節點群組", "out.freeGrp", !!state.out.freeGrp, { check:true }) +
+        fld("MCT:支承節點局部座標", "out.skew", !!state.out.skew, { check:true }) +
+        fld("DXF:節點", "out.dxf.pts", !!state.out.dxf.pts, { check:true }) +
+        fld("DXF:節點編號", "out.dxf.ntxt", !!state.out.dxf.ntxt, { check:true }) +
+        fld("DXF:元素編號", "out.dxf.etxt", !!state.out.dxf.etxt, { check:true })}</div>
+      <div class="hint">.mct 寫進 <code>*UNIT</code> 的就是標題列的單位,座標<b>不換算</b>;檔頭嵌了完整參數,拖回本頁即可還原。
+        <b>自由端節點群組</b>:每個群組的自由端寫成只有節點的 <code>*GROUP</code>(例如 <code>N_TOWER_W_END</code>),在 midas 以群組選取節點設邊界。
+        <b>支承節點局部座標</b>:自由端與節點對寫成 <code>*SKEW</code>,局部 x 沿線形切線(繞 Z 旋轉),曲線橋的支承方向不必逐點設定;與整體 X 平行的不輸出。
+        CSV 含 UTF-8 BOM;DXF 為 R12 ASCII,圖層 = 匯出群組名,要 .dwg 在 CAD 另存。</div>`) +
     SEC("3D 視角", "", `<div class="fields g3">${
       fld("方位角 (°)", "view.az", state.view.az) +
       fld("仰角 (°)", "view.el", state.view.el) +
       fld("Z 放大倍率", "view.zEx", state.view.zEx)}</div>
-      <div class="hint">畫布右上角的<b>九宮格</b>可直接跳到俯視 / 四個側向立面 / 四個 45° 斜視。
-        滑鼠操作與 midas Civil 相同:<b>中鍵拖曳平移</b>、<b>Ctrl+中鍵旋轉</b>、<b>Shift+中鍵縮放</b>、
-        滾輪縮放;<b>左鍵只做點選</b>,不會不小心把畫面拖走。
-        仰角 <b>90° = 俯視</b>(北上、東右),<b>0° = 立面</b>;方位角是<b>螢幕橫軸</b>的方位,
-        相機所在的方位 = 方位角 + 90°。</div>`) +
-    SEC("下載", `單位 ${UF()}, ${UL()}`, `<div class="btns">
-      <button class="btn p" data-op="mct" title="寫進 *UNIT 的單位:${UF()}, ${UL()}(不換算)">下載 .mct(${UF()}, ${UL()})</button>
-      <button class="btn" data-op="mctcopy">複製 MCT 文字</button>
-      <button class="btn" data-op="csvn">節點 CSV</button>
-      <button class="btn" data-op="csve">元素 CSV</button>
-      <button class="btn" data-op="dxf">CAD 圖 .dxf</button>
-      <button class="btn" data-op="json">參數 JSON</button>
-      <button class="btn" data-op="roles" title="tools/cable_pretension.py 用的角色設定檔,依群組關係預填">初張力角色設定檔範本</button></div>
-      <div class="fields g3" style="margin-top:9px">${
-        fld("DXF:輸出節點", "out.dxf.pts", !!state.out.dxf.pts, { check:true }) +
-        fld("DXF:節點編號", "out.dxf.ntxt", !!state.out.dxf.ntxt, { check:true }) +
-        fld("DXF:元素編號", "out.dxf.etxt", !!state.out.dxf.etxt, { check:true })}</div>
-      <div class="fields g3" style="margin-top:6px">${
-        fld("MCT:自由端節點群組", "out.freeGrp", !!state.out.freeGrp, { check:true })}
-        <span class="hint" style="grid-column:span 2;margin:0">每個群組的自由端寫成一個只有節點的 <code>*GROUP</code>(例如
-        <code>N_CABLE_L_END</code>),在 midas 裡以群組選取節點設邊界(元素清單留空的寫法尚待實機樣本核對)。</span></div>
-      <div class="hint">CSV 含 UTF-8 BOM,可直接用 Excel 開啟,長度欄位標題會標上目前單位。
-        <b>.mct 檔頭嵌了完整參數(含單位),拖回本頁面即可還原重編。</b><br>
-        <b>DXF</b> 是 R12 ASCII:每根元素一條 3D 線、每個節點一個點,<b>圖層 = 匯出群組名</b>,
-        顏色對到最接近的 ACI 索引色。<b>.dwg 是封閉的二進位格式,純前端寫不出來</b> ——
-        AutoCAD / BricsCAD / Civil 3D / Rhino 都直接讀 DXF,要 .dwg 在 CAD 裡另存即可。
-        編號文字各自放在 <code>NODE_NO</code> / <code>ELEM_NO</code> 圖層,預設不輸出。</div>`) +
+      <div class="hint">九宮格可跳到俯視、立面與斜視;中鍵拖曳平移、Ctrl+中鍵旋轉、Shift+中鍵縮放、滾輪縮放。</div>`) +
     `<details class="adv" open><summary>MCT 預覽</summary><div><pre id="mctprev" style="font-family:var(--mono);font-size:11px;line-height:1.45;margin:0;background:#fbfaf7;border:1px solid var(--line);border-radius:6px;padding:9px 11px;max-height:300px;overflow:auto;white-space:pre;color:var(--ink-2)"></pre></div></details>`;
 }
 
@@ -6563,6 +6589,9 @@ function foldHints(root, keyBase){
     wrap.className = "hintbar";
     head.parentNode.insertBefore(wrap, head);
     run.forEach(h => wrap.appendChild(h));
+    // 對話框標題下的第一段說明:i 直接放在標題旁,不另佔一行
+    const ttl = wrap.previousElementSibling;
+    if (ttl && ttl.tagName === "H3"){ attach(wrap, ttl, "free" + i); return; }
     attach(wrap, wrap, "free" + i);
     wrap.insertBefore(wrap.lastElementChild, head);
   });
@@ -7665,7 +7694,7 @@ function renderMsgs(){
        ${nw ? `<span class="c w">⚠ ${nw} 個警告</span>` : ""}
        ${ni ? `<span class="c i">ℹ ${ni} 則資訊</span>` : ""}
        <span class="sp"></span>
-       <span class="sub">${open ? "點一下收起來" : "有新的訊息會自己展開"}</span></button>` +
+       </button>` +
     (open ? `<div class="msglist">` + all.map(m =>
       `<div class="msg ${m.err ? "err" : m.info ? "info" : "warn"}">${m.err ? "✕" : m.info ? "ℹ" : "⚠"}${
         fresh.has(msgKey(m.t)) ? ` <b class="nw"><span>新</span></b>` : ""
@@ -10965,6 +10994,23 @@ function runTests(){
     state.out.freeGrp = true; MODEL = buildModel(state, [], []);
     const gl = mctText().split(/\r?\n/).find(l => /^\s*N_TOWER_W_END,/.test(l));
     yes("W7","自由端節點群組:N_TOWER_W_END = 塔底兩點", /N_TOWER_W_END, 23007 23014, , 0/.test(gl || ""), gl, "N_TOWER_W_END, 23007 23014, , 0");
+    // v3.48:支承節點局部座標(*SKEW),預設關閉時輸出不變
+    yes("W7","*SKEW 預設不輸出", !state.out.skew && mctText().indexOf("*SKEW") < 0, String(!!state.out.skew), "false");
+    {
+      const st0 = state, md0 = MODEL;
+      state = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"S", name:"斜線 SK", pieces:[
+        { ...defaultPiece("LINE"), sRef:"", x1:0, y1:0, z1:0, endMode:"point", x2:10, y2:10, z2:0 }] }] });
+      state.out.skew = true; MODEL = buildModel(state, [], []);
+      const sk = skewList(), tx = mctText().split(/\r?\n/);
+      const i0 = tx.indexOf("*SKEW"), rows = i0 < 0 ? [] : tx.slice(i0 + 1).filter(l => /^\s*\d+,/.test(l)).slice(0, sk.length);
+      yes("W7","*SKEW:斜 45° 直線的兩個自由端都轉 45°", sk.length === 2 && sk.every(o => o.ang === 45) &&
+        rows.length === 2 && rows.every(l => /, ANGLE, 0, 0, 45$/.test(l)), rows.join(" | "), "n, ANGLE, 0, 0, 45 ×2");
+      state.groups[0].pieces[0].x2 = -10; MODEL = buildModel(state, [], []);
+      yes("W7","*SKEW:角度化到 (−90°, 90°]", skewList().every(o => o.ang === -45), skewList().map(o => o.ang).join(), "-45");
+      state.groups[0].pieces[0].x2 = 10; state.groups[0].pieces[0].y2 = 0; MODEL = buildModel(state, [], []);
+      yes("W7","*SKEW:與 X 平行時不輸出", skewList().length === 0 && mctText().indexOf("*SKEW") < 0, skewList().length, 0);
+      state = st0; MODEL = md0;
+    }
     state = sv.st; MODEL = sv.md;
     // UX-01
     const w = []; buildModel(normState(demoSuspension()), [], w);
