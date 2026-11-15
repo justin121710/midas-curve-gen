@@ -387,5 +387,74 @@ class T10_FullReview(unittest.TestCase):
         self.assertIn("不屬於角色設定檔", log)
 
 
+class T20_FormFindingGroups(unittest.TestCase):
+    def test_compress_list(self):
+        self.assertEqual(cp.compress_list([5, 1, 2, 3, 7, 8, 10]), "1to3 5 7 8 10")
+        self.assertEqual(cp.expand_list(cp.compress_list([4, 5, 6, 9])), [4, 5, 6, 9])
+
+    def test_default_has_no_ff_groups(self):
+        cfg, m, rep, ties, d, log = run()
+        self.assertNotIn("FF_", open(os.path.join(d, "out.mct"), encoding="ascii").read())
+
+    def test_ff_groups(self):
+        cfg, m, rep, ties, d, log = run({"ff_groups": True})
+        m2 = cp.Mct(open(os.path.join(d, "out.mct"), encoding="ascii").read())
+        for g in ("FF_UPDATE", "FF_SAG", "FF_MAIN", "FF_HANGER", "FF_GIRDER"):
+            self.assertIn(g, m2.groups)
+        upd = set(m2.groups["FF_UPDATE"]["nodes"])
+        for n in (15001, 15039, 15004, 15036, 16001, 16039, 16004, 16036):   # 錨碇端與塔頂索鞍不更新
+            self.assertNotIn(n, upd)
+        self.assertEqual(sorted(m2.groups["FF_SAG"]["nodes"]), [15020, 16020])
+        self.assertTrue(set(m2.groups["FF_SAG"]["nodes"]) <= upd)          # 垂度點在更新群組內
+        self.assertEqual(len(m2.groups["FF_HANGER"]["elems"]), 62)
+        self.assertEqual(len(m2.groups["FF_GIRDER"]["nodes"]), 62)
+
+    def test_ff_group_name_clash(self):
+        mct = cp.Mct(open(MCT, encoding="ascii").read())
+        with self.assertRaises(ValueError):
+            mct.add_group("G_DECK", nodes=[1])
+
+
+class T21_EmptyCable(unittest.TestCase):
+    def test_catenary_roundtrip(self):
+        for H, V, w, EA, Lu in ((1000.0, 300.0, 10.0, 1e6, 80.0), (50.0, -20.0, 2.0, 1e5, 30.0)):
+            dx, dz = cp.cat_point(H, V, w, EA, Lu)
+            H2, V2 = cp.solve_cat(dx, dz, w, EA, Lu)
+            self.assertAlmostEqual(H2 / H, 1.0, places=8)
+            self.assertAlmostEqual(V2, V, delta=1e-6 * H)
+
+    def test_catenary_inextensible_limit(self):
+        # EA 很大時回到懸鏈線：對稱、跨 L、垂度 f 的懸鏈線 H 與手算一致
+        L, w, H = 100.0, 1.0, 200.0
+        f = (H / w) * (math.cosh(w * L / (2 * H)) - 1)
+        S = 2 * (H / w) * math.sinh(w * L / (2 * H))
+        H2, V2 = cp.solve_cat(L, 0.0, w, 1e15, S)
+        self.assertAlmostEqual(H2, H, places=5)
+        self.assertAlmostEqual(V2, w * S / 2, places=5)
+        x, z = cp.cat_point(H2, V2, w, 1e15, S / 2)
+        self.assertAlmostEqual(-z, f, places=5)
+
+    def test_empty_state(self):
+        cfg, m, rep, ties, d, log = run({"empty_cable": True})
+        import csv as _csv
+        rows = list(_csv.DictReader(open(os.path.join(d, "out_empty.csv"), encoding="utf-8-sig")))
+        self.assertEqual(len(rows), 2 * 2 * 39)                       # 兩條主纜 × 兩種索鞍條件 × 39 節點
+        fx = {(r["group"], r["saddle"], int(r["node"])): r for r in rows}
+        for g, a, b in (("G_CABLE_L", 15001, 15039), ("G_CABLE_R", 16001, 16039)):
+            for st in ("fixed", "free"):                              # 錨碇不動
+                self.assertEqual(float(fx[(g, st, a)]["dz_mm"]), 0.0)
+                self.assertEqual(float(fx[(g, st, b)]["dz_mm"]), 0.0)
+        self.assertGreater(float(fx[("G_CABLE_L", "fixed", 15020)]["dz_mm"]), 0)   # 空纜比成橋高
+        s1, s2 = fx[("G_CABLE_L", "free", 15004)], fx[("G_CABLE_L", "free", 15036)]
+        self.assertAlmostEqual(float(s1["dx_mm"]), -float(s2["dx_mm"]), places=1)   # 對稱：兩索鞍反向等量
+        self.assertLess(float(s1["dx_mm"]), 0)                         # 往錨碇側偏
+        self.assertIn("理論預偏量", log)
+
+    def test_empty_needs_self_weight(self):
+        with self.assertRaises(ValueError):
+            run({"empty_cable": True, "loads": {"deck_per_len": 300, "band": 20, "w_main": 0,
+                                                 "w_hang": 2, "w_wind": 6}})
+
+
 if __name__ == "__main__":
     unittest.main()

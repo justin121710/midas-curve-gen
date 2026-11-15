@@ -87,6 +87,18 @@ def expand_list(text):
     return out
 
 
+def compress_list(ids):
+    """節點／元素編號串寫成 midas 清單語法（連號以 to 表示）"""
+    ids, out, i = sorted(set(ids)), [], 0
+    while i < len(ids):
+        j = i
+        while j + 1 < len(ids) and ids[j + 1] == ids[j] + 1:
+            j += 1
+        out.append(f"{ids[i]}to{ids[j]}" if j > i + 1 else " ".join(str(v) for v in ids[i:j + 1]))
+        i = j + 1
+    return " ".join(out)
+
+
 class Mct:
     """只解析本程式需要的四個區塊；其餘行原樣保留，寫回時不動。"""
 
@@ -144,9 +156,29 @@ class Mct:
         self.nodes[n] = list(xyz)
         self.lines[self.node_line[n]] = "   " + ", ".join([str(n)] + [fmt(c) for c in xyz])
 
+    def add_group(self, name, nodes=(), elems=()):
+        """追加一個 *GROUP 列（寫出時才插入，不改動 self.lines 的行號）"""
+        if name in self.groups:
+            raise ValueError(f"MCT 已有群組 {name}，無法再加入同名的找形群組；請先改名或刪除")
+        self.groups[name] = {"nodes": sorted(set(nodes)), "elems": sorted(set(elems))}
+        self.extra_groups = getattr(self, "extra_groups", []) + [name]
+
     def text(self, header=()):
         """header 插在 *UNIT 之前（不改動 self.lines，節點與元素的行號才不會跑掉）"""
         out = list(self.lines)
+        extra = ["   " + ", ".join([g, compress_list(self.groups[g]["nodes"]),
+                                    compress_list(self.groups[g]["elems"]), "0"])
+                 for g in getattr(self, "extra_groups", [])]
+        if extra:                                    # 接在既有 *GROUP 區塊末尾；沒有就在 *ENDDATA 前新增
+            k = next((i for i, s in enumerate(out) if s.strip().upper().startswith("*GROUP")), None)
+            if k is None:
+                k = next((i for i, s in enumerate(out) if s.strip().upper().startswith("*ENDDATA")), len(out))
+                out[k:k] = ["*GROUP", "; NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE"] + extra
+            else:
+                e = next((i for i in range(k + 1, len(out)) if out[i].strip().startswith("*")), len(out))
+                while e > k + 1 and not out[e - 1].strip():
+                    e -= 1
+                out[e:e] = extra
         k = next((i for i, s in enumerate(out) if s.strip().upper().startswith("*UNIT")), 0)
         out[k:k] = list(header)
         return "\n".join(out) + "\n"
@@ -453,7 +485,154 @@ def main_system(mct, cfg, ties, rep, gname):
         rep.append(dict(group=g, elem=e, role="hanger", L=L, Lh=hlen(dv), T=Nh[n],
                         EA=cfg["EA"]["hanger"], ptie=ptie[n]))
     return dict(H=H, f=f, span=span, dz=dz0, n_hang=len(hang), ptie=sum(ptie.values()),
-                Wtot=sum(Q.values()))
+                Wtot=sum(Q.values()), ns=ns, el=el, s1=s1, s2=s2, km=km, hang=hang, ax=ax)
+
+
+# ---------------------------------------------------------------- 找形群組（選用）
+def add_ff_groups(mct, cfg, res):
+    """Suspension Bridge Analysis Control（找形）需要的群組：
+    FF_UPDATE 主纜要更新座標的節點（排除錨碇端點與塔頂索鞍節點，含垂度點）、FF_SAG 各主纜的跨中垂度點、
+    FF_MAIN 主纜元素（指定定值水平力時用）、FF_HANGER 吊索元素、FF_GIRDER 吊索下端（橋面）節點"""
+    upd, sag, main_e, hang_e, girder = [], [], [], [], []
+    for r in res.values():
+        ns, s1, s2 = r["ns"], r["s1"], r["s2"]
+        fixed = {ns[0], ns[-1], ns[s1], ns[s2]}
+        upd += [n for n in ns if n not in fixed]
+        sag.append(ns[r["km"]])
+        main_e += r["el"]
+        for n, (e, d) in r["hang"].items():
+            hang_e.append(e); girder.append(d)
+    mct.add_group("FF_UPDATE", nodes=upd)
+    mct.add_group("FF_SAG", nodes=sag)
+    mct.add_group("FF_MAIN", elems=main_e)
+    mct.add_group("FF_HANGER", elems=hang_e)
+    mct.add_group("FF_GIRDER", nodes=girder)
+    print(f"找形群組：FF_UPDATE {len(set(upd))} 節點、FF_SAG {len(sag)} 節點、FF_MAIN {len(main_e)} 元素、"
+          f"FF_HANGER {len(hang_e)} 元素、FF_GIRDER {len(girder)} 節點（Girder／Hanger 群組在所用版本"
+          "要的是節點或元素，請在對話框確認）")
+
+
+# ---------------------------------------------------------------- 空纜狀態（選用）
+def cat_point(H, V, w, EA, s):
+    """彈性懸鏈線（Irvine）：起點受支承力水平 H、向上 V，單位無應力長度重 w；
+    回傳無應力弧長 s 處相對起點的水平距離 x 與高差 z（向上為正）"""
+    t0, t1 = math.hypot(H, V), math.hypot(H, w * s - V)
+    x = H * s / EA + (H / w) * (math.asinh((w * s - V) / H) - math.asinh(-V / H))
+    z = (w * s * s / 2 - V * s) / EA + (t1 - t0) / w
+    return x, z
+
+
+def solve_cat(dx, dz, w, EA, Lu):
+    """兩端固定、總無應力長 Lu 的彈性懸鏈線：求 H、V 使終點落在 (dx, dz)"""
+    if not (dx > 0 and w > 0 and Lu > 0):
+        raise ValueError(f"空纜計算的輸入不合理：水平距離 {dx}、單位重 {w}、無應力長 {Lu}")
+    ch = math.hypot(dx, dz)
+    f = math.sqrt(max(3 * dx * (Lu - ch) / 8, (0.01 * dx) ** 2)) if Lu > ch else 0.01 * dx
+    H = w * Lu * dx / (8 * f)
+    V = H * (4 * f / dx - dz / dx) + 0.0
+    for it in range(200):
+        x, z = cat_point(H, V, w, EA, Lu)
+        r = (x - dx, z - dz)
+        if abs(r[0]) + abs(r[1]) < 1e-11 * max(1.0, ch):
+            return H, V
+        eh, ev = 1e-7 * H, 1e-7 * max(abs(V), H)
+        xh, zh = cat_point(H + eh, V, w, EA, Lu)
+        xv, zv = cat_point(H, V + ev, w, EA, Lu)
+        a, b, c, d = (xh - x) / eh, (xv - x) / ev, (zh - z) / eh, (zv - z) / ev
+        det = a * d - b * c
+        dH, dV = (-r[0] * d + r[1] * b) / det, (r[0] * c - r[1] * a) / det
+        lam = 1.0
+        while H + lam * dH <= 0:
+            lam /= 2
+        H, V = H + lam * dH, V + lam * dV
+    raise ValueError("空纜：彈性懸鏈線 200 次未收斂")
+
+
+def empty_cable(mct, cfg, rep, res, prefix):
+    """主纜只受自重（吊索、加勁梁尚未安裝）時的平衡形狀。各段（錨碇–索鞍、索鞍–索鞍、索鞍–錨碇）
+    以成橋算得的 Lu 總和視為一條彈性懸鏈線；錨碇固定。兩種情形：
+    (1) 索鞍固定在塔頂（塔不動）：回報兩側水平力差，即塔頂要承受的不平衡力；
+    (2) 索鞍沿橋軸自由滑動（塔頂無水平勁度）：求兩側水平力相等時的索鞍位移，即理論預偏量。"""
+    w, EA = cfg["loads"].get("w_main", 0.0), cfg["EA"]["main"]
+    if w <= 0:
+        raise ValueError("空纜計算需要 loads.w_main（主纜自重）> 0")
+    lu = {r["elem"]: unstressed(r["L"], r["T"], r["EA"]) for r in rep if r["role"] in ("main", "backstay")}
+    rows = []
+    to_mm = {"M": 1000.0, "CM": 10.0, "MM": 1.0, "FT": 304.8, "IN": 25.4}.get(mct.unit[1].upper(), 1.0)
+
+    def seg_state(ns, el, a, b, PA, PB):
+        """節點串 ns[a..b]，元素 el[a..b-1]，兩端座標 PA、PB；回傳 H（沿該段平面方向）、節點座標"""
+        L = sum(lu[e] for e in el[a:b])
+        u = sub(PB, PA); dx = hlen(u); uh = [u[0] / dx, u[1] / dx]
+        H, V = solve_cat(dx, PB[2] - PA[2], w, EA, L)
+        pos, sacc = {}, 0.0
+        for k in range(a, b + 1):
+            x, z = cat_point(H, V, w, EA, sacc)
+            pos[ns[k]] = [PA[0] + x * uh[0], PA[1] + x * uh[1], PA[2] + z]
+            if k < b:
+                sacc += lu[el[k]]
+        return H, uh, pos
+
+    for g, r in res.items():
+        ns, el, s1, s2, ax = r["ns"], r["el"], r["s1"], r["s2"], r["ax"]
+        P = {n: list(mct.nodes[n]) for n in ns}
+        segs = [(a, b) for a, b in ((0, s1), (s1, s2), (s2, len(ns) - 1)) if b > a]
+
+        def solve_all(d1, d2):
+            Q = dict(P)
+            Q[ns[s1]] = add(P[ns[s1]], [ax[0] * d1, ax[1] * d1, 0.0])
+            Q[ns[s2]] = add(P[ns[s2]], [ax[0] * d2, ax[1] * d2, 0.0])
+            Hs, pos = {}, {}
+            for a, b in segs:
+                H, uh, pp = seg_state(ns, el, a, b, Q[ns[a]], Q[ns[b]])
+                Hs[(a, b)] = H * abs(uh[0] * ax[0] + uh[1] * ax[1])   # 沿橋軸的水平分量
+                pos.update(pp)
+            return Hs, pos
+
+        Hs, pos = solve_all(0.0, 0.0)
+        Hm = Hs[(s1, s2)]
+        dHl = Hm - Hs[(0, s1)] if (0, s1) in Hs else 0.0
+        dHr = Hm - Hs[(s2, len(ns) - 1)] if (s2, len(ns) - 1) in Hs else 0.0
+        km = r["km"]
+        rise = (pos[ns[km]][2] - mct.nodes[ns[km]][2]) * to_mm
+        print(f"{g} 空纜（索鞍固定）：主跨 H = {Hm:.3f}（成橋 {r['H']:.3f}），跨中比成橋高 {rise:.1f} mm；"
+              f"塔頂不平衡水平力 左 {dHl:.3f}、右 {dHr:.3f}（主跨側為正）")
+        for n in ns:
+            rows.append([g, "fixed", n] + [fmt(c) for c in pos[n]]
+                        + [f"{(pos[n][c] - mct.nodes[n][c]) * to_mm:.1f}" for c in range(3)])
+        # 索鞍自由滑動：求 d1、d2 使兩側沿橋軸水平力相等
+        free = [(0, s1) in Hs, (s2, len(ns) - 1) in Hs]
+        d = [0.0, 0.0]
+        def resid(d1, d2):
+            H2, _ = solve_all(d1, d2)
+            m = H2[(s1, s2)]
+            return [(m - H2[(0, s1)]) if free[0] else d1, (m - H2[(s2, len(ns) - 1)]) if free[1] else d2]
+        for it in range(60):
+            f0 = resid(*d)
+            if max(abs(v) for v in f0) < 1e-9 * Hm:
+                break
+            h = 1e-6 * r["span"]
+            J = []
+            for j in range(2):
+                dd = list(d); dd[j] += h
+                f1 = resid(*dd)
+                J.append([(f1[i] - f0[i]) / h for i in range(2)])
+            a, b, c, e_ = J[0][0], J[1][0], J[0][1], J[1][1]
+            det = a * e_ - b * c
+            d = [d[0] - (f0[0] * e_ - f0[1] * b) / det, d[1] - (a * f0[1] - c * f0[0]) / det]
+        else:
+            raise ValueError(f"{g}：索鞍預偏 60 次未收斂")
+        Hs2, pos2 = solve_all(*d)
+        print(f"{g} 空纜（索鞍自由滑動）：H = {Hs2[(s1, s2)]:.3f}；理論預偏量 索鞍 {ns[s1]} {d[0] * to_mm:.1f} mm、"
+              f"索鞍 {ns[s2]} {d[1] * to_mm:.1f} mm（沿橋軸、由 {ns[s1]} 往 {ns[s2]} 為正）")
+        for n in ns:
+            rows.append([g, "free", n] + [fmt(c) for c in pos2[n]]
+                        + [f"{(pos2[n][c] - mct.nodes[n][c]) * to_mm:.1f}" for c in range(3)])
+    with open(prefix + "_empty.csv", "w", newline="", encoding="utf-8-sig") as fo:
+        wr = csv.writer(fo)
+        wr.writerow(["group", "saddle", "node", "x", "y", "z", "dx_mm", "dy_mm", "dz_mm"])
+        wr.writerows(rows)
+    print(f"已輸出 {prefix}_empty.csv（只計主纜自重 w_main；索夾、吊索尚未安裝；塔視為剛體）")
 
 
 def read_text(path):
@@ -467,7 +646,7 @@ def read_text(path):
     raise ValueError(f"{path} 不是 UTF-8 或 cp950 編碼，無法保證原樣寫回；請由 midas 重新匯出")
 
 
-def run_mct(path, roles, prefix):
+def run_mct(path, roles, prefix, ff_groups=False, empty=False):
     text, enc = read_text(path)
     mct = Mct(text)
     with open(roles, encoding="utf-8") as fi:
@@ -487,8 +666,10 @@ def run_mct(path, roles, prefix):
               f"繫索方向與耐風索節點合力的最大夾角 {mis:.2f}°")
         if mis > 2.0:
             print("  ! 夾角大於 2°：耐風索的幾何與繫索方向不一致，繫索張力不可靠")
+    res = {}
     for g in cfg["main"]:
         r = main_system(mct, cfg, ties, rep, g)
+        res[g] = r
         to_mm = {"M": 1000.0, "CM": 10.0, "MM": 1.0, "FT": 304.8, "IN": 25.4}.get(mct.unit[1].upper())
         if to_mm is None:
             raise ValueError(f"不認得的長度單位 {mct.unit[1]}（可用 M、CM、MM、FT、IN）")
@@ -513,6 +694,8 @@ def run_mct(path, roles, prefix):
     if left:                                          # 沒有角色的纜索留著原本的 EXVAL，不會填入初張力
         print(f"  ! {len(left)} 根 TENSTR 元素不屬於角色設定檔的任何群組（例如 {left[:5]}），"
               "EXVAL 原樣保留、沒有填入初張力；若是控索等另成群組的纜索，請在 midas 另行輸入")
+    if ff_groups or cfg.get("ff_groups"):
+        add_ff_groups(mct, cfg, res)
     for row in rep:
         if kind == "Lu":
             v = fmt_lu(row["L"], row["T"], row["EA"])
@@ -554,6 +737,8 @@ def run_mct(path, roles, prefix):
             fx, fy, fz = tot[n]
             wr.writerow([n, "TIE_EQ", fmt(fx), fmt(fy), fmt(fz), 0, 0, 0])
     print(f"已輸出 {prefix}.mct、{prefix}_report.csv、{prefix}_tie_eq.csv")
+    if empty or cfg.get("empty_cable"):
+        empty_cable(mct, cfg, rep, res, prefix)
     return mct, rep, ties
 
 
@@ -622,4 +807,4 @@ if __name__ == "__main__":
         run_demo()
     else:
         pre = a[a.index("-o") + 1] if "-o" in a else a[0].rsplit(".", 1)[0] + "_tensioned"
-        run_mct(a[0], a[1], pre)
+        run_mct(a[0], a[1], pre, ff_groups="--ff-groups" in a, empty="--empty" in a)

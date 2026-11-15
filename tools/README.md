@@ -49,6 +49,8 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned
 | `tie_T` + `fix_wind` | 給定繫索張力並設 `fix_wind: true` 時,以**力密度法**重算耐風索節點,使耐風索成為這組繫索的索多邊形 |
 | `fix_main_z` | `true` 時把主纜主跨節點移到索多邊形上(依吊索載重的等值梁比擬),否則只回報差值 |
 | `output_kind` | `Lu`(`EXVAL2 = 3`)、`Pretension`(`= 1`)、`Horizontal`(`= 2`) |
+| `ff_groups` | `true` 時另寫出找形群組(同命令列 `--ff-groups`,見下文) |
+| `empty_cable` | `true` 時另算空纜狀態(同命令列 `--empty`,見下文) |
 
 **單位一律沿用 `.mct` 的 `*UNIT`,不換算** —— 工具預設是 `KGF`、`M`,載重與 $EA$ 要用同一組單位填。
 
@@ -66,6 +68,35 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned
    等值簡支梁比擬 $H f = M_0(L/2)$ 求 $H$,索多邊形 $z(x) = z_c(x) - M_0(x)/H$。
 3. **張力與 $L_u$**:主纜與控索 $T = H L/L_h$(塔頂水平力平衡),吊索 $T = N_h$,$L_u = L/(1 + T/EA)$。
 
+## 選用輸出:找形群組與空纜狀態
+
+```bash
+python3 cable_pretension.py model.mct roles.json -o model_tensioned --ff-groups --empty
+```
+
+**找形群組(`--ff-groups`)**:midas 的 Suspension Bridge Analysis Control 需要的群組,接在 `*GROUP` 區塊末尾
+(書稿第 34 章「建立找形需要的群組」;《midas Civil 應用工程實例》實例 15～17 的流程):
+
+| 群組 | 內容 |
+|---|---|
+| `FF_UPDATE` | 主纜要更新座標的節點:排除錨碇端點與塔頂索鞍節點(否則塔頂會被移動),跨中垂度點**包含**在內 |
+| `FF_SAG` | 每條主纜主跨的跨中垂度點(3D 兩條主纜即兩個) |
+| `FF_MAIN` | 主纜與控索元素(指定定值水平力時用) |
+| `FF_HANGER`、`FF_GIRDER` | 吊索元素、吊索下端(橋面)節點,供「加勁梁垂直位移條件」使用;所用版本要的是節點或元素群組,在對話框確認 |
+
+同名群組已存在時報錯。用 midas 找形時,纜索的 `EXVAL` 是初值,找形會改寫它;可用來交叉核對本程式的 $H$ 與 $L_u$。
+
+**空纜狀態(`--empty`)**:吊索與加勁梁還沒掛上時,主纜只受自重。程式把每一段(錨碇–索鞍、索鞍–索鞍、索鞍–錨碇)
+各元素在成橋狀態算得的 $L_u$ 加總,視為一條兩端固定的**彈性懸鏈線**(Irvine;單位重 `loads.w_main`、`EA.main`),
+再依累積無應力弧長放回各節點。輸出 `<prefix>_empty.csv`(每個節點的座標與相對成橋的位移,mm),兩種情形:
+
+- `fixed`:索鞍固定在塔頂、塔視為剛體。主跨張力大幅下降,控索幾乎不變,終端印出塔頂要承受的**不平衡水平力**。
+- `free`:索鞍沿橋軸自由滑動(塔頂沒有水平勁度),求兩側沿橋軸水平力相等時的索鞍位移,即**理論預偏量**。
+
+實際的塔有勁度,真實狀態介於兩者之間;要精確就在 midas 以 $L_u$ 正裝(書稿第 37 章)。拋物線近似不能用來算空纜線形與預偏量
+(實例 17:預偏量拋物線 0.101 m、多段懸鏈線 0.257 m)。內建範例:空纜主跨 $H$ = 1049 kgf(成橋 29052),
+索鞍固定時跨中比成橋高約 289 mm、塔頂不平衡力約 28012 kgf;索鞍自由時兩側各往錨碇偏 93.8 mm。
+
 ## 和 midas 的分工
 
 這支程式給的是**手算等級的平衡初值**:吊索垂直、橋面恆載依分擔長度分配(未計連續梁效應)、
@@ -82,7 +113,7 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned
 python3 -m unittest tools/test_cable_pretension.py -v
 ```
 
-37 項:參數式例題的 $H$ 與第 1 版一致、清單語法、每根纜索都有填值且欄位數為 10、$L_u < L$、
+45 項:參數式例題的 $H$ 與第 1 版一致、清單語法、每根纜索都有填值且欄位數為 10、$L_u < L$、
 主纜水平分量處處相同、修正後每個吊點的垂直平衡、輸出可重新解析、
 幾何不一致時有警告、力密度法收斂到 `tie_T`、繫索橫向分力兩側抵消、不相容的 `tie_T` 會報錯,
 以及書稿各輪審查的反例(項目清單見書稿附錄 B「測試」)。

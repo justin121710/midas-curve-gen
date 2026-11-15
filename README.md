@@ -268,7 +268,12 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 - 清單語法 `to`/`by` 不分大小寫、`*GROUP` 支援 `\` 續行;`saddles` 兩節點順序不拘;`hanger_loads` 鍵不是吊索上端時警告;`_tie_eq.csv` 同一橋面節點合併成一列
 - 力密度法或主纜索多邊形用完迭代仍未收斂時報錯、不輸出 .mct;群組分段或含閉環時報錯;幾何差報表依 `*UNIT` 換算成 mm
 - 只處理鉛直吊索與型式 A 耐風系統:傾斜吊索、只有繫索沒有耐風索(型式 B 直線支索)、`Horizontal` 遇鉛直吊索時一律報錯而不輸出
-- 純 Python 標準函式庫;37 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+- 選用 `--ff-groups`(或角色設定檔 `"ff_groups": true`):另寫出 midas 懸索橋找形(Suspension Bridge Analysis Control)用的群組
+  `FF_UPDATE`(要更新的主纜節點,排除錨碇端點與塔頂索鞍,含垂度點)、`FF_SAG`(各主纜跨中垂度點)、`FF_MAIN`、`FF_HANGER`、`FF_GIRDER`
+- 選用 `--empty`(或 `"empty_cable": true`):以成橋的 `Lu` 計算**空纜狀態**(只計主纜自重,彈性懸鏈線),輸出 `_empty.csv`;
+  分「索鞍固定」(回報塔頂不平衡水平力)與「索鞍自由滑動」(求兩側水平力相等時的索鞍位移=理論預偏量)兩種
+- 兩個選項都不加時,輸出與以前逐位元組相同
+- 純 Python 標準函式庫;45 項測試 `python3 -m unittest tools/test_cable_pretension.py`
 
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。
