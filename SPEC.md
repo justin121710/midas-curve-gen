@@ -2077,7 +2077,8 @@ P_global = R·(P_local − P1) + Q1
 | `*UNIT` 的 HEAT/TEMPER | `KJ, C` | 低 |
 | **`*ELEMENT` PLATE 的 `iSUB`、`iWID`**(v3.49) | `iSUB` 1 = 厚版、2 = 薄版,`iWID` = 0,三角形 `iN4` = 0 | 中 —— 依手冊簡表與 RC 工具測試檔 |
 | **`*RIGIDLINK`**(v3.49) | `M-NODE, DOF, S-NODE LIST, GROUP`(DOF 6 位 0/1) | 中 |
-| **`*ELASTICLINK`**(v3.49) | `iLINK, N1, N2, GEN, ANGLE, SDx…SRz, NO, 0.5, 0.5, GROUP`(RIGID 無勁度、TENS/COMP 只有 SDx) | **高 —— iLINK 欄與 bSHEAR/DRy/DRz 的位置未見樣本** |
+| **`*ELASTICLINK`**(v3.50) | `iLINK, N1, N2, GEN, ANGLE, NO×6, SDx…SRz, NO, 0.5, 0.5, GROUP`(RIGID 無勁度、TENS/COMP 只有 SDx) | 中 —— 欄位依 2022 手冊 MCT Command Update(Civil 2020 v3.1 起有 iNO 與 R_SDx…R_SRz),仍未見實機匯出樣本 |
+| **`*LOCALAXIS`**(v3.50,原 `*SKEW`) | `節點, 1, 0, 0, θ`(iMETHOD = 1 角度) | 中 —— 依 2022 手冊 MCT Command List 與 Quick Reference;未見實機匯出樣本 |
 | **`*BNDR-GROUP`**(v3.49) | 每列一個名稱 | 低(手冊簡表) |
 
 > v3.5 把「輸入即輸出、全程不換算」定成唯一規則後,§9.1 原本「EXVAL 不換算」的例外已經沒有特殊地位——**現在所有數值都不換算**,EXVAL 只是恰好也遵守這條規則。使用者自己要留意:EXVAL2 選 Lu 時,EXVAL 這個數字要用目前標題列選定的長度單位去填,選 Pretension/Horizontal 時則要用目前選定的力單位去填,程式不會替你換算或提醒。
@@ -3378,3 +3379,15 @@ Pretension 或 Lu;而且「懸垂」段是理想拋物線 / 懸鏈線,不是實�
 - 順帶修正:分割模式「弦線偏差容差」配「平均分配」時少算最後一格(長 10、最大間距 5 只切出 1 根),三個範例都不用這個模式,輸出不變。
 
 **驗收測試**:880 項全部通過(W8 版面與連結、W9 橫坡、W10 DXF 匯入);三個範例的 .mct 與 DXF 資料列與 v3.48 逐字相同。
+
+## 16.27 MCT 格式依 Civil 2022 線上手冊修正(v3.50)
+
+來源:midas Civil 線上手冊 9.1.0(版次對照:手冊 9.0.0 新增 CS454 鋼合成梁評估、9.1.0 新增「含縱向加勁肋」,與 Civil 2022 v1.1 → v1.2 的 Release Note 一致)
+`Start/14_Appendix/MCT_Command_List.htm`、`MCT_File_Quick_Reference.htm`、`MCT_Command_Update.htm`。
+
+- **節點局部座標**:2022 的 MCT 指令清單只有 `LOCALAXIS`(Node Local Axis),沒有 `SKEW`。格式 `NODE_LIST, iMETHOD, ANGLE-x, ANGLE-y, ANGLE-z`,`iMETHOD` 為數字(1 = Angle、2 = 3 Points、3 = Vector),
+  角度依序繞整體 X、旋轉後的 y、z。改寫成 `*LOCALAXIS` 與 `節點, 1, 0, 0, θ`(只繞 Z)。
+- **`*ELASTICLINK`**:Command Update(Civil 2020 v3.1)的格式為 `iNO, iNODE1, iNODE2, LINK, ANGLE, R_SDx, R_SDy, R_SDz, R_SRx, R_SRy, R_SRz, SDx … SRz, bSHEAR, DRy, DRz, GROUP`(GEN),
+  `R_S*` 是各自由度的「剛性」旗標(API 的 ELNK 也有同名 `R_S` 六個旗標)。GEN 列補 6 個 NO;RIGID、TENS/COMP 的欄位與手冊相同,不動。
+- 兩項都是預設關閉的選用輸出,三個範例的 .mct 逐字不變;驗收測試 W7(3 項)、W8(1 項)改用新格式,總數 880 不變。
+

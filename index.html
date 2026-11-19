@@ -496,7 +496,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">v3.49</span>
+  <span class="stage">v3.50</span>
   <span class="note">X 東 · Y 北 · Z 高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -3403,11 +3403,11 @@ const MCT_FMT = {
            "iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iN5, iN6, iN7, iN8     ; Solid  Element",
          ],
          GROUP:"NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE",
-         SKEW:"iNODE, iMETHOD, ANGLE_X, ANGLE_Y, ANGLE_Z",
+         LOCALAXIS:"NODE_LIST, iMETHOD, ANGLE-x, ANGLE-y, ANGLE-z ; iMETHOD=1 (Angle)",
          BNDR:"NAME",
          RIGIDLINK:"M-NODE, DOF, S-NODE LIST, GROUP",
          ELASTICLINK:[
-           "iLINK, iNODE1, iNODE2, LINK, ANGLE, SDx, SDy, SDz, SRx, SRy, SRz, bSHEAR, DRy, DRz, GROUP ; GEN",
+           "iLINK, iNODE1, iNODE2, LINK, ANGLE, R_SDx, R_SDy, R_SDz, R_SRx, R_SRy, R_SRz, SDx, SDy, SDz, SRx, SRy, SRz, bSHEAR, DRy, DRz, GROUP ; GEN",
            "iLINK, iNODE1, iNODE2, LINK, ANGLE, bSHEAR, DRy, DRz, GROUP                              ; RIGID",
            "iLINK, iNODE1, iNODE2, LINK, ANGLE, SDx, bSHEAR, DRy, DRz, GROUP                         ; TENS, COMP",
          ],
@@ -3527,7 +3527,7 @@ function linkBlocks(){
       const head = `${e.num}, ${e.i}, ${e.j}, ${kind}, ${mnum(num(e.beta) || 0)}`;
       const tail = `NO, 0.5, 0.5, ${e.bgrp}`;
       if (kind === "RIGID") out.push(`${head}, ${tail}`);
-      else if (kind === "GEN") out.push(`${head}, ${["sdx","sdy","sdz","srx","sry","srz"].map(q => mnum(num(k[q]) || 0)).join(", ")}, ${tail}`);
+      else if (kind === "GEN") out.push(`${head}, NO, NO, NO, NO, NO, NO, ${["sdx","sdy","sdz","srx","sry","srz"].map(q => mnum(num(k[q]) || 0)).join(", ")}, ${tail}`);
       else out.push(`${head}, ${mnum(num(k.sdx) || 0)}, ${tail}`);
     });
     out.push("");
@@ -3535,11 +3535,11 @@ function linkBlocks(){
   return out;
 }
 
-/* 支承節點的節點局部座標(Node Local Axis,*SKEW;預設關閉)。
+/* 支承節點的節點局部座標(Node Local Axis,*LOCALAXIS;預設關閉)。
    自由端與刻意不合併的節點對 = 要設支承的位置。取接在該節點(節點對取兩點)上、水平投影最長的元素,
    其平面方向角 θ 當作繞 Z 軸的旋轉角:局部 x 沿線形切線、局部 y 沿徑向,支承的 Dx／Dy 就是順橋向／橫橋向。
    θ 化到 (−90°, 90°];θ = 0(與整體 X 平行)或找不到水平元素(塔柱)的不輸出。
-   *SKEW 的 iMETHOD 寫法(ANGLE)尚待實機樣本核對。 */
+   v3.50 依 Civil 2022 線上手冊(9.1.0)MCT Command List 改用 *LOCALAXIS(*SKEW 不在指令清單),iMETHOD = 1(Angle)。 */
 function skewList(){
   const pos = new Map(), adj = new Map();
   MODEL.groups.forEach(r => {
@@ -3663,10 +3663,10 @@ function mctText(){
   if (state.out.skew){
     const sk = skewList();
     if (sk.length){
-      L.push("*SKEW");
-      L.push(`${C} ${MCT_FMT.hint.SKEW}`);
+      L.push("*LOCALAXIS");
+      L.push(`${C} ${MCT_FMT.hint.LOCALAXIS}`);
       L.push(`${C} supports: local x = alignment tangent (rotation about Z)`);
-      sk.forEach(o => L.push(`${I}${o.num}, ANGLE, 0, 0, ${mnum(o.ang)}`));
+      sk.forEach(o => L.push(`${I}${o.num}, 1, 0, 0, ${mnum(o.ang)}`));
       L.push("");
     }
   }
@@ -7077,7 +7077,7 @@ function paneOutput(){
         fld("DXF:元素編號", "out.dxf.etxt", !!state.out.dxf.etxt, { check:true })}</div>
       <div class="hint">.mct 寫進 <code>*UNIT</code> 的就是標題列的單位,座標<b>不換算</b>;檔頭嵌了完整參數,拖回本頁即可還原。
         <b>自由端節點群組</b>:每個群組的自由端寫成只有節點的 <code>*GROUP</code>(例如 <code>N_TOWER_W_END</code>),在 midas 以群組選取節點設邊界。
-        <b>支承節點局部座標</b>:自由端與節點對寫成 <code>*SKEW</code>,局部 x 沿線形切線(繞 Z 旋轉),曲線橋的支承方向不必逐點設定;與整體 X 平行的不輸出。
+        <b>支承節點局部座標</b>:自由端與節點對寫成 <code>*LOCALAXIS</code>,局部 x 沿線形切線(繞 Z 旋轉),曲線橋的支承方向不必逐點設定;與整體 X 平行的不輸出。
         CSV 含 UTF-8 BOM;DXF 為 R12 ASCII,圖層 = 匯出群組名,要 .dwg 在 CAD 另存。</div>
       ${(MODEL.kept || []).length && state.out.pairLink.on ? pairLinkFields() : ""}`) +
     SEC("3D 視角", "", `<div class="fields g3">${
@@ -11588,21 +11588,21 @@ function runTests(){
     state.out.freeGrp = true; MODEL = buildModel(state, [], []);
     const gl = mctText().split(/\r?\n/).find(l => /^\s*N_TOWER_W_END,/.test(l));
     yes("W7","自由端節點群組:N_TOWER_W_END = 塔底兩點", /N_TOWER_W_END, 23007 23014, , 0/.test(gl || ""), gl, "N_TOWER_W_END, 23007 23014, , 0");
-    // v3.48:支承節點局部座標(*SKEW),預設關閉時輸出不變
-    yes("W7","*SKEW 預設不輸出", !state.out.skew && mctText().indexOf("*SKEW") < 0, String(!!state.out.skew), "false");
+    // v3.48:支承節點局部座標(v3.50 起寫成 *LOCALAXIS),預設關閉時輸出不變
+    yes("W7","*LOCALAXIS 預設不輸出", !state.out.skew && mctText().indexOf("*LOCALAXIS") < 0, String(!!state.out.skew), "false");
     {
       const st0 = state, md0 = MODEL;
       state = normState({ ...DEF_STATE(), groups:[{ ...defaultGroup("CURVE"), id:"S", name:"斜線 SK", pieces:[
         { ...defaultPiece("LINE"), sRef:"", x1:0, y1:0, z1:0, endMode:"point", x2:10, y2:10, z2:0 }] }] });
       state.out.skew = true; MODEL = buildModel(state, [], []);
       const sk = skewList(), tx = mctText().split(/\r?\n/);
-      const i0 = tx.indexOf("*SKEW"), rows = i0 < 0 ? [] : tx.slice(i0 + 1).filter(l => /^\s*\d+,/.test(l)).slice(0, sk.length);
-      yes("W7","*SKEW:斜 45° 直線的兩個自由端都轉 45°", sk.length === 2 && sk.every(o => o.ang === 45) &&
-        rows.length === 2 && rows.every(l => /, ANGLE, 0, 0, 45$/.test(l)), rows.join(" | "), "n, ANGLE, 0, 0, 45 ×2");
+      const i0 = tx.indexOf("*LOCALAXIS"), rows = i0 < 0 ? [] : tx.slice(i0 + 1).filter(l => /^\s*\d+,/.test(l)).slice(0, sk.length);
+      yes("W7","*LOCALAXIS:斜 45° 直線的兩個自由端都轉 45°(iMETHOD = 1)", sk.length === 2 && sk.every(o => o.ang === 45) &&
+        rows.length === 2 && rows.every(l => /^\s*\d+, 1, 0, 0, 45$/.test(l)), rows.join(" | "), "n, 1, 0, 0, 45 ×2");
       state.groups[0].pieces[0].x2 = -10; MODEL = buildModel(state, [], []);
-      yes("W7","*SKEW:角度化到 (−90°, 90°]", skewList().every(o => o.ang === -45), skewList().map(o => o.ang).join(), "-45");
+      yes("W7","*LOCALAXIS:角度化到 (−90°, 90°]", skewList().every(o => o.ang === -45), skewList().map(o => o.ang).join(), "-45");
       state.groups[0].pieces[0].x2 = 10; state.groups[0].pieces[0].y2 = 0; MODEL = buildModel(state, [], []);
-      yes("W7","*SKEW:與 X 平行時不輸出", skewList().length === 0 && mctText().indexOf("*SKEW") < 0, skewList().length, 0);
+      yes("W7","*LOCALAXIS:與 X 平行時不輸出", skewList().length === 0 && mctText().indexOf("*LOCALAXIS") < 0, skewList().length, 0);
       state = st0; MODEL = md0;
     }
     state = sv.st; MODEL = sv.md;
@@ -12278,8 +12278,8 @@ function runTests(){
       (MODEL.free || []).length === 3 && MODEL.free.every(f => f.n.z === -2), (MODEL.free || []).length, 3);
     R = run([LN("A",0,0,10,0,2), DZ({ etype:"ELINK", link:{ kind:"GEN", sdx:100, sdy:200, sdz:300, srx:0, sry:0, srz:0 } })]);
     const el = R.tx.slice(R.tx.indexOf("*ELASTICLINK") + 1).filter(l => /^\s*\d+,/.test(l));
-    yes("W8","彈性連結 GEN:iLINK, 兩節點, GEN, ANGLE, 6 個勁度, NO, 0.5, 0.5, 邊界群組",
-      el.length === 3 && el.every(l => /^\s*\d+, \d+, \d+, GEN, 0, 100, 200, 300, 0, 0, 0, NO, 0.5, 0.5, G_BRG$/.test(l)), el[0], "…GEN, 0, 100, 200, 300, 0, 0, 0, NO, 0.5, 0.5, G_BRG");
+    yes("W8","彈性連結 GEN:iLINK, 兩節點, GEN, ANGLE, 6 個剛性旗標 NO, 6 個勁度, NO, 0.5, 0.5, 邊界群組",
+      el.length === 3 && el.every(l => /^\s*\d+, \d+, \d+, GEN, 0, NO, NO, NO, NO, NO, NO, 100, 200, 300, 0, 0, 0, NO, 0.5, 0.5, G_BRG$/.test(l)), el[0], "…GEN, 0, NO×6, 100, 200, 300, 0, 0, 0, NO, 0.5, 0.5, G_BRG");
     R = run([LN("A",0,0,10,0,2), DZ({ etype:"ELINK", link:{ kind:"RIGID" } })]);
     yes("W8","彈性連結 RIGID 不帶勁度", R.tx.filter(l => /, RIGID, /.test(l)).every(l => /, RIGID, 0, NO, 0.5, 0.5, G_BRG$/.test(l)) &&
       R.tx.filter(l => /, RIGID, /.test(l)).length === 3, R.tx.find(l => /, RIGID, /.test(l)), "…, RIGID, 0, NO, 0.5, 0.5, G_BRG");
