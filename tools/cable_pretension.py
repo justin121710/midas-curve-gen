@@ -376,8 +376,13 @@ def main_system(mct, cfg, ties, rep, gname):
     for g in cfg["hanger"]:
         for e in mct.group_elems(g):
             i, j = mct.elems[e]["i"], mct.elems[e]["j"]
-            if i in ns[s1 + 1:s2]: hang[i] = (e, j)
-            elif j in ns[s1 + 1:s2]: hang[j] = (e, i)
+            top, bot = (i, j) if i in ns[s1 + 1:s2] else (j, i) if j in ns[s1 + 1:s2] else (None, None)
+            if top is None:
+                continue
+            if top in hang:                       # 一個主纜節點只能掛一根吊索（並聯吊索的分配規則未定義）
+                raise ValueError(f"主纜節點 {top} 接了兩根以上的吊索（元素 {hang[top][0]}、{e}）："
+                                 "本程式一個吊點只處理一根吊索，請合併為一根或另行分配，未輸出 .mct")
+            hang[top] = (e, bot)
     hx = sorted((xl(mct.nodes[n]), n) for n in hang)
     # 橋面恆載的分擔長度：到前、後吊點距離各取一半；端吊點的「前一點」是塔（梁在塔處有支承，另一半由支承承受）
     trib = {}
@@ -548,7 +553,7 @@ def solve_cat(dx, dz, w, EA, Lu):
     raise ValueError("空纜：彈性懸鏈線 200 次未收斂")
 
 
-def empty_cable(mct, cfg, rep, res, prefix):
+def empty_cable(mct, cfg, rep, res):
     """主纜只受自重（吊索、加勁梁尚未安裝）時的平衡形狀。各段（錨碇–索鞍、索鞍–索鞍、索鞍–錨碇）
     以成橋算得的 Lu 總和視為一條彈性懸鏈線；錨碇固定。兩種情形：
     (1) 索鞍固定在塔頂（塔不動）：回報兩側水平力差，即塔頂要承受的不平衡力；
@@ -628,6 +633,10 @@ def empty_cable(mct, cfg, rep, res, prefix):
         for n in ns:
             rows.append([g, "free", n] + [fmt(c) for c in pos2[n]]
                         + [f"{(pos2[n][c] - mct.nodes[n][c]) * to_mm:.1f}" for c in range(3)])
+    return rows
+
+
+def write_empty(rows, prefix):
     with open(prefix + "_empty.csv", "w", newline="", encoding="utf-8-sig") as fo:
         wr = csv.writer(fo)
         wr.writerow(["group", "saddle", "node", "x", "y", "z", "dx_mm", "dy_mm", "dz_mm"])
@@ -714,6 +723,8 @@ def run_mct(path, roles, prefix, ff_groups=False, empty=False):
            "; NOTE: dropping this file back onto midas-curve-gen rebuilds the geometry",
            ";       from the parameter block; EXVAL and moved nodes are NOT kept.",
            ";"]
+    # 空纜在寫任何檔案之前先算完：失敗時不留下半套輸出
+    erows = empty_cable(mct, cfg, rep, res) if (empty or cfg.get("empty_cable")) else None
     with open(prefix + ".mct", "w", encoding=out_enc, newline=mct.newline) as fo:
         fo.write(mct.text(hdr))
     with open(prefix + "_report.csv", "w", newline="", encoding="utf-8-sig") as fo:
@@ -737,8 +748,8 @@ def run_mct(path, roles, prefix, ff_groups=False, empty=False):
             fx, fy, fz = tot[n]
             wr.writerow([n, "TIE_EQ", fmt(fx), fmt(fy), fmt(fz), 0, 0, 0])
     print(f"已輸出 {prefix}.mct、{prefix}_report.csv、{prefix}_tie_eq.csv")
-    if empty or cfg.get("empty_cable"):
-        empty_cable(mct, cfg, rep, res, prefix)
+    if erows is not None:
+        write_empty(erows, prefix)
     return mct, rep, ties
 
 

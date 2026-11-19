@@ -456,5 +456,39 @@ class T21_EmptyCable(unittest.TestCase):
                                                  "w_hang": 2, "w_wind": 6}})
 
 
+class T10_Review(unittest.TestCase):
+    """2026-11-19 書稿審查報告 APP-03：失敗時不留半套輸出、並聯吊索不可默默覆寫"""
+    def test_empty_failure_writes_nothing(self):
+        with open(ROLES, encoding="utf-8") as fi:
+            cfg = json.load(fi)
+        cfg["empty_cable"] = True
+        cfg["loads"]["w_main"] = 0
+        d = tempfile.mkdtemp()
+        rp = os.path.join(d, "roles.json")
+        with open(rp, "w", encoding="utf-8") as fo:
+            json.dump(cfg, fo, ensure_ascii=False)
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError):
+                cp.run_mct(MCT, rp, os.path.join(d, "out"))
+        self.assertEqual(sorted(f for f in os.listdir(d) if f.startswith("out")), [])
+
+    def test_parallel_hanger_rejected(self):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        line = "   17016, TENSTR, 2, 12, 15020, 2017, 0, 3, 0, 3"
+        self.assertIn(line, txt)
+        txt = txt.replace(line, line + "\n   97916, TENSTR, 2, 12, 15020, 2017, 0, 3, 0, 3", 1)
+        txt = txt.replace("   G_HANG_L, , 17001to17031, 0", "   G_HANG_L, , 17001to17031 97916, 0", 1)
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "par.mct")
+        with open(p, "w", encoding="utf-8") as fo:
+            fo.write(txt)
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError) as cm:
+                cp.run_mct(p, ROLES, os.path.join(d, "out"))
+        self.assertIn("15020", str(cm.exception))
+        self.assertFalse(os.path.exists(os.path.join(d, "out.mct")))
+
+
 if __name__ == "__main__":
     unittest.main()
