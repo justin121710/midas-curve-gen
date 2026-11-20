@@ -140,12 +140,20 @@ class Mct:
     def group_elems(self, name):
         if name not in self.groups:
             raise KeyError(f"MCT 裡沒有群組 {name}")
-        return [e for e in self.groups[name]["elems"] if e in self.elems]
+        miss = [e for e in self.groups[name]["elems"] if e not in self.elems]
+        if miss:                                     # 角色群組列了不存在的元素：可能是手改或匯出不完整
+            raise ValueError(f"群組 {name} 列了 *ELEMENT 中不存在的元素 {miss[:5]}"
+                             f"{'…' if len(miss) > 5 else ''}；請由 midas 重新匯出完整的 .mct")
+        return list(self.groups[name]["elems"])
 
     def set_exval(self, e, kind_code, value):
         f = list(self.elems[e]["f"])
         if f[1].upper() != "TENSTR":
             raise ValueError(f"元素 {e} 不是 TENSTR（{f[1]}）")
+        if len(f) < 8 or f[7] != "3":                # iSUB：1＝只拉桁架、2＝Hook、3＝Cable
+            raise ValueError(f"元素 {e} 是 TENSTR 但 iSUB＝{f[7] if len(f) > 7 else '（缺）'}，不是 Cable（3）；"
+                             "本程式只填 Cable 的 EXVAL，不會把只拉桁架或 Hook 改成纜索——"
+                             "要當纜索請先在 midas 轉成 Cable 再匯出")
         while len(f) < 10:
             f.append("0")
         f[7], f[8], f[9] = "3", value if isinstance(value, str) else fmt(value), str(kind_code)
@@ -226,8 +234,12 @@ def solve(A, b):
     """高斯消去（部分樞軸），A 為 list of list；節點數少，不需要外部套件"""
     n = len(b)
     M = [row[:] + [b[i]] for i, row in enumerate(A)]
+    tol = 1e-12 * max([abs(v) for row in A for v in row] + [1e-300])
     for c in range(n):
         p = max(range(c, n), key=lambda r: abs(M[r][c]))
+        if abs(M[p][c]) <= tol:
+            raise ValueError("力密度矩陣奇異（第 %d 個未知數的樞軸為零）：耐風索節點可能重複、孤立，"
+                             "或力密度為零；請檢查耐風索群組與 wind_H" % (c + 1))
         M[c], M[p] = M[p], M[c]
         for r in range(c + 1, n):
             k = M[r][c] / M[c][c]
@@ -244,6 +256,8 @@ def wind_form_finding(mct, cfg, ns, tie_of):
     """力密度法（force density method）：錨碇與繫索的橋面端固定，給定沿橋軸的
     張力分量 H_w 與繫索張力 tie_T，求耐風索節點的平衡位置（反覆更新力密度）"""
     Hw, tT, w_w = cfg["wind_H"], cfg["tie_T"], cfg["loads"].get("w_wind", 0.0)
+    if not (Hw > 0 and tT >= 0):
+        raise ValueError(f"fix_wind 需要 wind_H > 0、tie_T ≥ 0（目前 {Hw}、{tT}）")
     P = {n: list(mct.nodes[n]) for n in ns}
     ax = sub(P[ns[-1]], P[ns[0]]); ax = unit([ax[0], ax[1], 0.0])
     free = ns[1:-1]; idx = {n: k for k, n in enumerate(free)}
@@ -445,7 +459,12 @@ def main_system(mct, cfg, ties, rep, gname):
         zc = lambda x: P0[2] + (P1[2] - P0[2]) * x / span
         km = min(range(s1 + 1, s2), key=lambda k: abs(xs[ns[k]] - span / 2))
         f = zc(xs[ns[km]]) - mct.nodes[ns[km]][2]
-        H = M0(xs[ns[km]]) / f
+        m0 = M0(xs[ns[km]])
+        if not (f > 0 and m0 > 0 and math.isfinite(f) and math.isfinite(m0)):
+            raise ValueError(f"{gname}：跨中節點 {ns[km]} 的垂度 f = {f:.4g}、等值梁彎矩 M0 = {m0:.4g}，"
+                             "無法求 H（主纜須在兩索鞍連線下方、吊點載重向下）；請檢查節點座標、"
+                             "saddles 與 loads")
+        H = m0 / f
         dz = {n: mct.nodes[n][2] - (zc(xs[n]) - M0(xs[n]) / H) for n in ns[s1 + 1:s2]}
         if it == 0:
             dz0 = dz                     # 回報原始幾何與索多邊形的差（修正前）
@@ -645,19 +664,23 @@ def write_empty(rows, prefix):
 
 
 def read_text(path):
-    """依序以 UTF-8、cp950（繁中 Windows 的 ANSI）解碼；都不行就報錯，不默默替換字元"""
+    """依序以 UTF-8、cp950（繁中 Windows 的 ANSI）解碼；都不行就報錯，不默默替換字元。
+    回傳（文字, 編碼, 原檔換行, 是否有 BOM）：內部一律以 \\n 處理，寫回時還原換行與 BOM"""
     raw = open(path, "rb").read()
+    nl = "\r\n" if b"\r\n" in raw else "\n"           # 換行要在正規化之前判斷
+    bom = raw.startswith(b"\xef\xbb\xbf")
     for enc in ("utf-8-sig", "cp950"):
         try:
-            return raw.decode(enc).replace("\r\n", "\n").replace("\r", "\n"), enc   # 與文字模式讀檔相同的換行處理
+            return raw.decode(enc).replace("\r\n", "\n").replace("\r", "\n"), enc, nl, bom
         except UnicodeDecodeError:
             pass
     raise ValueError(f"{path} 不是 UTF-8 或 cp950 編碼，無法保證原樣寫回；請由 midas 重新匯出")
 
 
 def run_mct(path, roles, prefix, ff_groups=False, empty=False):
-    text, enc = read_text(path)
+    text, enc, nl, bom = read_text(path)
     mct = Mct(text)
+    mct.newline = nl
     with open(roles, encoding="utf-8") as fi:
         cfg = json.load(fi)
     kind = cfg.get("output_kind", "Lu")
@@ -714,7 +737,7 @@ def run_mct(path, roles, prefix, ff_groups=False, empty=False):
     # 檔頭註解用英文。原檔全為 ASCII 就以 ASCII 寫出（midas 以系統 ANSI 讀取）；
     # 原檔含中文等非 ASCII 字元（群組名、載重名稱、註解）時沿用原編碼寫回，不把它們換成 ?——
     # 換成 ? 會讓不同的中文群組名變成同名群組
-    out_enc = "ascii" if text.isascii() else enc.replace("-sig", "")
+    out_enc = "utf-8-sig" if bom else ("ascii" if text.isascii() else enc.replace("-sig", ""))
     if out_enc != "ascii":
         print(f"  ! 原檔含非 ASCII 字元，以原編碼 {out_enc} 寫回（midas 以系統 ANSI 讀取：繁中 Windows 為 cp950）")
     hdr = [";",
@@ -812,10 +835,26 @@ def run_demo():
     return H, rows
 
 
+def main(argv=None):
+    """命令列：cable_pretension.py model.mct roles.json [-o 前綴] [--ff-groups] [--empty]；
+    不給參數或 --demo 時執行內建參數式例題。旗標與位置參數的順序不拘"""
+    import argparse
+    ap = argparse.ArgumentParser(prog="cable_pretension.py",
+                                 description="小規模吊橋纜索的初張力與無應力長度（填入 Cable 元素的 EXVAL）")
+    ap.add_argument("mct", nargs="?", help="midas Civil 匯出的 .mct")
+    ap.add_argument("roles", nargs="?", help="角色設定檔（JSON）")
+    ap.add_argument("-o", dest="out", help="輸出檔名前綴（預設：<mct>_tensioned）")
+    ap.add_argument("--demo", action="store_true", help="執行內建參數式例題")
+    ap.add_argument("--ff-groups", action="store_true", help="另寫找形用群組")
+    ap.add_argument("--empty", action="store_true", help="另算空纜狀態")
+    a = ap.parse_args(argv)
+    if a.demo or a.mct is None:
+        return run_demo()
+    if a.roles is None:
+        ap.error("需要兩個位置參數：model.mct roles.json")
+    pre = a.out or a.mct.rsplit(".", 1)[0] + "_tensioned"
+    return run_mct(a.mct, a.roles, pre, ff_groups=a.ff_groups, empty=a.empty)
+
+
 if __name__ == "__main__":
-    a = sys.argv[1:]
-    if not a or a[0] == "--demo":
-        run_demo()
-    else:
-        pre = a[a.index("-o") + 1] if "-o" in a else a[0].rsplit(".", 1)[0] + "_tensioned"
-        run_mct(a[0], a[1], pre, ff_groups="--ff-groups" in a, empty="--empty" in a)
+    main()

@@ -490,5 +490,84 @@ class T10_Review(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(d, "out.mct")))
 
 
+
+class T11_Review1120(unittest.TestCase):
+    """2026-11-20 兩份審查報告（C03、C04、T06、T07、T08）的反例"""
+
+    def _write(self, txt, name="in.mct", enc="utf-8", nl="\n", bom=False):
+        d = tempfile.mkdtemp(); p = os.path.join(d, name)
+        raw = txt.replace("\n", nl).encode(enc)
+        with open(p, "wb") as fo:
+            fo.write((b"\xef\xbb\xbf" if bom else b"") + raw)
+        return d, p
+
+    def test_C03_singular_matrix_reports_cleanly(self):
+        with self.assertRaises(ValueError) as cm:
+            cp.solve([[1.0, 1.0], [1.0, 1.0]], [1.0, 2.0])
+        self.assertIn("奇異", str(cm.exception))
+
+    def test_C03_fix_wind_needs_positive_wind_H(self):
+        with open(ROLES, encoding="utf-8") as fi:
+            loads = dict(json.load(fi)["loads"], w_wind=0.0)
+        with self.assertRaises(ValueError) as cm:
+            run({"wind_H": 0.0, "loads": loads, "fix_wind": True, "tie_T": 250.0})
+        self.assertIn("wind_H", str(cm.exception))
+
+    def test_C04_cli_flags_in_any_order(self):
+        d = tempfile.mkdtemp()
+        with contextlib.redirect_stdout(io.StringIO()):
+            cp.main(["-o", os.path.join(d, "a"), MCT, ROLES])
+            cp.main([MCT, "--ff-groups", ROLES, "-o", os.path.join(d, "b")])
+        self.assertEqual(open(os.path.join(d, "a_report.csv"), "rb").read(),
+                         open(os.path.join(d, "b_report.csv"), "rb").read())
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                cp.main([MCT])                          # 少了 roles.json：明確報錯，不是 IndexError
+
+    def test_T06_role_group_with_missing_element(self):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        txt = txt.replace("   G_HANG_L, , 17001to17031, 0", "   G_HANG_L, , 17001to17031 99999, 0", 1)
+        d, p = self._write(txt)
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError) as cm:
+                cp.run_mct(p, ROLES, os.path.join(d, "out"))
+        self.assertIn("99999", str(cm.exception))
+        self.assertFalse(os.path.exists(os.path.join(d, "out.mct")))
+
+    def test_T06_tension_only_truss_is_not_turned_into_cable(self):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        line = "   17016, TENSTR, 2, 12, 15020, 2017, 0, 3, 0, 3"
+        self.assertIn(line, txt)
+        txt = txt.replace(line, "   17016, TENSTR, 2, 12, 15020, 2017, 0, 1, 0, 0, 0", 1)
+        d, p = self._write(txt)
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError) as cm:
+                cp.run_mct(p, ROLES, os.path.join(d, "out"))
+        self.assertIn("17016", str(cm.exception))
+
+    def test_T07_zero_sag_is_reported(self):
+        flat = T10_FullReview.PLANE.format(y=0).replace(" 2,30,0,1", " 2,30,0,7")
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError) as cm:
+                cp.main_system(cp.Mct(flat), T10_FullReview.CFG, {}, [], "M")
+        self.assertIn("垂度", str(cm.exception))
+
+    def test_T08_crlf_and_bom_are_kept(self):
+        with open(MCT, encoding="utf-8") as fi:
+            txt = fi.read()
+        for nl, bom in (("\r\n", False), ("\n", False), ("\r\n", True)):
+            d, p = self._write(txt, nl=nl, bom=bom)
+            with contextlib.redirect_stdout(io.StringIO()):
+                cp.run_mct(p, ROLES, os.path.join(d, "out"))
+            raw = open(os.path.join(d, "out.mct"), "rb").read()
+            self.assertEqual(raw.startswith(b"\xef\xbb\xbf"), bom)
+            if nl == "\r\n":
+                self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
+            else:
+                self.assertNotIn(b"\r\n", raw)
+
+
 if __name__ == "__main__":
     unittest.main()

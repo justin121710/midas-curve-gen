@@ -113,7 +113,7 @@ python3 cable_pretension.py model.mct roles.json -o model_tensioned --ff-groups 
 python3 -m unittest tools/test_cable_pretension.py -v
 ```
 
-47 項:參數式例題的 $H$ 與第 1 版一致、清單語法、每根纜索都有填值且欄位數為 10、$L_u < L$、
+54 項:參數式例題的 $H$ 與第 1 版一致、清單語法、每根纜索都有填值且欄位數為 10、$L_u < L$、
 主纜水平分量處處相同、修正後每個吊點的垂直平衡、輸出可重新解析、
 幾何不一致時有警告、力密度法收斂到 `tie_T`、繫索橫向分力兩側抵消、不相容的 `tie_T` 會報錯,
 以及書稿各輪審查的反例(項目清單見書稿附錄 B「測試」)。

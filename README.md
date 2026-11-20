@@ -282,7 +282,7 @@ python3 tools/cable_pretension.py model.mct roles.json -o model_tensioned
 - 選用 `--empty`(或 `"empty_cable": true`):以成橋的 `Lu` 計算**空纜狀態**(只計主纜自重,彈性懸鏈線),輸出 `_empty.csv`;
   分「索鞍固定」(回報塔頂不平衡水平力)與「索鞍自由滑動」(求兩側水平力相等時的索鞍位移=理論預偏量)兩種
 - 兩個選項都不加時,輸出與以前逐位元組相同
-- 純 Python 標準函式庫;47 項測試 `python3 -m unittest tools/test_cable_pretension.py`
+- 純 Python 標準函式庫;54 項測試 `python3 -m unittest tools/test_cable_pretension.py`
 
 **這支程式刻意不放進 `index.html`**(SPEC §16.0、§16.15):載重與設計張力是工程判斷,工具端仍只管幾何。
 詳見 [tools/README.md](tools/README.md)。
