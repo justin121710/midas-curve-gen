@@ -564,6 +564,8 @@ def solve_cat(dx, dz, w, EA, Lu):
         xv, zv = cat_point(H, V + ev, w, EA, Lu)
         a, b, c, d = (xh - x) / eh, (xv - x) / ev, (zh - z) / eh, (zv - z) / ev
         det = a * d - b * c
+        if det == 0 or not math.isfinite(det):
+            raise ValueError("空纜：彈性懸鏈線牛頓迭代的 Jacobian 奇異（EA 過大或 Lu 不大於弦長？），請檢查幾何、EA 與無應力長度")
         dH, dV = (-r[0] * d + r[1] * b) / det, (r[0] * c - r[1] * a) / det
         lam = 1.0
         while H + lam * dH <= 0:
@@ -643,6 +645,8 @@ def empty_cable(mct, cfg, rep, res):
                 J.append([(f1[i] - f0[i]) / h for i in range(2)])
             a, b, c, e_ = J[0][0], J[1][0], J[0][1], J[1][1]
             det = a * e_ - b * c
+            if det == 0 or not math.isfinite(det):
+                raise ValueError(f"{g}：索鞍預偏牛頓迭代的 Jacobian 奇異，請檢查兩側跨度、無應力長度與 EA")
             d = [d[0] - (f0[0] * e_ - f0[1] * b) / det, d[1] - (a * f0[1] - c * f0[0]) / det]
         else:
             raise ValueError(f"{g}：索鞍預偏 60 次未收斂")

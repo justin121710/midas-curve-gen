@@ -568,6 +568,11 @@ class T11_Review1120(unittest.TestCase):
             else:
                 self.assertNotIn(b"\r\n", raw)
 
+    def test_T09_solve_cat_singular_jacobian(self):
+        with self.assertRaises(ValueError) as cm:
+            cp.solve_cat(100.0, 0.0, 1.0, 1e30, 50.0)
+        self.assertIn("Jacobian", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
