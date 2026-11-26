@@ -5,6 +5,8 @@
 
 **線上使用:** https://justin121710.github.io/midas-curve-gen/
 
+**搭配教材:** [《吊橋設計流程圖解》](https://github.com/justin121710/suspension-bridge-design-guide)(第 8 章以本工具的人行吊橋範例逐步建模、`tools/cable_pretension.py` 算初張力)·《Midas Civil 橋梁結構分析與設計實務》([midas-civil-book](https://github.com/justin121710/midas-civil-book))第 16、50 章
+
 ---
 
 ## 這是做什麼的
