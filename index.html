@@ -7198,8 +7198,8 @@ function paneBnd(){
   const b = state.bnd || {}, on = bndList().length;
   return SEC("邊界條件", on ? `${on} 組輸出 *CONSTRAINT` : "自由端尚未指定約束",
     `<table class="t"><thead><tr><th>群組</th><th>自由端節點</th><th>約束</th></tr></thead><tbody>${
-      [...fg].map(([gn, ns]) => `<tr><td class="num">${esc(gn)}</td><td class="num">${esc(compressList(ns))}</td><td>${
-        fld("", "bnd." + gn, b[gn] || "", { select:BND_OPTS })}</td></tr>`).join("")}</tbody></table>`);
+      [...fg].map(([gn, ns]) => `<tr><td class="num">${esc(gn)}</td><td class="num">${esc(compressList(ns))}</td><td><select data-k="bnd.${esc(gn)}" aria-label="${esc(gn)} 的約束">${
+        BND_OPTS.map(([v, t]) => `<option value="${v}"${String(b[gn] || "") === v ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table>`);
 }
 function paneOutput(){
   return `<div class="ptitle"><span class="nm">檢查與匯出</span><span class="fam geo">全域</span></div>` + exportChecks() +
