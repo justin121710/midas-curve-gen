@@ -21,3 +21,5 @@ jobs:
         run: node tools/ci/run_tests.js
       - name: cable_pretension.py 單元測試
         run: python -m unittest tools/test_cable_pretension.py
+      - name: 吊橋助手（flow/engine.js 與 cable_pretension.py 逐位元組比對、子集字型）
+        run: node flow/test_flow.js

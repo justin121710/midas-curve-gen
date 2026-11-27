@@ -5,6 +5,16 @@
 
 **線上使用:** https://justin121710.github.io/midas-curve-gen/
 
+**安裝成 Windows App:** 用 Edge 或 Chrome 開上面的網址,按網址列右側的「安裝」(或選單 → 應用程式 → 安裝)。
+安裝後有自己的視窗、開始功能表與工作列圖示,斷線也能用;推到 GitHub 的新版會在下次開啟時自動更新。
+App 裡有兩個工具:**線形建模器**(index.html)與**吊橋 Midas 流程助手**(flow.html)。
+
+**吊橋 Midas 流程助手:** 在線形建模器「檢查與匯出 > 開啟吊橋助手」,或直接開 [flow.html](https://justin121710.github.io/midas-curve-gen/flow.html) 拖入 `.mct`。
+依《吊橋設計流程圖解》階段 4～6 逐步列出 Midas Civil 2022 的操作路徑、數值與可貼上的 MCT:初張力與 Lu(與 `tools/cable_pretension.py` 逐位元組相同)、
+材料斷面換算、邊界、支承、恆載工況、G1 恆載驗證、追加載重工況、G2、特徵值、風工況。
+纜索角色、自重、EA、受風投影寬在各群組填;橋面恆載、群集、風壓、耐風系統張力在「檢查與匯出 > 吊橋設計值」填;
+自由端約束在「檢查與匯出 > 邊界條件」指定 —— 助手直接讀 .mct,不用另外準備 roles.json。
+
 **搭配教材:** [《吊橋設計流程圖解》](https://github.com/justin121710/suspension-bridge-design-guide)(第 8 章以本工具的人行吊橋範例逐步建模、`tools/cable_pretension.py` 算初張力)·《Midas Civil 橋梁結構分析與設計實務》([midas-civil-book](https://github.com/justin121710/midas-civil-book))第 16、50 章
 
 ---

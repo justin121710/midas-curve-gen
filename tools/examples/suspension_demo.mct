@@ -1,10 +1,11 @@
 ;---------------------------------------------------------------------------
 ; Alignment Modeler  (alignment-modeler)
-; Generated : 2026-10-31 02:07 +00:00
+; Generated : 2026-11-27 17:22 +00:00
 ; Units     : KGF, M   (coordinates exported as entered, no conversion)
-; Groups    : 24
-; Nodes     : 321    Elements : 791    Structure groups : 25
+; Groups    : 28
+; Nodes     : 321    Elements : 791    Structure groups : 29
 ; Total elem length : 2281.726091
+; Design    : deck_per_len=300 band=20 width=2.4 crowd=200 crowd_hanger=300 wind_p=450 dT=20 wind_H=6000 tie_T=250 fix_wind=1
 ;
 ;   G_DECK (CURVE)  nodes 1001-1033  elements 1001-1032
 ;   G_EDGE_L (OFFSET)  nodes 2001-2033  elements 2001-2032
@@ -30,6 +31,10 @@
 ;   G_WSTAY_R (LINK2)  nodes -  elements 22001-22011
 ;   G_TOWER_W (CURVE)  nodes 23002-23019  elements 23001-23016
 ;   G_TOWER_E (CURVE)  nodes 24002-24019  elements 24001-24016
+;   G_BRG_WL (LINK2)  nodes -  elements -  links 25001
+;   G_BRG_WR (LINK2)  nodes -  elements -  links 26001
+;   G_BRG_EL (LINK2)  nodes -  elements -  links 27001
+;   G_BRG_ER (LINK2)  nodes -  elements -  links 28001
 ;
 ; NOTE: importing an MCT containing *UNIT changes the model's active unit system.
 ; NOTE: element beta angle = the group's Beta Angle field (default 0).
@@ -40,7 +45,7 @@
 ; {
 ;  "formatVersion": 3,
 ;  "tool": "alignment-modeler",
-;  "generated": "2026-10-31T02:07:58+00:00",
+;  "generated": "2026-11-27T17:22:13+00:00",
 ;  "state": {
 ;   "groups": [
 ;    {
@@ -137,6 +142,8 @@
 ;       "_i": 0
 ;      }
 ;     ],
+;     "use": "deck",
+;     "windW": 0.8,
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 0
@@ -189,6 +196,7 @@
 ;     "h": 0,
 ;     "extS": 0,
 ;     "extE": 0,
+;     "xs": "",
 ;     "slot": 1
 ;    },
 ;    {
@@ -239,6 +247,7 @@
 ;     "h": 0,
 ;     "extS": 0,
 ;     "extE": 0,
+;     "xs": "",
 ;     "slot": 2
 ;    },
 ;    {
@@ -358,6 +367,7 @@
 ;     "h": -1.6,
 ;     "extS": 0,
 ;     "extE": 0,
+;     "xs": "",
 ;     "slot": 4
 ;    },
 ;    {
@@ -408,6 +418,7 @@
 ;     "h": -1.6,
 ;     "extS": 0,
 ;     "extE": 0,
+;     "xs": "",
 ;     "slot": 5
 ;    },
 ;    {
@@ -1153,6 +1164,10 @@
 ;       "_i": 2
 ;      }
 ;     ],
+;     "use": "cable",
+;     "w": 12,
+;     "ea": 17000000,
+;     "windW": 0.045,
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 14
@@ -1348,6 +1363,10 @@
 ;       "_i": 2
 ;      }
 ;     ],
+;     "use": "cable",
+;     "w": 12,
+;     "ea": 17000000,
+;     "windW": 0.045,
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 15
@@ -1414,6 +1433,10 @@
 ;     "snapTol": 0.01,
 ;     "extT": 0,
 ;     "extB": 0,
+;     "use": "hanger",
+;     "w": 2,
+;     "ea": 4100000,
+;     "windW": 0.018,
 ;     "slot": 16
 ;    },
 ;    {
@@ -1478,6 +1501,10 @@
 ;     "snapTol": 0.01,
 ;     "extT": 0,
 ;     "extB": 0,
+;     "use": "hanger",
+;     "w": 2,
+;     "ea": 4100000,
+;     "windW": 0.018,
 ;     "slot": 17
 ;    },
 ;    {
@@ -1573,6 +1600,10 @@
 ;       "_i": 0
 ;      }
 ;     ],
+;     "use": "wind",
+;     "w": 6,
+;     "ea": 10000000,
+;     "windW": 0.032,
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 18
@@ -1670,6 +1701,10 @@
 ;       "_i": 0
 ;      }
 ;     ],
+;     "use": "wind",
+;     "w": 6,
+;     "ea": 10000000,
+;     "windW": 0.032,
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 19
@@ -1741,6 +1776,8 @@
 ;     "div": 1,
 ;     "extA": 0,
 ;     "extB": 0,
+;     "use": "tie",
+;     "ea": 2850000,
 ;     "slot": 20
 ;    },
 ;    {
@@ -1810,6 +1847,8 @@
 ;     "div": 1,
 ;     "extA": 0,
 ;     "extB": 0,
+;     "use": "tie",
+;     "ea": 2850000,
 ;     "slot": 21
 ;    },
 ;    {
@@ -2497,6 +2536,322 @@
 ;     "edits": {},
 ;     "dels": [],
 ;     "slot": 23
+;    },
+;    {
+;     "id": "g25",
+;     "type": "LINK2",
+;     "name": "\u652f\u627f\u897f\u5de6 BRG_WL",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "ELINK",
+;     "mat": "",
+;     "sect": "",
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g5",
+;     "b": "g23",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 12,
+;     "bEvery": 1,
+;     "count": 1,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "div": 1,
+;     "extA": 0,
+;     "extB": 0,
+;     "link": {
+;      "dof": "111111",
+;      "kind": "GEN",
+;      "sdx": 100000000,
+;      "sdy": 100000000,
+;      "sdz": 1000,
+;      "srx": 0,
+;      "sry": 0,
+;      "srz": 0
+;     },
+;     "slot": 24
+;    },
+;    {
+;     "id": "g26",
+;     "type": "LINK2",
+;     "name": "\u652f\u627f\u897f\u53f3 BRG_WR",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "ELINK",
+;     "mat": "",
+;     "sect": "",
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g6",
+;     "b": "g23",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 1,
+;     "aEvery": 1,
+;     "bFrom": 5,
+;     "bEvery": 1,
+;     "count": 1,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "div": 1,
+;     "extA": 0,
+;     "extB": 0,
+;     "link": {
+;      "dof": "111111",
+;      "kind": "GEN",
+;      "sdx": 100000000,
+;      "sdy": 100000000,
+;      "sdz": 1000,
+;      "srx": 0,
+;      "sry": 0,
+;      "srz": 0
+;     },
+;     "slot": 25
+;    },
+;    {
+;     "id": "g27",
+;     "type": "LINK2",
+;     "name": "\u652f\u627f\u6771\u5de6 BRG_EL",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "ELINK",
+;     "mat": "",
+;     "sect": "",
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g5",
+;     "b": "g24",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 33,
+;     "aEvery": 1,
+;     "bFrom": 12,
+;     "bEvery": 1,
+;     "count": 1,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "div": 1,
+;     "extA": 0,
+;     "extB": 0,
+;     "link": {
+;      "dof": "111111",
+;      "kind": "GEN",
+;      "sdx": 100000000,
+;      "sdy": 100000000,
+;      "sdz": 0,
+;      "srx": 0,
+;      "sry": 0,
+;      "srz": 0
+;     },
+;     "slot": 26
+;    },
+;    {
+;     "id": "g28",
+;     "type": "LINK2",
+;     "name": "\u652f\u627f\u6771\u53f3 BRG_ER",
+;     "on": true,
+;     "xf": {
+;      "dx": 0,
+;      "dy": 0,
+;      "dz": 0,
+;      "rot": 0,
+;      "axis": "Z",
+;      "cmode": "auto",
+;      "cx": 0,
+;      "cy": 0,
+;      "cz": 0,
+;      "mir": "",
+;      "mirAt": 0
+;     },
+;     "etype": "ELINK",
+;     "mat": "",
+;     "sect": "",
+;     "addN": [],
+;     "addE": [],
+;     "cable": {
+;      "sub": 3,
+;      "kind": 3,
+;      "val": 0,
+;      "blmt": "NO"
+;     },
+;     "stage": {
+;      "on": false,
+;      "rule": "count",
+;      "n": 4,
+;      "table": "",
+;      "pivot": 1,
+;      "stations": "",
+;      "prefix": "",
+;      "pad": 2
+;     },
+;     "sectTab": {
+;      "on": false,
+;      "text": ""
+;     },
+;     "a": "g6",
+;     "b": "g24",
+;     "aSide": "own",
+;     "bSide": "own",
+;     "pair": "free",
+;     "skew": 1,
+;     "from": 1,
+;     "to": 0,
+;     "every": 1,
+;     "aFrom": 33,
+;     "aEvery": 1,
+;     "bFrom": 5,
+;     "bEvery": 1,
+;     "count": 1,
+;     "rev": false,
+;     "pattern": [
+;      [
+;       0,
+;       0
+;      ]
+;     ],
+;     "div": 1,
+;     "extA": 0,
+;     "extB": 0,
+;     "link": {
+;      "dof": "111111",
+;      "kind": "GEN",
+;      "sdx": 100000000,
+;      "sdy": 100000000,
+;      "sdz": 0,
+;      "srx": 0,
+;      "sry": 0,
+;      "srz": 0
+;     },
+;     "slot": 27
 ;    }
 ;   ],
 ;   "numbering": {
@@ -2531,7 +2886,39 @@
 ;     "save": true,
 ;     "step": false
 ;    },
-;    "freeGrp": false
+;    "freeGrp": false,
+;    "skew": false,
+;    "pairLink": {
+;     "on": false,
+;     "dof": "111111",
+;     "kind": "GEN",
+;     "sdx": 10000000000,
+;     "sdy": 10000000000,
+;     "sdz": 10000000000,
+;     "srx": 10000000000,
+;     "sry": 10000000000,
+;     "srz": 10000000000
+;    }
+;   },
+;   "design": {
+;    "deck_per_len": 300,
+;    "band": 20,
+;    "width": 2.4,
+;    "crowd": 200,
+;    "crowd_hanger": 300,
+;    "wind_p": 450,
+;    "dT": 20,
+;    "wind_H": 6000,
+;    "tie_T": 250,
+;    "fix_wind": true
+;   },
+;   "bnd": {
+;    "G_TOWER_W": "111111",
+;    "G_TOWER_E": "111111",
+;    "G_CABLE_L": "111111",
+;    "G_CABLE_R": "111111",
+;    "G_WIND_L": "111111",
+;    "G_WIND_R": "111111"
 ;   },
 ;   "stages": [
 ;    {
@@ -2623,7 +3010,7 @@
 
 *NODE
 ; iNO, X, Y, Z
-; --- G_DECK (CURVE) ---
+; --- G_DECK (CURVE) --- use=deck windW=0.8
    1001, 0, 0, 10
    1002, 2.5, 0, 10
    1003, 5, 0, 10
@@ -2793,7 +3180,7 @@
    6031, 75, -1.2, 8.4
    6032, 77.5, -1.2, 8.4
    6033, 80, -1.2, 8.4
-; --- G_CABLE_L (CURVE) ---
+; --- G_CABLE_L (CURVE) --- use=cable w=12 EA=17000000 windW=0.045
    15001, -15, 1.2, 6
    15002, -10, 1.2, 11.333333
    15003, -5, 1.2, 16.666667
@@ -2833,7 +3220,7 @@
    15037, 85, 1.2, 16.666667
    15038, 90, 1.2, 11.333333
    15039, 95, 1.2, 6
-; --- G_CABLE_R (CURVE) ---
+; --- G_CABLE_R (CURVE) --- use=cable w=12 EA=17000000 windW=0.045
    16001, -15, -1.2, 6
    16002, -10, -1.2, 11.333333
    16003, -5, -1.2, 16.666667
@@ -2873,7 +3260,7 @@
    16037, 85, -1.2, 16.666667
    16038, 90, -1.2, 11.333333
    16039, 95, -1.2, 6
-; --- G_WIND_L (CURVE) ---
+; --- G_WIND_L (CURVE) --- use=wind w=6 EA=10000000 windW=0.032
    19001, 10, 8, 2
    19002, 12.5, 7.322356, 2.677644
    19003, 15, 6.703638, 3.296362
@@ -2899,7 +3286,7 @@
    19023, 65, 6.703638, 3.296362
    19024, 67.5, 7.322356, 2.677644
    19025, 70, 8, 2
-; --- G_WIND_R (CURVE) ---
+; --- G_WIND_R (CURVE) --- use=wind w=6 EA=10000000 windW=0.032
    20001, 10, -8, 2
    20002, 12.5, -7.322356, 2.677644
    20003, 15, -6.703638, 3.296362
@@ -2961,7 +3348,7 @@
 ; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL, EXVAL2, bLMT ; Comp/Tens Truss
 ; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iSUB, iWID , LCAXIS    ; Planar Element
 ; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iN5, iN6, iN7, iN8     ; Solid  Element
-; --- G_DECK (CURVE) ---
+; --- G_DECK (CURVE) --- use=deck windW=0.8
    1001, BEAM, 1, 1, 1001, 1002, 0, 0
    1002, BEAM, 1, 1, 1002, 1003, 0, 0
    1003, BEAM, 1, 1, 1003, 1004, 0, 0
@@ -3526,7 +3913,7 @@
    14015, TRUSS, 3, 20, 3029, 5029, 0, 0
    14016, TRUSS, 3, 20, 3031, 5031, 0, 0
    14017, TRUSS, 3, 20, 3033, 5033, 0, 0
-; --- G_CABLE_L (CURVE) ---
+; --- G_CABLE_L (CURVE) --- use=cable w=12 EA=17000000 windW=0.045
    15001, TENSTR, 2, 11, 15001, 15002, 0, 3, 0, 3
    15002, TENSTR, 2, 11, 15002, 15003, 0, 3, 0, 3
    15003, TENSTR, 2, 11, 15003, 15004, 0, 3, 0, 3
@@ -3565,7 +3952,7 @@
    15036, TENSTR, 2, 11, 15036, 15037, 0, 3, 0, 3
    15037, TENSTR, 2, 11, 15037, 15038, 0, 3, 0, 3
    15038, TENSTR, 2, 11, 15038, 15039, 0, 3, 0, 3
-; --- G_CABLE_R (CURVE) ---
+; --- G_CABLE_R (CURVE) --- use=cable w=12 EA=17000000 windW=0.045
    16001, TENSTR, 2, 11, 16001, 16002, 0, 3, 0, 3
    16002, TENSTR, 2, 11, 16002, 16003, 0, 3, 0, 3
    16003, TENSTR, 2, 11, 16003, 16004, 0, 3, 0, 3
@@ -3604,7 +3991,7 @@
    16036, TENSTR, 2, 11, 16036, 16037, 0, 3, 0, 3
    16037, TENSTR, 2, 11, 16037, 16038, 0, 3, 0, 3
    16038, TENSTR, 2, 11, 16038, 16039, 0, 3, 0, 3
-; --- G_HANG_L (LINKZ) ---
+; --- G_HANG_L (LINKZ) --- use=hanger w=2 EA=4100000 windW=0.018
    17001, TENSTR, 2, 12, 15005, 2002, 0, 3, 0, 3
    17002, TENSTR, 2, 12, 15006, 2003, 0, 3, 0, 3
    17003, TENSTR, 2, 12, 15007, 2004, 0, 3, 0, 3
@@ -3636,7 +4023,7 @@
    17029, TENSTR, 2, 12, 15033, 2030, 0, 3, 0, 3
    17030, TENSTR, 2, 12, 15034, 2031, 0, 3, 0, 3
    17031, TENSTR, 2, 12, 15035, 2032, 0, 3, 0, 3
-; --- G_HANG_R (LINKZ) ---
+; --- G_HANG_R (LINKZ) --- use=hanger w=2 EA=4100000 windW=0.018
    18001, TENSTR, 2, 12, 16005, 3002, 0, 3, 0, 3
    18002, TENSTR, 2, 12, 16006, 3003, 0, 3, 0, 3
    18003, TENSTR, 2, 12, 16007, 3004, 0, 3, 0, 3
@@ -3668,7 +4055,7 @@
    18029, TENSTR, 2, 12, 16033, 3030, 0, 3, 0, 3
    18030, TENSTR, 2, 12, 16034, 3031, 0, 3, 0, 3
    18031, TENSTR, 2, 12, 16035, 3032, 0, 3, 0, 3
-; --- G_WIND_L (CURVE) ---
+; --- G_WIND_L (CURVE) --- use=wind w=6 EA=10000000 windW=0.032
    19001, TENSTR, 2, 18, 19001, 19002, 0, 3, 0, 3
    19002, TENSTR, 2, 18, 19002, 19003, 0, 3, 0, 3
    19003, TENSTR, 2, 18, 19003, 19004, 0, 3, 0, 3
@@ -3693,7 +4080,7 @@
    19022, TENSTR, 2, 18, 19022, 19023, 0, 3, 0, 3
    19023, TENSTR, 2, 18, 19023, 19024, 0, 3, 0, 3
    19024, TENSTR, 2, 18, 19024, 19025, 0, 3, 0, 3
-; --- G_WIND_R (CURVE) ---
+; --- G_WIND_R (CURVE) --- use=wind w=6 EA=10000000 windW=0.032
    20001, TENSTR, 2, 18, 20001, 20002, 0, 3, 0, 3
    20002, TENSTR, 2, 18, 20002, 20003, 0, 3, 0, 3
    20003, TENSTR, 2, 18, 20003, 20004, 0, 3, 0, 3
@@ -3718,7 +4105,7 @@
    20022, TENSTR, 2, 18, 20022, 20023, 0, 3, 0, 3
    20023, TENSTR, 2, 18, 20023, 20024, 0, 3, 0, 3
    20024, TENSTR, 2, 18, 20024, 20025, 0, 3, 0, 3
-; --- G_WSTAY_L (LINK2) ---
+; --- G_WSTAY_L (LINK2) --- use=tie EA=2850000
    21001, TENSTR, 2, 19, 5007, 19003, 0, 3, 0, 3
    21002, TENSTR, 2, 19, 5009, 19005, 0, 3, 0, 3
    21003, TENSTR, 2, 19, 5011, 19007, 0, 3, 0, 3
@@ -3730,7 +4117,7 @@
    21009, TENSTR, 2, 19, 5023, 19019, 0, 3, 0, 3
    21010, TENSTR, 2, 19, 5025, 19021, 0, 3, 0, 3
    21011, TENSTR, 2, 19, 5027, 19023, 0, 3, 0, 3
-; --- G_WSTAY_R (LINK2) ---
+; --- G_WSTAY_R (LINK2) --- use=tie EA=2850000
    22001, TENSTR, 2, 19, 6007, 20003, 0, 3, 0, 3
    22002, TENSTR, 2, 19, 6009, 20005, 0, 3, 0, 3
    22003, TENSTR, 2, 19, 6011, 20007, 0, 3, 0, 3
@@ -3804,6 +4191,37 @@
    G_TOWER_W, 23002to23007 23009to23014 23016 23019, 23001to23016, 0
    G_TOWER_E, 24002to24007 24009to24014 24016 24019, 24001to24016, 0
    G_ALL, 1001to1033 2001to2033 3001to3033 5001to5033 6001to6033 15001to15039 16001to16039 19001to19025 20001to20025 23002to23007 23009to23014 23016 23019 24002to24007 24009to24014 24016 24019, 1001to1032 2001to2032 3001to3032 4001to4066 5001to5032 6001to6032 7001to7033 8001to8033 9001to9064 10001to10064 11001to11033 12001to12064 13001to13017 14001to14017 15001to15038 16001to16038 17001to17031 18001to18031 19001to19024 20001to20024 21001to21011 22001to22011 23001to23016 24001to24016, 0
+
+*BNDR-GROUP
+; NAME
+   G_BRG_WL
+   G_BRG_WR
+   G_BRG_EL
+   G_BRG_ER
+   BG_CABLE_L
+   BG_CABLE_R
+   BG_WIND_L
+   BG_WIND_R
+   BG_TOWER_W
+   BG_TOWER_E
+
+*ELASTICLINK
+; iLINK, iNODE1, iNODE2, LINK, ANGLE, R_SDx, R_SDy, R_SDz, R_SRx, R_SRy, R_SRz, SDx, SDy, SDz, SRx, SRy, SRz, bSHEAR, DRy, DRz, GROUP ; GEN
+; iLINK, iNODE1, iNODE2, LINK, ANGLE, bSHEAR, DRy, DRz, GROUP                              ; RIGID
+; iLINK, iNODE1, iNODE2, LINK, ANGLE, SDx, bSHEAR, DRy, DRz, GROUP                         ; TENS, COMP
+   25001, 5001, 23012, GEN, 0, NO, NO, NO, NO, NO, NO, 100000000, 100000000, 1000, 0, 0, 0, NO, 0.5, 0.5, G_BRG_WL
+   26001, 6001, 23005, GEN, 0, NO, NO, NO, NO, NO, NO, 100000000, 100000000, 1000, 0, 0, 0, NO, 0.5, 0.5, G_BRG_WR
+   27001, 5033, 24012, GEN, 0, NO, NO, NO, NO, NO, NO, 100000000, 100000000, 0, 0, 0, 0, NO, 0.5, 0.5, G_BRG_EL
+   28001, 6033, 24005, GEN, 0, NO, NO, NO, NO, NO, NO, 100000000, 100000000, 0, 0, 0, 0, NO, 0.5, 0.5, G_BRG_ER
+
+*CONSTRAINT
+; NODE_LIST, CONST(Dx,Dy,Dz,Rx,Ry,Rz), GROUP
+   15001 15039, 111111, BG_CABLE_L
+   16001 16039, 111111, BG_CABLE_R
+   19001 19025, 111111, BG_WIND_L
+   20001 20025, 111111, BG_WIND_R
+   23007 23014, 111111, BG_TOWER_W
+   24007 24014, 111111, BG_TOWER_E
 
 *STAGE
 ; NAME=NAME, DURATION, bSAVESTAGE, bSAVESTEP

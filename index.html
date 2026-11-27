@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>線形建模器 — 線形表轉 midas Civil 幾何</title>
+<meta name="theme-color" content="#1E7F86">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%20-7%2044%2044'%3E%3Cpath%20d='M4%205C11%205%2013%2025%2022%2025s11%20-20%2018%20-20'%20fill='none'%20stroke='%231E7F86'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root{
@@ -496,7 +499,7 @@
 
 <header>
   <h1><svg class="logo" width="26" height="18" viewBox="0 0 44 30" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M4 5C11 5 13 25 22 25s11 -20 18 -20" stroke="currentColor" stroke-width="3.2"/></svg>線形建模器</h1>
-  <span class="stage">v3.50</span>
+  <span class="stage">v3.51</span>
   <span class="note">X 東 · Y 北 · Z 高程</span>
   <span class="units">單位
     <select id="u-len" title="長度單位:輸入什麼單位就算什麼單位,匯出的 .mct 也是同一個單位"></select>
@@ -3405,6 +3408,7 @@ const MCT_FMT = {
          GROUP:"NAME, NODE_LIST, ELEM_LIST, PLANE_TYPE",
          LOCALAXIS:"NODE_LIST, iMETHOD, ANGLE-x, ANGLE-y, ANGLE-z ; iMETHOD=1 (Angle)",
          BNDR:"NAME",
+         CONSTRAINT:"NODE_LIST, CONST(Dx,Dy,Dz,Rx,Ry,Rz), GROUP",
          RIGIDLINK:"M-NODE, DOF, S-NODE LIST, GROUP",
          ELASTICLINK:[
            "iLINK, iNODE1, iNODE2, LINK, ANGLE, R_SDx, R_SDy, R_SDz, R_SRx, R_SRy, R_SRz, SDx, SDy, SDz, SRx, SRy, SRz, bSHEAR, DRy, DRz, GROUP ; GEN",
@@ -3503,7 +3507,9 @@ function linkBlocks(){
   }));
   const pl = pairLinks();
   if (pl.length){ pl.forEach(e => E.push(e)); bg.push("N_PAIRS"); }
-  if (!R.length && !E.length) return out;
+  const BC = bndList();
+  BC.forEach(b => { if (!bg.includes(b.bg)) bg.push(b.bg); });
+  if (!R.length && !E.length && !BC.length) return out;
   out.push("*BNDR-GROUP", `${C} ${MCT_FMT.hint.BNDR}`);
   bg.forEach(n => out.push(n));
   out.push("");
@@ -3530,6 +3536,11 @@ function linkBlocks(){
       else if (kind === "GEN") out.push(`${head}, NO, NO, NO, NO, NO, NO, ${["sdx","sdy","sdz","srx","sry","srz"].map(q => mnum(num(k[q]) || 0)).join(", ")}, ${tail}`);
       else out.push(`${head}, ${mnum(num(k.sdx) || 0)}, ${tail}`);
     });
+    out.push("");
+  }
+  if (BC.length){
+    out.push("*CONSTRAINT", `${C} ${MCT_FMT.hint.CONSTRAINT}`);
+    BC.forEach(b => out.push(`${compressList(b.ns)}, ${b.code}, ${b.bg}`));
     out.push("");
   }
   return out;
@@ -3564,6 +3575,41 @@ function skewList(){
     if (a !== null){ out.set(p.num, a); out.set(q.num, a); } });
   return [...out].sort((x, y) => x[0] - y[0]).map(([num, ang]) => ({ num, ang }));
 }
+/* 群組註解行的設計標記(v3.51):use=用途、w=單位長自重、EA=軸向勁度、windW=受風投影寬。
+   全部是 ASCII、只寫有填的項目;沒有填時整段不出現(舊模型輸出逐字不變)。吊橋助手與 roles.json 讀這幾個值。 */
+const isPos = v => Number.isFinite(+v) && +v > 0 && v !== "" && v !== null;
+function grpTag(g){
+  const t = [];
+  if (g.use) t.push("use=" + g.use);
+  if (isPos(g.w)) t.push("w=" + mnum(+g.w));
+  if (isPos(g.ea)) t.push("EA=" + mnum(+g.ea));
+  if (isPos(g.windW)) t.push("windW=" + mnum(+g.windW));
+  return t.length ? " " + t.join(" ") : "";
+}
+const DESIGN_KEYS = [["deck_per_len","橋面恆載(每一索面)","F/L"],["band","索夾(每個吊點)","F"],["width","幅員","L"],
+  ["crowd","群集荷重(主纜、塔用)","F/L2"],["crowd_hanger","群集荷重(吊索用)","F/L2"],["wind_p","設計風壓","F/L2"],
+  ["dT","溫度變化 ±","C"],["wind_H","耐風索水平張力","F"],["tie_T","繫索張力(每根)","F"]];
+function designLine(){
+  const d = state.design || {}, t = [];
+  DESIGN_KEYS.forEach(([k]) => { if (Number.isFinite(+d[k]) && d[k] !== "" && d[k] !== null) t.push(k + "=" + mnum(+d[k])); });
+  if (t.length && d.fix_wind) t.push("fix_wind=1");
+  return t.length ? t.join(" ") : "";
+}
+// 自由端依所屬群組分組;有指定約束的才輸出(邊界群組名 BG_ + 群組名去掉前綴)
+const bndGrpName = gn => "BG_" + (gn.indexOf(MODEL.prefix) === 0 ? gn.slice(MODEL.prefix.length) : gn);
+function freeByGroup(){
+  const m = new Map();
+  (MODEL.free || []).forEach(f => { const k = f.r.gname; if (!m.has(k)) m.set(k, []); m.get(k).push(f.n.num); });
+  return m;
+}
+function bndList(){
+  const b = state.bnd || {}, out = [];
+  freeByGroup().forEach((ns, gn) => {
+    const c = String(b[gn] || "").replace(/[^01]/g, "");
+    if (c.length === 6 && /1/.test(c)) out.push({ gn, bg:bndGrpName(gn), ns, code:c });
+  });
+  return out;
+}
 const freeGrpName = gn => "N_" + (gn.indexOf(MODEL.prefix) === 0 ? gn.slice(MODEL.prefix.length) : gn) + "_END";
 function groupMembers(){
   const m = new Map();
@@ -3596,6 +3642,7 @@ function mctText(){
   L.push(`${C} Groups    : ${MODEL.groups.length}`);
   L.push(`${C} Nodes     : ${MODEL.tot.n}    Elements : ${MODEL.tot.e}    Structure groups : ${MODEL.names.length}`);
   L.push(`${C} Total elem length : ${mnum(MODEL.tot.len3d)}`);
+  if (designLine()) L.push(`${C} Design    : ${designLine()}`);
   L.push(`${C}`);
   MODEL.groups.forEach(r => L.push(`${C}   ${r.gname} (${TYPES[r.g.type].en})` +
     `  nodes ${rng(r.nodes)}  elements ${rng(r.elems.concat(r.plates || []))}` +
@@ -3618,7 +3665,7 @@ function mctText(){
   L.push(`${C} ${MCT_FMT.hint.NODE}`);
   MODEL.groups.forEach(r => {
     if (!r.nodes.length) return;
-    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${r.g.use ? " use=" + r.g.use : ""}`);
+    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${grpTag(r.g)}`);
     r.nodes.forEach(n => L.push(`${I}${n.num}, ${mlen(n.x)}, ${mlen(n.y)}, ${mlen(n.z)}`));
   });
   L.push("");
@@ -3627,7 +3674,7 @@ function mctText(){
   MCT_FMT.hint.ELEMENT.forEach(l => L.push(`${C} ${l}`));
   MODEL.groups.forEach(r => {
     if (!r.elems.length && !(r.plates || []).length) return;
-    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${r.g.use ? " use=" + r.g.use : ""}`);
+    L.push(`${C} --- ${r.gname} (${TYPES[r.g.type].en}) ---${grpTag(r.g)}`);
     r.elems.forEach(e => L.push(I + elemLine(e)));
     (r.plates || []).forEach(e => L.push(I + plateLine(e)));
   });
@@ -3638,6 +3685,8 @@ function mctText(){
   const gm = groupMembers();
   MODEL.names.forEach(nm => {
     const t = gm.get(nm) || { n:new Set(), e:new Set() };
+    // 只有連結的群組(例如支承)沒有節點與元素,不寫空的結構群組;它的連結在邊界群組裡(v3.51)
+    if (!t.n.size && !t.e.size && MODEL.groups.some(r => r.gname === nm && (r.links || []).length)) return;
     L.push(`${I}${nm}, ${compressList([...t.n])}, ${compressList([...t.e])}, 0`);
   });
   /* 自由端節點群組(FEAT-02,預設關閉):每個群組的自由端一組,只有節點清單。
@@ -4126,6 +4175,10 @@ const DEF_STATE = () => ({
   // stage:*STAGE 每個階段都一樣的那兩個欄位(逐階段填只是噪音,集中在一處設定)
   out:{ dxf:DXF_DEF(), stage:{ on:true, save:true, step:false }, freeGrp:false, skew:false,
         pairLink:{ on:false, ...LINK_DEF() } },
+  // 吊橋設計值(v3.51,SPEC §16.28):roles.json 與吊橋助手用的全橋數值;只給欄位、不猜預設
+  design:{},
+  // 自由端約束(v3.51,SPEC §16.29):{ 匯出群組名: "111111" },空字串 = 不設
+  bnd:{},
   // 施工階段表(SPEC §16.5 層二):一列一個階段,啟用哪些結構群組。
   // 目前只驅動 3D 視圖的時間軸滑桿 —— *STAGE 的實機格式還沒拿到樣本(§16.10)。
   stages:[],                      // [{ name, days, on:[群組名…] }]
@@ -4151,6 +4204,8 @@ function normState(s){
   s.out       = { ...d.out, ...(s.out || {}) };
   s.out.dxf   = { ...DXF_DEF(), ...(s.out.dxf || {}) };
   s.out.pairLink = { on:false, ...LINK_DEF(), ...(s.out.pairLink || {}) };
+  s.design    = { ...((s.design && typeof s.design === "object") ? s.design : {}) };
+  s.bnd       = { ...((s.bnd && typeof s.bnd === "object") ? s.bnd : {}) };
   /* 階段只留「啟用哪些結構群組」。邊界 / 荷載的啟用不在這裡設 ——
      midas 的荷載多半跟結構綁在一起(beam element load 要作用在特定元素上),
      支承也一樣,都得先把模型匯進 midas 才設得了,在這邊先開空群組沒有意義。
@@ -4428,8 +4483,35 @@ function demoSuspension(){
     D("LINE", { cont:false, x1:x, y1:-Y, z1:ZB, endMode:"point", x2:x, y2:Y, z2:ZB, split:SPL({ count:2 }) })
   ], { etype:"BEAM", mat:3, sect:4 });
 
+  const twW = tower("塔架西 TOWER_W", 0), twE = tower("塔架東 TOWER_E", L);
+
+  /* ---- v3.51:吊橋設計值(SPEC §16.28)----
+     纜索群組標設計用途、單位長自重與 EA(數值同 tools/examples/suspension_demo_roles.json);
+     受風投影寬為示意:橋面以中心線代表整個橋面系(桁架高 1.6 m × 充實率 0.5),主纜、吊索、耐風索取鋼索外徑。 */
+  Object.assign(cL, { use:"cable", w:12, ea:17000000, windW:0.045 }); Object.assign(cR, { use:"cable", w:12, ea:17000000, windW:0.045 });
+  Object.assign(hL, { use:"hanger", w:2, ea:4100000, windW:0.018 });  Object.assign(hR, { use:"hanger", w:2, ea:4100000, windW:0.018 });
+  Object.assign(wcL, { use:"wind", w:6, ea:10000000, windW:0.032 }); Object.assign(wcR, { use:"wind", w:6, ea:10000000, windW:0.032 });
+  Object.assign(wsL, { use:"tie", ea:2850000 });                     Object.assign(wsR, { use:"tie", ea:2850000 });
+  Object.assign(deck, { use:"deck", windW:0.8 });
+  s.design = { deck_per_len:300, band:20, width:2.4, crowd:200, crowd_hanger:300, wind_p:450, dT:20,
+               wind_H:6000, tie_T:250, fix_wind:true };
+
+  /* ---- v3.51:橋面支承 = 對接 + 彈性連結(SPEC §16.29)----
+     桁架下弦端點(Z 8.4)→ 塔下橫梁節點(Z 8.0),每處一根 GEN 連結。連結由上往下,局部 x = −Z,
+     依 midas 的 Beta 角規則局部 z = 整體 X(橋軸)、局部 y = 整體 Y(橋寬):
+     SDx 垂直、SDy 橫向給大勁度;SDz 縱向兩端都可動(指針),西端加 1000 kgf/m 弱彈簧防奇異。
+     塔節點序號:塔架六段的第 5 個 = Y −1.2、第 12 個 = Y +1.2(Z = 8.0)。 */
+  const brg = (nm, a, aFrom, b, bFrom, sdz) => ({ ...defaultGroup("LINK2"), name:nm, a, b, pair:"free",
+    aFrom, aEvery:1, bFrom, bEvery:1, count:1, etype:"ELINK",
+    link:{ ...LINK_DEF(), kind:"GEN", sdx:1e8, sdy:1e8, sdz, srx:0, sry:0, srz:0 } });
+  const NB = Math.round(L / SP) + 1;                   // 下弦節點數(33)
+  const brgs = [brg("支承西左 BRG_WL", blL.id, 1, twW.id, 12, 1000), brg("支承西右 BRG_WR", blR.id, 1, twW.id, 5, 1000),
+                brg("支承東左 BRG_EL", blL.id, NB, twE.id, 12, 0),  brg("支承東右 BRG_ER", blR.id, NB, twE.id, 5, 0)];
+  // 自由端約束:塔底、主纜錨碇、耐風索錨碇全部固定
+  s.bnd = { G_TOWER_W:"111111", G_TOWER_E:"111111", G_CABLE_L:"111111", G_CABLE_R:"111111", G_WIND_L:"111111", G_WIND_R:"111111" };
+
   s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB, crA, crB,
-              cL, cR, hL, hR, wcL, wcR, wsL, wsR, tower("塔架西 TOWER_W", 0), tower("塔架東 TOWER_E", L)];
+              cL, cR, hL, hR, wcL, wcR, wsL, wsR, twW, twE, ...brgs];
 
   /* ---- 施工階段 ----
      架設順序:塔 → 主纜 → **抗風索** → 吊索 → 縱橫梁 → 底部桁架 → 抗風支索。
@@ -4663,7 +4745,7 @@ const nameMain = n => { const t = String(n).replace(/\s+[A-Za-z0-9_]+$/, ""); re
 let ADD_MENU_HTML = "";
 // 設計用途:名稱與用途分開標記(降低學習成本報告第 6 頁)
 const USES = [["","(未指定)"],["deck","主梁／橋面"],["xbeam","橫梁／橫隔"],["pier","墩柱／塔柱"],["cap","帽梁"],["pile","基樁"],
-  ["cable","主纜／鋼索"],["hanger","吊索"],["arch","拱肋"],["brace","斜撐／桁架"],["other","其他"]];
+  ["cable","主纜／鋼索"],["hanger","吊索"],["wind","耐風索"],["tie","繫索／抗風支索"],["arch","拱肋"],["brace","斜撐／桁架"],["other","其他"]];
 const useName = k => (USES.find(u => u[0] === k) || ["", ""])[1];
 function renderTree(){
   const rows = state.groups.map((g, i) => {
@@ -6343,6 +6425,9 @@ function paneFor(g){
      <div class="fields g3" style="margin-top:8px">${fld("設計用途", "use", g.use || "", { select:USES })}
        <span class="hint" style="grid-column:span 2;margin:0">只是標記(清單上顯示、寫進 .mct 註解),不影響幾何與匯出群組名;
        墩柱、帽梁、基樁等要給 RC 構件設計工具設計的構件,一個群組放一根。</span></div>
+     ${isLinkT(g.etype) ? "" : `<div class="fields g3" style="margin-top:8px">${
+       (g.etype === "CABLE" ? fld(`單位長自重 (${UF()}/${UL()})`, "w", g.w) + fld(`EA (${UF()})`, "ea", g.ea) : "") +
+       fld(`受風投影寬 (${UL()})`, "windW", g.windW)}</div>`}
      <div class="hint" style="margin-top:8px">匯出的 .mct <b>一律純英數</b>(中文在 midas 匯入會變亂碼),
        所以 <code>*GROUP</code> 用的匯出群組名是 <b>${r ? esc(r.gname) : "—"}</b>。
        ${fellBack ? "目前名稱沒有可用的英數字,只能<b>用序號代替</b>;想在 midas 裡看到有意義的匯出群組名,請在名稱裡加上英數(例如「主曲線 MAIN」)。" : ""}</div>
@@ -6736,24 +6821,40 @@ function freeSection(){
 /* 角色設定檔範本(FEAT-03):tools/cable_pretension.py 要的 roles.json。
    群組角色由元素類型與群組關係推:CABLE 的垂落 = 吊索;被吊索掛著的 CABLE 線 = 主纜;
    CABLE 的對接 = 繫索(抗風支索),它另一端的 CABLE 線 = 耐風索。載重、EA 留 0 待填 —— 那是工程判斷。 */
+/* 吊橋助手(flow.html,同一個網站／App):把目前的 .mct 交過去。
+   同源時寫 localStorage;以 file:// 開啟時改由 postMessage 回應助手的 ready 訊息。 */
+let FLOW_TXT = "";
+function openFlow(){
+  FLOW_TXT = mctText();
+  const pkt = JSON.stringify({ at:Date.now(), name:`model_${stamp()}.mct`, mct:FLOW_TXT });
+  try { localStorage.setItem("cg.handoff", pkt); } catch (e) {}
+  const w = window.open("flow.html#handoff", "cg-flow");
+  if (!w) alert("瀏覽器擋住了新視窗:請允許彈出視窗,或直接開啟 flow.html 再拖入 .mct");
+}
+window.addEventListener("message", e => {
+  if (e.data && e.data.type === "cg-flow-ready" && FLOW_TXT && e.source)
+    e.source.postMessage({ type:"cg-flow-mct", name:`model_${stamp()}.mct`, mct:FLOW_TXT }, "*");
+});
 function rolesTemplate(){
-  const R = MODEL.groups, isC = r => (r.g.etype || "BEAM") === "CABLE";
-  const byId = id => R.find(r => r.g.id === id);
-  const hanger = R.filter(r => isC(r) && r.g.type === "LINKZ");
-  const mainIds = new Set(hanger.map(r => r.g.ref));
-  const tie = R.filter(r => isC(r) && r.g.type === "LINK2");
-  const windIds = new Set(tie.flatMap(r => [r.g.a, r.g.b]).filter(id => { const x = byId(id); return x && isC(x) && !mainIds.has(id); }));
-  const main = R.filter(r => mainIds.has(r.g.id)), wind = R.filter(r => windIds.has(r.g.id));
-  const other = R.filter(r => isC(r) && !hanger.includes(r) && !tie.includes(r) && !main.includes(r) && !wind.includes(r));
-  const o = { "_說明":`由 midas-curve-gen 依群組關係產生的範本。單位與 .mct 相同:力 ${UF()}、長度 ${UL()}(不換算)。` +
-      `loads 與 EA 填 0 的地方都要換成設計值;角色請再核對一次。`,
+  /* 角色:有設計用途就依用途,沒有就依群組關係推定(v3.46 的規則)。
+     數值:纜索的自重與 EA 取各群組欄位,全橋層級的值取「吊橋設計值」;沒填的留 0。 */
+  const cr = cableRoles(), { main, hanger, wind, tie, other } = cr, d = state.design || {};
+  const pick = (rs, k) => { const v = rs.map(r => r.g[k]).filter(isPos).map(Number); return v.length ? v[0] : 0; };
+  const dv = k => (Number.isFinite(+d[k]) && d[k] !== "" && d[k] !== null) ? +d[k] : 0;
+  const o = { "_說明":`由 midas-curve-gen 依${cr.src === "use" ? "設計用途" : "群組關係"}產生。單位與 .mct 相同:力 ${UF()}、長度 ${UL()}(不換算)。` +
+      `數值取自群組欄位與「吊橋設計值」;仍為 0 的地方要換成設計值,角色請再核對一次。`,
     main:main.map(r => r.gname), hanger:hanger.map(r => r.gname) };
   if (wind.length) o.wind = wind.map(r => r.gname);
   if (tie.length) o.tie = tie.map(r => r.gname);
   if (other.length) o["_未判定的纜索群組"] = other.map(r => r.gname);
-  o.loads = { deck_per_len:0, band:0, w_main:0, w_hang:0, ...(wind.length ? { w_wind:0 } : {}) };
-  o.EA = { main:0, hanger:0, ...(wind.length ? { wind:0 } : {}), ...(tie.length ? { tie:0 } : {}) };
-  if (wind.length){ o.wind_H = 0; o.tie_T = 0; o.fix_wind = true; }
+  o.loads = { deck_per_len:dv("deck_per_len"), band:dv("band"), w_main:pick(main, "w"), w_hang:pick(hanger, "w"),
+    ...(wind.length ? { w_wind:pick(wind, "w") } : {}) };
+  o.EA = { main:pick(main, "ea"), hanger:pick(hanger, "ea"), ...(wind.length ? { wind:pick(wind, "ea") } : {}),
+    ...(tie.length ? { tie:pick(tie, "ea") } : {}) };
+  const mixed = ["w","ea"].flatMap(k => [["main",main],["hanger",hanger],["wind",wind],["tie",tie]]
+    .filter(([, rs]) => new Set(rs.map(r => r.g[k]).filter(isPos).map(Number)).size > 1).map(([n]) => `${n}.${k}`));
+  if (mixed.length) o["_注意"] = `同一角色的群組數值不同,取第一個群組:${mixed.join("、")}`;
+  if (wind.length){ o.wind_H = dv("wind_H"); o.tie_T = dv("tie_T"); o.fix_wind = d.fix_wind === undefined ? true : !!d.fix_wind; }
   o.output_kind = "Lu"; o.fix_main_z = true;
   return JSON.stringify(o, null, 2) + "\n";
 }
@@ -7058,6 +7159,48 @@ function pairLinkFields(){
       fld(`SRx (${Ur})`, "out.pairLink.srx", k.srx) + fld(`SRy (${Ur})`, "out.pairLink.sry", k.sry) +
       fld(`SRz (${Ur})`, "out.pairLink.srz", k.srz) : "")}</div>`;
 }
+/* 吊橋設計值(v3.51):roles.json 與吊橋助手(flow.html)用。纜索的自重與 EA 在各群組填,這裡只放全橋層級的值 */
+function cableRoles(){
+  const R = MODEL.groups, isC = r => (r.g.etype || "BEAM") === "CABLE";
+  const by = u => R.filter(r => isC(r) && r.g.use === u);
+  if (["cable","hanger","wind","tie"].some(u => by(u).length))
+    return { main:by("cable"), hanger:by("hanger"), wind:by("wind"), tie:by("tie"), other:R.filter(r => isC(r) && !["cable","hanger","wind","tie"].includes(r.g.use)), src:"use" };
+  const byId = id => R.find(r => r.g.id === id);
+  const hanger = R.filter(r => isC(r) && r.g.type === "LINKZ");
+  const mainIds = new Set(hanger.map(r => r.g.ref));
+  const tie = R.filter(r => isC(r) && r.g.type === "LINK2");
+  const windIds = new Set(tie.flatMap(r => [r.g.a, r.g.b]).filter(id => { const x = byId(id); return x && isC(x) && !mainIds.has(id); }));
+  const main = R.filter(r => mainIds.has(r.g.id)), wind = R.filter(r => windIds.has(r.g.id));
+  const other = R.filter(r => isC(r) && !hanger.includes(r) && !tie.includes(r) && !main.includes(r) && !wind.includes(r));
+  return { main, hanger, wind, tie, other, src:"topo" };
+}
+function paneDesign(){
+  const cr = cableRoles();
+  if (!cr.main.length && !cr.hanger.length) return "";
+  const U = { F:UF(), L:UL(), "F/L":`${UF()}/${UL()}`, "F/L2":`${UF()}/${UL()}²`, C:"°C" };
+  const wind = cr.wind.length > 0;
+  const keys = DESIGN_KEYS.filter(([k]) => wind || (k !== "wind_H" && k !== "tie_T"));
+  const val = (rs, k) => { const v = rs.map(r => r.g[k]).filter(isPos); return v.length ? mnum(+v[0]) + (new Set(v.map(Number)).size > 1 ? " …" : "") : ""; };
+  const row = (nm, rs, noW) => rs.length ? `<tr><td>${nm}</td><td class="num">${rs.map(r => esc(r.gname)).join(" ")}</td><td class="num">${noW ? (val(rs, "w") || "—") : (val(rs, "w") || "<span class=\"todo\">待填</span>")}</td><td class="num">${val(rs, "ea") || "<span class=\"todo\">待填</span>"}</td></tr>` : "";
+  return SEC("吊橋設計值", cr.src === "use" ? "角色依設計用途" : "角色依群組關係推定",
+    `<table class="t"><thead><tr><th>角色</th><th>群組</th><th>自重 ${esc(U["F/L"])}</th><th>EA ${esc(U.F)}</th></tr></thead><tbody>${
+      row("主纜", cr.main) + row("吊索", cr.hanger) + row("耐風索", cr.wind) + row("繫索", cr.tie, true)}</tbody></table>
+     <div class="fields g3" style="margin-top:9px">${keys.map(([k, nm, u]) => fld(`${nm} (${U[u]})`, "design." + k, (state.design || {})[k])).join("") +
+       (wind ? fld("修正耐風索形狀(力密度法)", "design.fix_wind", !!(state.design || {}).fix_wind, { check:true }) : "")}</div>
+     <div class="btns" style="margin-top:9px"><button class="btn p" data-op="flow">開啟吊橋助手</button>
+       <button class="btn" data-op="roles">roles.json</button></div>`);
+}
+/* 自由端約束(v3.51):每個群組的自由端一起指定;約束方向是工程判斷,預設不設 */
+const BND_OPTS = [["","不設"],["111111","固定 111111"],["111000","鉸 111000"],["111100","111100"],["001000","只束制垂直 001000"]];
+function paneBnd(){
+  const fg = freeByGroup();
+  if (!fg.size) return "";
+  const b = state.bnd || {}, on = bndList().length;
+  return SEC("邊界條件", on ? `${on} 組輸出 *CONSTRAINT` : "自由端尚未指定約束",
+    `<table class="t"><thead><tr><th>群組</th><th>自由端節點</th><th>約束</th></tr></thead><tbody>${
+      [...fg].map(([gn, ns]) => `<tr><td class="num">${esc(gn)}</td><td class="num">${esc(compressList(ns))}</td><td>${
+        fld("", "bnd." + gn, b[gn] || "", { select:BND_OPTS })}</td></tr>`).join("")}</tbody></table>`);
+}
 function paneOutput(){
   return `<div class="ptitle"><span class="nm">檢查與匯出</span><span class="fam geo">全域</span></div>` + exportChecks() +
     SEC("下載", "", `<div class="btns">
@@ -7080,6 +7223,7 @@ function paneOutput(){
         <b>支承節點局部座標</b>:自由端與節點對寫成 <code>*LOCALAXIS</code>,局部 x 沿線形切線(繞 Z 旋轉),曲線橋的支承方向不必逐點設定;與整體 X 平行的不輸出。
         CSV 含 UTF-8 BOM;DXF 為 R12 ASCII,圖層 = 匯出群組名,要 .dwg 在 CAD 另存。</div>
       ${(MODEL.kept || []).length && state.out.pairLink.on ? pairLinkFields() : ""}`) +
+    paneDesign() + paneBnd() +
     SEC("3D 視角", "", `<div class="fields g3">${
       fld("方位角 (°)", "view.az", state.view.az) +
       fld("仰角 (°)", "view.el", state.view.el) +
@@ -7461,6 +7605,7 @@ $("#pane").addEventListener("click", e => {
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
   if (op === "weldtog"){ state.weld.on = (state.weld.on === false); recompute(true); return; }
   if (op === "roles"){ download(`roles_${stamp()}.json`, rolesTemplate(), "application/json;charset=utf-8"); return; }
+  if (op === "flow"){ openFlow(); return; }
   if (op === "csvfree"){ download(`free_nodes_${stamp()}.csv`, freeCsv(), "text/csv;charset=utf-8"); return; }
   if (op === "renum"){
     if (!confirm("依目前的清單順序重新指定所有群組的號段?\n編號會改變 —— 已經匯入 midas 的模型不能再用匯入覆蓋更新。")) return;
@@ -9702,7 +9847,7 @@ function runTests(){
       const md = buildModel(st, e2, w2);
       yes("N1", `範例「${nm}」沒有錯誤`, e2.length === 0, e2.join(" | ") || "無", 0);
       yes("N1", `範例「${nm}」每個群組都算得出東西`,
-        md.groups.every(r => !r.stat.err && (r.nodes.length || r.elems.length)),
+        md.groups.every(r => !r.stat.err && (r.nodes.length || r.elems.length || (r.links || []).length)),
         md.groups.filter(r => r.stat.err).map(r => r.g.name).join(",") || "全部正常", "全部正常");
       yes("N1", `範例「${nm}」元素的材料 / 斷面都填過`,
         md.groups.every(r => r.elems.every(e3 => e3.mat > 0 && e3.sect > 0)), "已填", "已填");
@@ -11523,7 +11668,7 @@ function runTests(){
     const m1 = buildModel(st, [], []);
     yes("W6","插入一個群組:其他群組編號不變(號段固定在群組上)", nb(m0, "主索左") === 15001 && nb(m1, "主索左") === 15001,
       `${nb(m0, "主索左")} → ${nb(m1, "主索左")}`, "15001 → 15001");
-    chk("W6","新插入的群組接在最大號段後面", nb(m1, "欄杆"), 25001, 0, "");
+    chk("W6","新插入的群組接在最大號段後面(v3.51 範例 28 組 → 29001)", nb(m1, "欄杆"), 29001, 0, "");
     const old = normState({ ...DEF_STATE(), groups:[{ type:"CURVE", id:"a", name:"a" }, { type:"CURVE", id:"b", name:"b" }] });
     ensureSlots(old.groups);
     yes("W6","舊檔沒有號段序號:依清單順序(與 v3.45 相同)", old.groups[0].slot === 0 && old.groups[1].slot === 1,
@@ -12222,6 +12367,49 @@ function runTests(){
   }
 
   {
+    /* ---- v3.51:吊橋設計值、群組設計標記、自由端約束、範例的支承連結(SPEC §16.28、§16.29)---- */
+    const svX = { M:MODEL, s:state, sel:SEL };
+    state = normState(demoSuspension()); MODEL = buildModel(state, [], []);
+    const tx = mctText(), L = tx.split(/\r?\n/);
+    yes("X1","群組註解寫入用途、自重、EA、受風寬(ASCII)",
+      L.some(l => l === "; --- G_CABLE_L (CURVE) --- use=cable w=12 EA=17000000 windW=0.045") && ![...tx].some(c => c.charCodeAt(0) > 126),
+      L.find(l => /G_CABLE_L \(CURVE\)/.test(l)), "use=cable w=12 EA=17000000 windW=0.045");
+    yes("X1","檔頭寫入吊橋設計值",
+      L.some(l => l === "; Design    : deck_per_len=300 band=20 width=2.4 crowd=200 crowd_hanger=300 wind_p=450 dT=20 wind_H=6000 tie_T=250 fix_wind=1"),
+      L.find(l => l.indexOf("Design") >= 0) || "無", "deck_per_len=300 … fix_wind=1");
+    const cs = L.slice(L.indexOf("*CONSTRAINT") + 1).filter(l => /^\s*\d/.test(l)).slice(0, 6).map(l => l.trim());
+    yes("X2","自由端約束輸出 *CONSTRAINT(塔底、主纜與耐風索錨碇)",
+      cs.join("|") === "15001 15039, 111111, BG_CABLE_L|16001 16039, 111111, BG_CABLE_R|19001 19025, 111111, BG_WIND_L|20001 20025, 111111, BG_WIND_R|23007 23014, 111111, BG_TOWER_W|24007 24014, 111111, BG_TOWER_E",
+      cs.length + " 列", "6 列");
+    const bi = L.indexOf("*BNDR-GROUP"), bn = L.slice(bi + 2, bi + 12).map(l => l.trim());
+    yes("X2","約束的邊界群組在 *BNDR-GROUP 宣告", ["BG_TOWER_W","BG_CABLE_L","BG_WIND_R"].every(n => bn.includes(n)), bn.join(" "), "含 BG_TOWER_W 等");
+    const lk = L.slice(L.indexOf("*ELASTICLINK") + 1).filter(l => /^\s*\d+,/.test(l)).map(l => l.trim().split(/,\s*/));
+    yes("X3","範例支承:下弦端點 → 塔下橫梁 4 根 GEN 連結",
+      lk.map(f => f[1] + "-" + f[2]).join(",") === "5001-23012,6001-23005,5033-24012,6033-24005",
+      lk.map(f => f[1] + "-" + f[2]).join(","), "5001-23012,6001-23005,5033-24012,6033-24005");
+    yes("X3","範例支承:垂直、橫向大勁度,縱向西端弱彈簧、東端可動",
+      lk.every(f => f[11] === "100000000" && f[12] === "100000000") && lk[0][13] === "1000" && lk[2][13] === "0",
+      lk.map(f => f[13]).join("/"), "1000/1000/0/0");
+    yes("X3","範例統計不變:321 節點、791 元素、自由端 12", MODEL.tot.n === 321 && MODEL.tot.e === 791 && MODEL.free.length === 12,
+      `${MODEL.tot.n} / ${MODEL.tot.e} / ${MODEL.free.length}`, "321 / 791 / 12");
+    const rj = JSON.parse(rolesTemplate());
+    yes("X4","roles.json 依設計用途與群組數值產生,不再全是 0",
+      rj.main.join() === "G_CABLE_L,G_CABLE_R" && rj.tie.join() === "G_WSTAY_L,G_WSTAY_R" && rj.loads.deck_per_len === 300 &&
+      rj.loads.w_main === 12 && rj.loads.w_wind === 6 && rj.EA.tie === 2850000 && rj.wind_H === 6000 && rj.tie_T === 250 && rj.fix_wind === true,
+      JSON.stringify(rj.loads), "300/20/12/2/6");
+    state.groups.forEach(g => { g.use = ""; }); MODEL = buildModel(state, [], []);
+    const rj2 = JSON.parse(rolesTemplate());
+    yes("X4","沒有設計用途時仍依群組關係判定角色", rj2.main.join() === "G_CABLE_L,G_CABLE_R" && rj2.wind.join() === "G_WIND_L,G_WIND_R",
+      rj2.main.join() + " | " + (rj2.wind || []).join(), "G_CABLE_L,G_CABLE_R | G_WIND_L,G_WIND_R");
+    state.bnd = { G_TOWER_W:"" }; MODEL = buildModel(state, [], []);
+    yes("X2","約束留空(不設)時不輸出 *CONSTRAINT", mctText().indexOf("*CONSTRAINT") < 0, "無", "無");
+    state = normState(demoHighway()); MODEL = buildModel(state, [], []);
+    const th = mctText();
+    yes("X1","沒有填設計值與標記的模型不多出註解(公路橋範例)", th.indexOf("Design") < 0 && !/ (w|EA|windW)=/.test(th) && th.indexOf("*CONSTRAINT") < 0, "無", "無");
+    MODEL = svX.M; state = svX.s; SEL = svX.sel;
+  }
+
+  {
     /* ---- v3.49:版面(PLATE)、剛性 / 彈性連結(SPEC §16.23、§16.24)---- */
     const save = { st:state, md:MODEL };
     const LN = (id, x1, y1, x2, y2, n, z) => ({ ...defaultGroup("CURVE"), id, name:id, etype:"BEAM", mat:1, sect:1,
@@ -12283,10 +12471,10 @@ function runTests(){
     R = run([LN("A",0,0,10,0,2), DZ({ etype:"ELINK", link:{ kind:"RIGID" } })]);
     yes("W8","彈性連結 RIGID 不帶勁度", R.tx.filter(l => /, RIGID, /.test(l)).every(l => /, RIGID, 0, NO, 0.5, 0.5, G_BRG$/.test(l)) &&
       R.tx.filter(l => /, RIGID, /.test(l)).length === 3, R.tx.find(l => /, RIGID, /.test(l)), "…, RIGID, 0, NO, 0.5, 0.5, G_BRG");
-    // 範例輸出不變
-    state = normState(demoSuspension()); MODEL = buildModel(state, [], []);
+    // 沒有連結的模型輸出不變(v3.51 起人行吊橋範例本身有支承連結,改用公路橋範例)
+    state = normState(demoHighway()); MODEL = buildModel(state, [], []);
     const t0 = mctText();
-    yes("W8","預設不輸出連結區塊(範例 .mct 不變)", t0.indexOf("*ELASTICLINK") < 0 && t0.indexOf("*BNDR-GROUP") < 0 && t0.indexOf("*RIGIDLINK") < 0, "無", "無");
+    yes("W8","預設不輸出連結區塊(公路橋範例 .mct 不變)", t0.indexOf("*ELASTICLINK") < 0 && t0.indexOf("*BNDR-GROUP") < 0 && t0.indexOf("*RIGIDLINK") < 0, "無", "無");
     // 節點對 → 彈性連結(預設關閉):支承線設「不與其他群組合併」,與梁在 3 個點重合
     R = run([LN("A",0,0,10,0,2), { ...LN("P",0,0,10,0,2), noWeld:true }]);
     yes("W8","節點對預設不輸出連結", R.tx.indexOf("*ELASTICLINK") < 0 && MODEL.kept.length === 3, MODEL.kept.length, 3);
@@ -12471,6 +12659,8 @@ $("#tests-wrap").addEventListener("toggle", e => {
 AUTO_ON = true;
 renderEmpty();
 
+// 可安裝成 App(PWA,v3.51):以網站開啟時註冊離線快取;直接開本機檔案(file://)時不註冊
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>
