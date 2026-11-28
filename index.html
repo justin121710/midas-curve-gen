@@ -12640,6 +12640,8 @@ const SUSPENSION_FIELDS = [
   ["anchorL", "左錨碇距塔"], ["anchorLZ", "左錨碇高程"], ["anchorR", "右錨碇距塔"], ["anchorRZ", "右錨碇高程"]
 ];
 
+const suspensionPanels = (span, spacing) => 2 * Math.max(1, Math.ceil(span / (2 * spacing)));
+
 function validateSuspensionGeometry(p){
   if (SUSPENSION_FIELDS.some(([k]) => !Number.isFinite(p[k]))) return "請填完每個幾何尺寸。";
   if (["span", "width", "sag", "spacing", "depth", "bearing", "anchorL", "anchorR"].some(k => p[k] <= 0))
@@ -12647,7 +12649,7 @@ function validateSuspensionGeometry(p){
   if (p.saddle - p.sag <= p.deck) return "主纜最低點必須在橋面以上。";
   if (p.deck - p.depth - p.bearing <= Math.max(p.baseL, p.baseR)) return "塔下橫梁必須高於塔底。";
   if (Math.max(p.anchorLZ, p.anchorRZ) >= p.saddle) return "這個模板的錨碇高程須低於索鞍。";
-  if (Math.ceil(p.span / p.spacing) > 300) return "吊索分格超過 300 格，請調整間距或在編輯器自訂。";
+  if (suspensionPanels(p.span, p.spacing) > 300) return "吊索分格超過 300 格，請調整間距或在編輯器自訂。";
   return "";
 }
 const suspensionId = () => Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
@@ -12668,7 +12670,7 @@ function openSuspensionStart(){
   const dlg = suspensionDialog(`<form><h3>建立 3D 雙索面人行吊橋</h3>
     <p class="hint">適用於平直橋面、兩端索鞍同高的地錨式單主跨。橋軸為 X，左塔 X＝0，單位 m、kgf。</p>
     <div class="fields g3">${SUSPENSION_FIELDS.map(([k, label]) => `<label class="f"><span>${label}（m）</span><input type="number" name="${k}" step="any" required></label>`).join("")}</div>
-    <p class="hint">吊索等分，間距不超過輸入值。材料、斷面與支承勁度請按本案核對。耐風系統可在編輯器另建。</p>
+    <p class="hint">吊索等分並在跨中設節點，間距不超過輸入值。材料、斷面與支承勁度請按本案核對。耐風系統可在編輯器另建。</p>
     <p role="alert" data-sb-error></p>
     <div class="btns"><button type="button" class="btn" data-sb-close>取消</button><button class="btn p">建立並預覽</button></div></form>`);
   dlg.querySelector("form").onsubmit = e => {
@@ -12678,7 +12680,7 @@ function openSuspensionStart(){
     const error = validateSuspensionGeometry(p);
     if (error){ dlg.querySelector("[data-sb-error]").textContent = error; return; }
     if (state.groups.length && !confirm("以新吊橋取代編輯中的幾何？可用復原還原。")) return;
-    const model = demoSuspension({ ...p, panels:Math.max(2, Math.ceil(p.span / p.spacing)) });
+    const model = demoSuspension({ ...p, panels:suspensionPanels(p.span, p.spacing) });
     model.suspensionProjectId = suspensionId();
     dlg.close();
     loadState(model);

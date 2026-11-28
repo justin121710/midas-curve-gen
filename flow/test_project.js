@@ -31,7 +31,9 @@ const geometryMct = vm.runInContext(`
     bearing:0.4, baseL:0, baseR:1, anchorL:14, anchorR:18, anchorLZ:4, anchorRZ:6 };
   assert.equal(validateSuspensionGeometry(p), "");
   assert.ok(validateSuspensionGeometry({ ...p, sag:14 }));
-  state = normState(demoSuspension({ ...p, panels:25 }));
+  const panels = suspensionPanels(p.span, p.spacing);
+  assert.equal(panels, 26);
+  state = normState(demoSuspension({ ...p, panels }));
   state.suspensionProjectId = "test-bridge";
   const errs = [], warns = [];
   MODEL = buildModel(state, errs, warns);
@@ -40,9 +42,13 @@ const geometryMct = vm.runInContext(`
   assert.equal(state.design.width, 3);
   assert.equal(state.design.deck_per_len, undefined);
   assert.equal(MODEL.groups.filter(g => g.g.use === "hanger").length, 2);
-  for (const g of MODEL.groups.filter(g => g.g.use === "hanger")) assert.equal(g.elems.length, 24);
+  for (const g of MODEL.groups.filter(g => g.g.use === "hanger")) assert.equal(g.elems.length, 25);
   assert.equal(MODEL.groups.flatMap(g => g.links || []).length, 4);
-  assert.equal(setDrawingRole(defaultGroup("CURVE"), "hanger").etype, "CABLE");
+  const layers = new Set(["Cable"]), roles = new Map([["Cable", "cable"]]);
+  const dxf = { polys:[{ layer:"Cable", segs:[{ p:{x:0,y:0,z:6}, q:{x:10,y:0,z:5} }] }] };
+  const [imported] = dxfGroups(dxf, { layers, roles, scale:1, ox:0, oy:0, oz:0, zMode:"dxf", maxLen:0, perLayer:true });
+  assert.equal(imported.etype, "CABLE");
+  assert.equal(imported.use, "cable");
   mctText();
 `, builder);
 
@@ -55,6 +61,10 @@ vm.runInContext(app.slice(0, appStart), context, { filename: 'app.js' });
 context.demoMct = read('tools/examples/suspension_demo.mct');
 context.geometryMct = geometryMct;
 vm.runInContext(`
+  S.src = 'param';
+  compute();
+  assert.ok(R.ok, R.error);
+  assert.equal(planeRes()[0].span, 60);
   assert.ok(loadMctQuiet(demoMct, 'demo.mct', 'demo'));
   compute();
   assert.ok(R.ok, R.error);
@@ -116,6 +126,7 @@ vm.runInContext(`
   compute();
   assert.ok(R.ok, R.error);
   assert.equal(planeRes()[0].span, 73);
+  assert.ok(Math.abs(planeRes()[0].f - 9) < 0.001);
   assert.ok(loadMctQuiet(geometryMct, 'bridge-edited.mct', 'cg'));
   assert.equal(S.cfg.loads.deck_per_len, 300, '同專案重新交接保留已輸入的恆載');
 `, context);
