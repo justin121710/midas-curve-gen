@@ -17,9 +17,13 @@ const PDEF = { L: 60, f: 6, s: 3, zTop: 7, zDeck: 0, zBase: -2, aLx: 12, aLz: -1
 const XDEF = { b: null, qc: 200, qh: 300, dT: 20, pw: 450, hw: 0.40, Dc: 0.03, area: {} };
 const S = {
   src: null, fileName: '', rolesName: '', mctText: '', cfg: null, prov: {}, extra: { ...XDEF, area: {} }, param: { ...PDEF },
-  tab: 'proj', step: { proj: 0, pret: 0, midas: 0, ana: 0 }, g1: {}, g2: {}, roleFilter: 'all', route: 'A', deckBeam: true
+  intent: '', confirmed: false, projectId: '', tab: 'proj', step: { proj: 0, pret: 0, midas: 0, ana: 0 }, g1: {}, g2: {}, roleFilter: 'all', route: 'A', deckBeam: true
 };
 try { const s = JSON.parse(localStorage.getItem('sbflow.v3') || 'null'); if (s) Object.assign(S, s, { extra: { ...XDEF, ...(s.extra || {}), area: { ...((s.extra || {}).area || {}) } } }); } catch (e) {}
+function invalidate(includeG1 = true) {
+  if (includeG1) S.g1 = {};
+  S.g2 = {};
+}
 function save() { try { localStorage.setItem('sbflow.v3', JSON.stringify(S)); } catch (e) {} }
 
 // ============================================================== 小工具
@@ -93,15 +97,23 @@ function parseExtras(text) {
 function loadMctQuiet(text, name, src) {
   let m;
   try { m = new Mct(text); } catch (e) { toast('無法讀取這個 .mct'); return false; }
+  if ([...m.nodes.values()].some(p => p.some(v => !Number.isFinite(v))) ||
+      [...m.elems.values()].some(e => !e.type || !m.nodes.has(e.i) || !m.nodes.has(e.j))) {
+    toast('節點或元素資料有誤，請重新匯入完整 .mct'); return false;
+  }
   if (!m.nodes.size || !m.elems.size) { toast('檔案裡沒有 *NODE 或 *ELEMENT'); return false; }
   const x = parseExtras(text);
-  S.src = src; S.fileName = name; S.mctText = text; S.rolesName = ''; S.prov = {}; S.g1 = {}; S.g2 = {};
+  const projectId = src === 'cg' ? readParams(text)?.state?.suspensionProjectId || '' : '';
+  const previous = projectId && projectId === S.projectId && S.src === 'cg' ? { cfg: S.cfg, extra: S.extra, prov: S.prov } : null;
+  S.src = src; S.fileName = name; S.mctText = text; S.rolesName = ''; S.prov = {};
+  S.projectId = projectId; S.intent = src === 'file' ? 'review' : 'recalculate';
+  S.confirmed = src === 'demo'; invalidate();
   const byUse = u => [...x.tags].filter(([g, t]) => t.use === u && m.groups.has(g)).map(([g]) => g);
   let roles;
   if (byUse('cable').length && byUse('hanger').length) { roles = { main: byUse('cable'), hanger: byUse('hanger'), wind: byUse('wind'), tie: byUse('tie') }; S.prov.roles = 'cg'; }
   else { roles = inferRoles(m); S.prov.roles = 'auto'; }
   S.cfg = { main: roles.main, hanger: roles.hanger, wind: roles.wind, tie: roles.tie, loads: { deck_per_len: 0, band: 0, w_main: 0, w_hang: 0, w_wind: 0 },
-    EA: { main: 0, hanger: 0, wind: 0, tie: 0 }, wind_H: 0, tie_T: 0, fix_wind: !!roles.wind.length, output_kind: 'Lu', fix_main_z: true };
+    EA: { main: 0, hanger: 0, wind: 0, tie: 0 }, wind_H: 0, tie_T: 0, fix_wind: src !== 'file' && !!roles.wind.length, output_kind: 'Lu', fix_main_z: src !== 'file' };
   const first = (gs, k) => { for (const g of gs || []) { const t = x.tags.get(g); if (t && t[k] > 0) return t[k]; } return 0; };
   const setv = (p, v) => { if (!(v > 0)) return; const [a, b] = p.split('.'); if (b) S.cfg[a][b] = v; else S.cfg[a] = v; S.prov[p] = 'cg'; };
   setv('loads.w_main', first(roles.main, 'w')); setv('loads.w_hang', first(roles.hanger, 'w')); setv('loads.w_wind', first(roles.wind, 'w'));
@@ -114,6 +126,18 @@ function loadMctQuiet(text, name, src) {
   const ex = (k, v) => { if (v > 0) { S.extra[k] = v; S.prov[k] = 'cg'; } };
   ex('b', d.width); ex('qc', d.crowd); ex('qh', d.crowd_hanger); ex('pw', d.wind_p); ex('dT', d.dT);
   if (!(S.extra.b > 0)) { const geo = geomInfo(m, S.cfg); if (geo && geo.planeGap) { S.extra.b = +fx(geo.planeGap, 3); S.prov.b = 'auto'; } }
+  if (previous) {
+    for (const [key, source] of Object.entries(previous.prov)) {
+      if (source !== 'manual' || S.prov[key] === 'cg') continue;
+      const [section, k] = key.split('.');
+      if (k && S.cfg[section] && previous.cfg[section]) S.cfg[section][k] = previous.cfg[section][k];
+      else if (key in S.extra) S.extra[key] = previous.extra[key];
+      else if (key === 'wind_H' || key === 'tie_T') S.cfg[key] = previous.cfg[key];
+      else continue;
+      S.prov[key] = 'manual';
+    }
+    S.extra.area = { ...previous.extra.area };
+  }
   save(); return true;
 }
 function applyRoles(o, p = 'roles') {
@@ -180,11 +204,21 @@ function compute() {
   R.text0 = text; R.cfg = cfg; R.x = parseExtras(text);
   const m0 = new Mct(text); R.m0 = m0;
   R.geo = geomInfo(m0, cfg);
+  if (m0.unit.join(',').toUpperCase() !== 'KGF,M') {
+    R.error = '吊橋計算使用 KGF、M。請先換算單位並重新匯入模型。';
+    return;
+  }
+  if (S.src === 'file' && S.intent !== 'recalculate') return;
+  if (cfg.main.length > 2) { R.error = '限單、雙索面，請核對主纜群組。'; return; }
   if (!cfg.main.length) R.missing.push('主纜群組（.mct 裡找不到全部為 Cable 元素、且掛有吊索的節點串；可在線形建模器的設計用途標「主纜」）');
   if (!cfg.hanger.length) R.missing.push('吊索群組');
   if (!(cfg.loads.deck_per_len > 0)) R.missing.push('橋面恆載 deck_per_len');
   if (!(cfg.EA.main > 0)) R.missing.push('主纜 EA');
   if (!(cfg.EA.hanger > 0)) R.missing.push('吊索 EA');
+  if (S.projectId || S.src === 'file') {
+    if (!(cfg.loads.w_main > 0)) R.missing.push('主纜單位長自重');
+    if (!(cfg.loads.w_hang > 0)) R.missing.push('吊索單位長自重');
+  }
   if ((cfg.wind || []).length) { if (!(cfg.EA.wind > 0)) R.missing.push('耐風索 EA'); if (!(cfg.EA.tie > 0)) R.missing.push('繫索 EA'); if (!(cfg.wind_H > 0)) R.missing.push('耐風索水平張力 wind_H'); }
   if (!(cfg.wind || []).length) { delete cfg.wind; delete cfg.tie; }
   if (cfg.wind && !cfg.fix_wind) delete cfg.tie_T;
@@ -204,34 +238,41 @@ const TABS = [
 function steps(tab) {
   const wind = R && R.cfg && R.cfg.wind && R.cfg.wind.length;
   return {
-    proj: [['來源', stSource], ['自動帶入', stAuto], ['載重與 EA', stLoads], ['追加載重', stExtra]],
+    proj: [['來源', stSource], ['模型確認', stAuto], ['載重與 EA', stLoads], ['追加載重', stExtra]],
     pret: [['結果', stResult], ...(wind ? [['耐風系統', stWind]] : []), ['輸入值', stValues], ['檢查', stChecks]],
-    midas: [['單位', mUnit], ['匯入', mImport], ['材料斷面', mMat], ['邊界', mBnd], ['支承', mBrg], ['旋轉自由度', mRot], ['恆載', mDL], ['分析控制', mNL], ['G1 驗證', mG1], ['存基準檔', mSave]],
+    midas: [['單位', mUnit], ['下載 MIDAS 檔案', mImport], ['材料斷面', mMat], ['邊界', mBnd], ['支承', mBrg], ['旋轉自由度', mRot], ['恆載', mDL], ['分析控制', mNL], ['G1 驗證', mG1], ['存基準檔', mSave]],
     ana: [['工況', aCases], ['組合方式', aComb], ['G2 驗證', aG2], ['特徵值', aEig], ['風', aWind]]
   }[tab];
 }
 function needResult() {
   if (!S.src) return `<div class="card">${head('尚未開始', '先選擇資料來源')}<p class="muted">到「專案」匯入 midas-curve-gen 的 .mct，或載入範例。</p><button class="btn solid" data-go="proj,0">前往專案</button></div>`;
-  if (R.missing.length) return `<div class="card">${head('還缺資料', '補齊後才能計算')}<ul class="checks">${R.missing.map(t => `<li>${pill('warn', '缺')}<span>${esc(t)}</span></li>`).join('')}</ul><button class="btn solid" style="margin-top:12px" data-go="proj,2">前往載重與 EA</button></div>`;
+  if (S.src === 'file' && S.intent !== 'recalculate') return '<div class="card"><p>目前正在檢查現有模型。</p><button class="btn solid" data-go="proj,1">回到模型確認</button></div>';
+  if (R.missing.length) return `<div class="card">${head('還缺資料', '補齊後才能計算')}<ul class="checks">${R.missing.map(t => `<li>${pill('warn', '缺')}<span>${esc(t)}</span></li>`).join('')}</ul><button class="btn solid" style="margin-top:12px" data-go="proj,${!R.cfg.main.length || !R.cfg.hanger.length ? 1 : 2}">${!R.cfg.main.length || !R.cfg.hanger.length ? '設定纜索角色' : '補齊恆載與 EA'}</button></div>`;
   if (R.error) return `<div class="card">${head('無法計算', '引擎回報錯誤')}<p>${esc(R.error)}</p><p class="muted">錯誤訊息與 cable_pretension.py 相同；修正 .mct 或設定後會自動重算。</p></div>`;
   return '';
 }
 
 // ---------------------------------------------------------------- 專案
+function requireConfirmedModel() {
+  if (S.src === 'param' || S.confirmed || (S.src === 'demo' && !S.rolesName && S.prov.roles !== 'manual')) return '';
+  return '<div class="card"><p>請先確認角色、邊界與支承設定。</p><button class="btn solid" data-go="proj,1">模型確認</button></div>';
+}
 function stSource() {
   const on = s => S.src === s ? 'true' : 'false';
-  return head('專案 1', '資料來源', '在線形建模器按「檢查與匯出 > 開啟吊橋助手」，模型會直接帶進來；也可以拖入 .mct。') + `
+  return head('專案 1', '開始一個吊橋專案', '依現有資料開始。') + `
   <div class="stack" style="margin-top:12px">
-    <label class="file" id="dropMct"><span><b style="font-size:14.5px">.mct 檔</b><br><span class="fn">${S.src === 'file' || S.src === 'cg' ? esc(S.fileName) : '點選或拖曳到這裡（線形建模器匯出的檔最完整）'}</span></span>${ICON.file.replace('<svg', '<svg style="width:26px;height:26px;color:var(--teal)"')}<input type="file" id="fMct" accept=".mct,.txt"></label>
-    <label class="file" id="dropRoles"><span><b style="font-size:14.5px">roles.json</b>（選用）<br><span class="fn">${S.rolesName ? esc(S.rolesName) : '覆蓋 .mct 裡的角色與數值'}</span></span>${ICON.file.replace('<svg', '<svg style="width:26px;height:26px;color:var(--muted)"')}<input type="file" id="fRoles" accept=".json"></label>
+    <a class="src" href="index.html?start=suspension">${ICON.bridge}<b>從零建立吊橋</b><span>輸入線形與高程，建立 3D 雙索面</span></a>
+    <a class="src" href="index.html?start=drawing">${ICON.pencil}<b>已有設計圖</b><span>匯入 DXF 或依圖輸入座標</span></a>
+    <label class="file" id="dropMct"><span><b style="font-size:14.5px">已有 MIDAS 模型（.mct）</b><br><span class="fn">${S.src === 'file' || S.src === 'cg' ? esc(S.fileName) : '點選或拖曳到這裡（線形建模器匯出的檔最完整）'}</span></span>${ICON.file.replace('<svg', '<svg style="width:26px;height:26px;color:var(--teal)"')}<input type="file" id="fMct" accept=".mct,.txt"></label>
+    <details class="more"><summary>範例與進階匯入</summary><div class="stack" style="margin-top:10px"><label class="file" id="dropRoles"><span><b style="font-size:14.5px">roles.json</b>（選用）<br><span class="fn">${S.rolesName ? esc(S.rolesName) : '覆蓋 .mct 裡的角色與數值'}</span></span>${ICON.file.replace('<svg', '<svg style="width:26px;height:26px;color:var(--muted)"')}<input type="file" id="fRoles" accept=".json"></label>
     <button class="src" data-src="demo" aria-pressed="${on('demo')}">${ICON.bridge}<b>線形建模器內建人行吊橋範例</b><span>80 m、3D、耐風索＋繫索、支承連結與邊界都已設定（《實務》第 50 章）</span></button>
-    <button class="src" data-src="param" aria-pressed="${on('param')}">${ICON.pencil}<b>手動輸入：60 m 參數式</b><span>2D 單一索面，自動產生模型（《實務》第 44 章）</span></button>
+    <button class="src" data-src="param" aria-pressed="${on('param')}">${ICON.pencil}<b>手動輸入：60 m 參數式</b><span>2D 單一索面，自動產生模型（《實務》第 44 章）</span></button></div></details>
   </div>`;
 }
 function bindSource() {
   const rd = (f, cb) => { const r = new FileReader(); r.onload = () => cb(r.result); r.readAsText(f); };
   const onMct = f => f && rd(f, t => loadMct(t, f.name, 'file'));
-  const onRoles = f => f && rd(f, t => { if (!S.cfg || S.src === 'param') { toast('先載入 .mct'); return; } try { applyRoles(JSON.parse(t)); S.rolesName = f.name; save(); render(); toast('已套用 roles.json'); } catch (e) { toast('roles.json 格式錯誤'); } });
+  const onRoles = f => f && rd(f, t => { if (!S.cfg || S.src === 'param') { toast('先載入 .mct'); return; } try { applyRoles(JSON.parse(t)); S.confirmed = false; invalidate(); S.rolesName = f.name; save(); render(); toast('已套用 roles.json'); } catch (e) { toast('roles.json 格式錯誤'); } });
   document.getElementById('fMct').onchange = e => onMct(e.target.files[0]);
   document.getElementById('fRoles').onchange = e => onRoles(e.target.files[0]);
   for (const [id, fn] of [['dropMct', onMct], ['dropRoles', onRoles]]) {
@@ -253,6 +294,37 @@ function numRow(key, label, val, unit, prov, opts = {}) {
   return `<div class="row"><div class="lab">${label}${tag(prov)}</div><input type="number" step="any" inputmode="decimal" id="in_${key.replace(/\./g, '_')}" data-key="${key}" value="${val ?? ''}" ${opts.ph ? `placeholder="${opts.ph}"` : ''}>${unit ? `<div class="u">${unit}</div>` : ''}</div>`;
 }
 function valRow(label, val, unit, prov) { return `<div class="row v"><div class="lab">${label}${tag(prov)}</div><div class="val">${val}${unit ? ` <span class="muted" style="font-size:12px">${unit}</span>` : ''}</div></div>`; }
+const CABLE_ROLES = [['main', '主纜'], ['hanger', '吊索'], ['wind', '耐風索'], ['tie', '繫索']];
+
+function modelReview() {
+  const m = R.m0, x = R.x;
+  const candidates = [...m.groups].filter(([, g]) => g.elems.length && g.elems.every(id => {
+    const el = m.elems.get(id);
+    return el?.type?.toUpperCase() === 'TENSTR' && el.f[7] === '3';
+  }));
+  const selected = name => CABLE_ROLES.find(([k]) => S.cfg[k]?.includes(name))?.[0] || '';
+  const rows = candidates.map(([name, group]) => `<tr><td class="t">${esc(name)}</td><td>${group.elems.length}</td><td><select data-cable-group="${esc(name)}" aria-label="${esc(name)} 的纜索角色"${S.src === 'file' && S.intent !== 'recalculate' ? ' disabled' : ''}><option value="">未設定</option>${CABLE_ROLES.map(([k, label]) => `<option value="${k}"${selected(name) === k ? ' selected' : ''}>${label}</option>`).join('')}</select></td></tr>`).join('');
+  const blocks = ['MATERIAL', 'SECTION', 'STLDCASE', 'SELFWEIGHT', 'CONLOAD', 'BEAMLOAD', 'STAGE']
+    .filter(k => m.lines.some(line => new RegExp('^\\s*\\*' + k + '(?:[\\s,;]|$)', 'i').test(line)));
+  const materialIds = [...new Set([...m.elems.values()].map(e => e.f[2]))].join('、');
+  const sectionIds = [...new Set([...m.elems.values()].map(e => e.f[3]))].join('、');
+  const file = S.src === 'file', canEdit = !file || S.intent === 'recalculate';
+  return head('專案 2', '確認模型', '核對立面、平面與群組角色，再補恆載與 EA。') +
+    (file ? `<div class="seg" aria-label="模型用途"><button data-intent="review" aria-pressed="${!canEdit}">檢查現有設定</button><button data-intent="recalculate" aria-pressed="${canEdit}">重算初張力</button></div>` : '') +
+    `<div class="card"><h3>檔案內容</h3><p>${esc(m.unit.join('、'))} · ${m.nodes.size} 節點 · ${m.elems.size} 元素 · ${x.cons.length} 組約束 · ${x.links.length} 條彈性連結</p>
+      <p>讀到的 MCT：${blocks.length ? blocks.map(k => '<code>*' + k + '</code>').join('、') : '尚未讀到材料、斷面或載重'}</p>
+      <details class="more"><summary>材料、斷面、邊界與支承</summary>
+      <p>材料編號 ${esc(materialIds)} · 斷面編號 ${esc(sectionIds)}</p>
+      ${x.cons.map(v => '<p>約束 ' + esc(v.group) + ' · ' + esc(compressList(v.nodes)) + ' · ' + esc(v.code) + '</p>').join('')}
+      ${x.links.map(v => '<p>彈性連結 ' + esc(v.id) + ' · ' + esc(v.i + ' → ' + v.j + ' · ' + v.kind) + '</p>').join('')}
+      </details></div>` +
+    `<div class="card"><h3>纜索群組${S.prov.roles ? tag(S.prov.roles) : ''}</h3>${rows ? `<div class="tw"><table><thead><tr><th class="t">群組</th><th>元素數</th><th>角色</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p>請在 Civil 或線形建模器依主纜、吊索等角色建立 Cable 元素群組，再重新載入。</p>'}</div>` +
+    (m.unit.join(',').toUpperCase() !== 'KGF,M' ? `<div class="note">${esc(R.error)}</div>` : '') +
+    (canEdit ? `<div class="card"><label class="toggle"><span>已核對角色、邊界與支承</span><input type="checkbox" id="confirmModel"${S.confirmed ? ' checked' : ''}></label>
+      <label class="toggle"><span>依計算的索多邊形修正主纜</span><input type="checkbox" id="fixMain"${S.cfg.fix_main_z ? ' checked' : ''}></label></div>` : '') +
+    `<div class="pager">${canEdit ? '<button class="btn solid" data-go="proj,2">補恆載與 EA</button>' : ''}${S.projectId ? `<a class="btn" href="index.html?start=resume&project=${encodeURIComponent(S.projectId)}">回線形建模器</a>` : ''}</div>`;
+}
+
 function stAuto() {
   if (!S.src) return needResult();
   if (S.src === 'param') {
@@ -260,12 +332,13 @@ function stAuto() {
     return head('專案 2', '線形（手動）', '每一索面；改任何一格都會重算。') + `<div class="card">${k('L', '主跨 L', 'm')}${k('f', '垂度 f', 'm')}${k('s', '吊索間距 s', 'm')}${k('zTop', '塔頂高程', 'm')}${k('zDeck', '橋面高程', 'm')}${k('zBase', '塔底高程', 'm')}${k('aLx', '左錨碇離塔', 'm')}${k('aLz', '左錨碇高程', 'm')}${k('aRx', '右錨碇離塔', 'm')}${k('aRz', '右錨碇高程', 'm')}</div>`;
   }
   const g = R.geo, c = S.cfg, x = R.x;
-  if (!g || !g.planes.length) return head('專案 2', '自動帶入') + `<div class="card"><p>${pill('bad', '找不到主纜')} .mct 裡沒有「全部為 Cable 元素、且掛有吊索」的節點串。</p><p class="muted">${esc(g && g.err || '')}</p></div>`;
+  const review = modelReview();
+  if (!g || !g.planes.length) return review + `<div class="note">請設定主纜與吊索群組，再核對模型圖。${g?.err ? ' ' + esc(g.err) : ''}</div>`;
   const p = g.planes[0], two = g.planes.length > 1;
   const zd = p.zDeck.length ? `${fx(Math.min(...p.zDeck), 3)}～${fx(Math.max(...p.zDeck), 3)}` : '—';
   const roleRow = (k, lab) => (c[k] || []).length ? valRow(lab, `<span style="font-size:12.5px">${c[k].map(esc).join('、')}</span>`, '', S.prov.roles) : '';
   const windG = [...x.tags].filter(([, t]) => t.windW > 0);
-  return head('專案 2', '自動帶入', '線形從節點座標量得；角色、數值、邊界、支承由線形建模器指定（標「curve-gen」），沒有指定的才推估。') + `
+  return review + `
   <div class="card"><h3>線形</h3>
     ${valRow('單位', `${esc(g.unit[0])}, ${esc(g.unit[1])}`, '', 'mct')}
     ${valRow('主跨（塔頂間水平距離）', fx(p.span, 3), 'm', 'mct')}
@@ -296,7 +369,8 @@ function stLoads() {
   return head('專案 3', '載重與 EA', `每一索面，單位同 .mct（${esc(R.geo ? R.geo.unit.join('、') : '')}）。線形建模器或 roles.json 有給的會自動帶入；空白的要填。`) + `
   <div class="card"><h3>恆載（進初張力）</h3>${r('loads.deck_per_len', '橋面恆載 deck_per_len', '橋面系自重＋附加恆載，每一索面每公尺')}${r('loads.band', '索夾 band', '每個吊點')}${r('loads.w_main', '主纜自重 w_main', '每公尺（沿弧長）')}${r('loads.w_hang', '吊索自重 w_hang', '每公尺')}${w ? r('loads.w_wind', '耐風索自重 w_wind', '每公尺') : ''}</div>
   <div class="card"><h3>軸向勁度 EA</h3>${r('EA.main', '主纜、控索', '力')}${r('EA.hanger', '吊索', '力')}${w ? r('EA.wind', '耐風索', '力') + r('EA.tie', '繫索', '力') : ''}</div>
-  ${w ? `<div class="card"><h3>耐風系統（設計者決定）</h3>${r('wind_H', '耐風索水平張力 wind_H', '沿錨碇連線方向的分量 H_wc')}${r('tie_T', '繫索張力 tie_T', '每根；修正耐風索時使用')}<div class="toggle"><span>修正耐風索形狀（力密度法）</span><input type="checkbox" id="tgFix" ${c.fix_wind ? 'checked' : ''}></div></div>` : ''}`;
+  ${w ? `<div class="card"><h3>耐風系統（設計者決定）</h3>${r('wind_H', '耐風索水平張力 wind_H', '沿錨碇連線方向的分量 H_wc')}${r('tie_T', '繫索張力 tie_T', '每根；修正耐風索時使用')}<div class="toggle"><span>修正耐風索形狀（力密度法）</span><input type="checkbox" id="tgFix" ${c.fix_wind ? 'checked' : ''}></div></div>` : ''}
+  <div class="pager"><button class="btn solid" data-go="pret,0">查看初張力</button></div>`;
 }
 function stExtra() {
   if (!S.src) return needResult();
@@ -314,9 +388,9 @@ function bindInputs() {
     else if (a === 'extra') { S.extra[b] = isFinite(v) ? v : null; S.prov[b] = 'manual'; }
     else if (b) { S.cfg[a][b] = isFinite(v) ? v : 0; S.prov[key] = 'manual'; }
     else { S.cfg[a] = isFinite(v) ? v : 0; S.prov[key] = 'manual'; }
-    S.g1 = {}; save(); compute(); render(true);
+    invalidate(a !== 'extra'); save(); render(true);
   }));
-  const t = document.getElementById('tgFix'); if (t) t.onchange = () => { S.cfg.fix_wind = t.checked; save(); compute(); render(true); };
+  const t = document.getElementById('tgFix'); if (t) t.onchange = () => { S.cfg.fix_wind = t.checked; invalidate(); save(); render(true); };
 }
 
 // ---------------------------------------------------------------- 初張力
@@ -334,7 +408,7 @@ function stResult() {
       ['吊索力', `${fx(Math.min(...hang.map(x => x.T)), 1)}～${fx(Math.max(...hang.map(x => x.T)), 1)}`, u, `${r.nHang} 根／索面`],
       ['繫索向下分力', fx(r.ptie, 1), u, '每一索面合計'],
       ['主纜節點移動', fx(r.dzmax, 1), 'mm', R.cfg.fix_main_z ? '已移到索多邊形' : '未修正']
-    ]) + elevSvg(r) + ref('《吊橋設計流程圖解》第 7 章；《實務》第 44、50 章、附錄 B。');
+    ]) + elevSvg(r) + '<div class="pager"><button class="btn solid" data-go="midas,1">下載 MIDAS 檔案</button></div>' + ref('《吊橋設計流程圖解》第 7 章；《實務》第 44、50 章、附錄 B。');
 }
 function elevSvg(r) {
   const m = R.mct, ns = r.ns, P0 = r.P0, ax = r.ax;
@@ -408,11 +482,43 @@ function mUnit() {
     (S.src === 'param' ? path('Structure > Type > Structure Type') + '<p>2D 單一索面：選 <b>X-Z Plane</b>。</p>' : '<p class="muted">3D 模型不用改 Structure Type。</p>');
 }
 function mImport() {
-  const n = needResult(); if (n) return n;
-  const moved = R.cfg.fix_main_z ? planeRes().reduce((a, r) => a + r.dz.size, 0) : 0;
-  return head('建模 2', '匯入填好初張力的 .mct', `已填 ${R.rep.length} 根 Cable 元素的 EXVAL（${R.kind}）${moved ? `，移動 ${moved} 個主纜節點` : ''}；其餘資料列原樣保留。`) +
-    path('File > Import > midas Civil MCT File') + code('mctOut', '完整 .mct', R.text, baseName() + '_tensioned.mct') +
-    `<p class="muted" style="font-size:13px">下載按鈕在離線版（下載的 .html）可用；網頁版請用複製。與 cable_pretension.py 的 <code>run2.mct</code> 逐位元組相同。</p>`;
+  const n = needResult() || requireConfirmedModel(); if (n) return n;
+  return head('建模 2', '下載 MIDAS 檔案', `已計算 ${R.rep.length} 根 Cable 元素的 EXVAL（${R.kind}）。`) +
+    path('File > Import > midas Civil MCT File') +
+    `<div class="card"><h3>匯入 Civil 後核對</h3><p>確認材料斷面、邊界、支承、恆載與非線性控制，再填回 G1。已有載重時先核對工況，以免重複施加。</p></div>` +
+    `<details class="more"><summary>查看節點與纜索差異</summary>${modelChanges()}</details>` +
+    code('mctOut', '新檔（含纜索輸入值）', R.text, baseName() + '_tensioned.mct') +
+    civilHandoff();
+}
+function civilHandoff() {
+  const steps = [
+    ['核對單位與結構型式', 'midas,0'],
+    ['確認材料與斷面', 'midas,2'],
+    ['檢查邊界與支承', 'midas,3'],
+    ['檢查橋面支承', 'midas,4'],
+    ['設定旋轉自由度', 'midas,5'],
+    ['設定恆載工況 DL', 'midas,6'],
+    ['設定幾何非線性分析', 'midas,7'],
+    ['分析並填回 G1', 'midas,8']
+  ];
+  return `<div class="card"><h3>Civil 2022 匯入後設定</h3>
+    <p>本檔有 ${R.m0.nodes.size} 個節點與 ${R.m0.elems.size} 個元素。匯入後先核對數量，再完成設定。</p>
+    <ol class="stack">${steps.map(([label, target]) => `<li><button class="btn sm" data-go="${target}">${label}</button></li>`).join('')}</ol>
+    <p>完成 G1 後再保存基準檔並設定追加載重。</p></div>`;
+}
+function modelChanges() {
+  const changes = [], updated = new Mct(R.text);
+  for (const [id, xyz] of updated.nodes) {
+    const original = R.m0.nodes.get(id);
+    if (original && xyz.some((v, i) => Math.abs(v - original[i]) > 1e-9)) {
+      changes.push(['節點 ' + id, original.map(fmt).join(', '), xyz.map(fmt).join(', ')]);
+    }
+  }
+  for (const { elem } of R.rep) {
+    const from = R.m0.elems.get(elem).f, to = updated.elems.get(elem).f;
+    if (from[8] !== to[8] || from[9] !== to[9]) changes.push(['纜索 ' + elem, from.slice(8, 10).join(' / '), to.slice(8, 10).join(' / ')]);
+  }
+  return `<div class="tw"><table><thead><tr><th class="t">項目</th><th>原值</th><th>新值</th></tr></thead><tbody>${changes.map(row => '<tr>' + row.map(v => '<td>' + esc(v) + '</td>').join('') + '</tr>').join('')}</tbody></table></div>`;
 }
 function roleSect() {
   const m = R.m0, out = [];
@@ -509,36 +615,64 @@ function mBrg() {
 function mRot() { return head('建模 6', '主纜節點的旋轉自由度') + path('Analysis > Main Control > Main Control Data') + '<p>勾選 <b>Auto Rotational DOF Constraint for Truss/Plane Stress/Solid Elements</b>。主纜節點只連 Cable 元素，沒有旋轉勁度。</p>'; }
 function deckBeams() {
   // 每一索面：吊索下端所在的梁群組（不含全模型群組）
-  const m = R.m0, all = m.elems.size, bots = R.rep.filter(r => r.role === 'hanger').map(r => r.bot), out = [];
+  const m = R.m0, all = m.elems.size, out = [];
   for (const r of planeRes()) {
     const mine = new Set([...r.hang.values()].map(([, b]) => b));
     let best = null, cnt = 0;
     for (const [g, v] of m.groups) { if (v.elems.length >= all || !v.elems.length) continue; const el = v.elems.map(e => m.elems.get(e)).filter(Boolean); if (!el.every(e => /^BEAM$/i.test(e.type))) continue; const c = el.filter(e => mine.has(e.i) || mine.has(e.j)).length; if (c > cnt) { cnt = c; best = g; } }
-    if (best) { const xl = p => (p[0] - r.P0[0]) * r.ax[0] + (p[1] - r.P0[1]) * r.ax[1]; const els = m.groups.get(best).elems.map(e => { const el = m.elems.get(e); return { e, x: (xl(m.nodes.get(el.i)) + xl(m.nodes.get(el.j))) / 2 }; }); out.push({ g: best, els, span: r.span }); }
+    if (!best) continue;
+    const station = node => (node[0] - r.P0[0]) * r.ax[0] + (node[1] - r.P0[1]) * r.ax[1];
+    const els = m.groups.get(best).elems.map(e => {
+      const el = m.elems.get(e);
+      const i = station(m.nodes.get(el.i)), j = station(m.nodes.get(el.j));
+      return { e, x: (i + j) / 2, start: Math.min(i, j), end: Math.max(i, j) };
+    }).sort((a, b) => a.start - b.start);
+    const tol = Math.max(1e-5, r.span * 1e-6);
+    const wholeSpan = Math.abs(els[0].start) <= tol && Math.abs(els.at(-1).end - r.span) <= tol &&
+      els.every((el, i) => el.end - el.start > tol && (i === 0 || Math.abs(el.start - els[i - 1].end) <= tol));
+    out.push({ g: best, els, span: r.span, wholeSpan });
   }
   return out;
 }
-function dlBlock(extra) {
+function deckLoadPlan() {
+  const groups = deckBeams();
+  const assigned = new Set();
+  let overlap = false;
+  for (const group of groups) for (const { e } of group.els) {
+    if (assigned.has(e)) overlap = true;
+    assigned.add(e);
+  }
+  const ready = groups.length === R.res.size && !overlap && groups.every(g => g.wholeSpan);
+  const issue = overlap ? '不同索面用到同一梁元素。請確認各索面的橋面梁群組。'
+    : ready ? '' : '有索面的橋面梁未連通全跨。請確認群組與吊索下端。';
+  return { groups, ready, issue };
+}
+
+const beamLoadHeader = ['*BEAMLOAD', '; ELEM_LIST, CMD, TYPE, DIR, bPROJ, D1, P1, D2, P2, D3, P3, D4, P4, GROUP'];
+
+function dlBlock(extra, groups = deckBeams()) {
   const c = R.cfg, tops = R.rep.filter(r => r.role === 'hanger').map(r => r.top);
   const L = ['*SELFWEIGHT, 0, 0, -1,', '*CONLOAD', '; NODE_LIST, FX, FY, FZ, MX, MY, MZ, GROUP', `; 索夾 band = ${fmt(c.loads.band)}（吊索上端）`, `   ${compressList(tops)}, 0, 0, ${fmt(-c.loads.band)}, 0, 0, 0,`];
   if (S.deckBeam) {
-    L.push('*BEAMLOAD', '; ELEM_LIST, CMD, TYPE, DIR, bPROJ, D1, P1, D2, P2, D3, P3, D4, P4, GROUP');
-    for (const d of deckBeams()) L.push(`; ${d.g}：橋面恆載 deck_per_len = ${fmt(c.loads.deck_per_len)}`, `   ${compressList(d.els.map(x => x.e))}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-c.loads.deck_per_len)}, 1, ${fmt(-c.loads.deck_per_len)}, 0, 0, 0, 0, `);
+    L.push(...beamLoadHeader);
+    for (const d of groups) L.push(`; ${d.g}：橋面恆載 deck_per_len = ${fmt(c.loads.deck_per_len)}`, `   ${compressList(d.els.map(x => x.e))}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-c.loads.deck_per_len)}, 1, ${fmt(-c.loads.deck_per_len)}, 0, 0, 0, 0, `);
   }
   if (extra) L.push(...extra);
   return L.join('\n');
 }
 function mDL() {
   const n = needResult(); if (n) return n;
-  const dl = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   DL, D, Dead load (all in one case)', '*USE-STLD, DL', dlBlock()].join('\n');
+  const deck = deckLoadPlan();
+  const dl = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   DL, D, Dead load (all in one case)', '*USE-STLD, DL', dlBlock(null, deck.groups)].join('\n');
   const te = R.tieEq && R.tieEq.length ? ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   TIE_EQ, D, Tie equivalent force', '*USE-STLD, TIE_EQ', '*CONLOAD', '; NODE_LIST, FX, FY, FZ, MX, MY, MZ, GROUP', ...R.tieEq.map(t => `   ${t.node}, ${fmt(t.F[0])}, ${fmt(t.F[1])}, ${fmt(t.F[2])}, 0, 0, 0,`)].join('\n') : null;
   const wind = R.cfg.wind && R.cfg.wind.length;
   return head('建模 7', '恆載：全部放在同一個工況', 'Self Weight＋索夾節點力＋橋面梁載重全部放在 DL。非線性不能疊加：分成幾個工況，每個都從初張力獨立出發。') +
     path('Load > Static Load > Static Load Cases') + path('Load > Static Load > Self Weight') + path('Load > Static Load > Nodal Loads') + path('Load > Static Load > Element Beam Loads') +
     `<div class="toggle"><span>橋面恆載以梁載重輸入（橋面系單位重設 0）</span><input type="checkbox" id="tgDeck" ${S.deckBeam ? 'checked' : ''}></div>` +
-    code('mctDL', 'MCT：工況 DL', dl) +
+    (deck.groups.length ? `<div class="card"><h3>核對橋面載重使用的梁元素</h3>${deck.groups.map(g => `<p>${esc(g.g)} · ${esc(compressList(g.els.map(e => e.e)))}</p>`).join('')}</div>` : '') +
+    (S.deckBeam && !deck.ready ? `<div class="note">${esc(deck.issue)} 請先在 Civil 確認載重元素。</div>` : code('mctDL', 'MCT：工況 DL', dl)) +
     `<div class="note">*BEAMLOAD 依官方手冊 MCT Quick Reference 的欄位，尚未以實機匯出樣本核對。匯入報錯時刪掉這段，改在 GUI 對同一組元素輸入 Uniform Loads、GZ。不論哪種方式，都由 G1 的反力合計核對。</div>` +
-    (wind ? `<div class="seg" role="group" aria-label="分析路線">${['A', 'B'].map(x => `<button data-route="${x}" aria-pressed="${S.route === x}">${x === 'A' ? '路線 A：全橋直接分析' : '路線 B：Midas 找形'}</button>`).join('')}</div>` +
+    (wind ? `<div class="seg" role="group" aria-label="分析路線">${['A', 'B'].map(x => `<button data-route="${x}" aria-pressed="${S.route === x}">${x === 'A' ? '全橋直接非線性分析' : 'MIDAS SBAC 找形'}</button>`).join('')}</div>` +
       (S.route === 'A' ? '<p class="muted" style="font-size:13px">耐風系統一起保留，不加 TIE_EQ（小規模吊橋推薦）。</p>' : `<p class="muted" style="font-size:13px">找形模型先不啟用耐風索與繫索，把 TIE_EQ 與恆載一起選入找形工況；保存平衡後加入耐風系統、移除 TIE_EQ。</p>${code('mctTie', 'MCT：TIE_EQ（繫索等值節點力）', te || '')}`) : '') +
     `<p class="muted" style="font-size:13px">恆載要和初張力用的一致：Midas 每一索面的橋面恆載若不是 ${fmt(R.cfg.loads.deck_per_len)}/m，G1 不會平衡。</p>`;
 }
@@ -548,7 +682,7 @@ function mNL() {
     <p class="muted" style="font-size:13px">初張力在第 1 步就全部存在，恆載卻逐步加上；載重步多時前幾步會先上拱（60 m 例題 10 步時約 +19 cm）。幾何非線性的梁只輸出 i、j 兩端。</p>`;
 }
 function g1Def() {
-  const rs = planeRes(), r = rs[0], L = r.span, lim = L * 1000 / 10000;
+  const rs = planeRes(), r = rs[0], L = Math.min(...rs.map(p => p.span)), lim = L * 1000 / 10000;
   const hang = R.rep.filter(x => x.role === 'hanger'), hmin = Math.min(...hang.map(x => x.T)), hmax = Math.max(...hang.map(x => x.T));
   const ties = R.rep.filter(x => x.role === 'tie'), u = R.unit[0];
   const c = R.cfg, l = c.loads;
@@ -558,29 +692,34 @@ function g1Def() {
   const tmin = ties.length ? Math.min(...ties.map(x => x.T)) : 0;
   return [
     ['dv', '吊點最大垂直位移 |δ|', 'mm', `≤ L/10000 = ${fx(lim, 1)} mm`, v => Math.abs(v) <= lim ? 'ok' : Math.abs(v) <= 3 * lim ? 'warn' : 'bad'],
-    ['H', '主纜水平力 H', u, `${fx(r.H, 1)} ± 1 %`, v => Math.abs(v - r.H) <= 0.01 * r.H ? 'ok' : 'bad'],
+    ['tower', '塔頂最大位移', 'mm', `≤ L/10000 = ${fx(lim, 1)} mm`, v => Math.abs(v) <= lim ? 'ok' : 'bad'],
+    ...rs.map((p, i) => [i ? 'H' + (i + 1) : 'H', '主纜水平力 H' + (rs.length > 1 ? ' ' + R.cfg.main[i] : ''), u, `${fx(p.H, 1)} ± 1 %`, v => Math.abs(v - p.H) <= 0.01 * p.H ? 'ok' : 'bad']),
     ['hmin', '吊索力最小', u, `> 0，≥ ${fx(hmin * 0.99, 1)}`, v => v <= 0 ? 'bad' : v >= hmin * 0.99 ? 'ok' : 'warn'],
-    ['hmax', '吊索力最大', u, `≤ ${fx(hmax * 1.01, 1)}`, v => v <= hmax * 1.01 ? 'ok' : 'warn'],
+    ['hmax', '吊索力最大', u, `≤ ${fx(hmax * 1.01, 1)}`, v => v > 0 && v >= +S.g1.hmin && v <= hmax * 1.01 ? 'ok' : 'warn'],
     ...(ties.length ? [['tie', '繫索張力（最小）', u, `${fx(tmin, 1)} ± 1 %，左右相同`, v => Math.abs(v - tmin) <= 0.01 * tmin ? 'ok' : 'bad'], ['dy', '橋面側向位移 |δ|', 'mm', `≈ 0（≤ ${fx(lim, 1)} mm）`, v => Math.abs(v) <= lim ? 'ok' : 'warn']] : []),
-    ['R', '反力合計 ΣFZ', u, `約 ${fx(W, 0)}（纜索、索夾、橋面；不含塔與橋面系自重）`, v => Math.abs(v - W) <= 0.005 * W ? 'ok' : 'warn'],
+    ['R', '反力合計 ΣFZ', u, `與總恆載相差 ≤ 0.1 %（計算值 ${fx(W, 2)}；另有自重時填本案總量）`,
+      v => { const weight = +S.g1.weight > 0 ? +S.g1.weight : W; return Math.abs(v - weight) <= 0.001 * weight ? 'ok' : 'warn'; }],
     ['spr', '縱向弱彈簧力', u, `< 0.1 % H = ${fx(r.H * 0.001, 1)}`, v => Math.abs(v) < r.H * 0.001 ? 'ok' : 'warn']
   ];
 }
 function mG1() {
   const n = needResult(); if (n) return n;
+  const gate = requireConfirmedModel(); if (gate) return gate;
   const d = g1Def();
   return head('建模 9', '關卡 G1：恆載驗證', '填入 Midas 的結果。張力和手算一樣不代表正確，位移接近零才代表 L_u 對了。') +
     path('Results > Results > Deformations > Deformed Shape') + path('Results > Results > Forces > Truss Forces') + path('Results > Results > Reactions > Reaction Forces/Moments') +
-    `<div class="card">${d.map(([id, lab, u, exp]) => `<div class="gin"><label for="g1_${id}">${lab}（${esc(u)}）</label><input type="number" step="any" inputmode="decimal" id="g1_${id}" data-g1="${id}" value="${esc(S.g1[id] ?? '')}"><span id="r1_${id}">${pill('idle', '—')}</span><span class="exp">${esc(exp)}</span></div>`).join('')}</div><div id="g1diag"></div>` +
+    `<div class="card"><label class="toggle"><span>恆載分析已收斂</span><input type="checkbox" data-g1="converged"${S.g1.converged ? ' checked' : ''}></label>
+    <label class="gin"><span>本案總恆載（kgf，可選填）</span><input type="number" min="0" step="any" data-g1="weight" value="${esc(S.g1.weight ?? '')}"></label>
+    ${d.map(([id, lab, u, exp]) => `<div class="gin"><label for="g1_${id}">${esc(lab)}（${esc(u)}）</label><input type="number" step="any" inputmode="decimal" id="g1_${id}" data-g1="${id}" value="${esc(S.g1[id] ?? '')}"><span id="r1_${id}">${pill('idle', '—')}</span><span class="exp">${esc(exp)}</span></div>`).join('')}</div><div id="g1diag"></div>` +
     ref('《吊橋設計流程圖解》第 9 章；《實務》表 45.3、50.x（範例：H ≈ 29616、跨中吊索 ≈ 930、繫索 250）。');
 }
 function evalG1() {
   if (!document.getElementById('g1diag')) return;
   const d = g1Def(), st = {};
   for (const [id, , , , fn] of d) { const v = parseFloat(S.g1[id]); st[id] = isFinite(v) ? fn(v) : 'idle'; document.getElementById('r1_' + id).innerHTML = pill(st[id], { ok: '通過', warn: '注意', bad: '不通過', idle: '—' }[st[id]]); }
-  const filled = Object.values(st).filter(s => s !== 'idle').length, bad = Object.entries(st).filter(([, s]) => s === 'bad' || s === 'warn').map(([k]) => k);
+  const missing = Object.values(st).filter(s => s === 'idle').length, bad = Object.entries(st).filter(([, s]) => s === 'bad' || s === 'warn').map(([k]) => k);
   let h = '';
-  if (filled && !bad.length) h = `<div class="note k">${pill('ok', 'G1 通過')} 存成基準檔，進入階段 6。</div>`;
+  if (g1Passed(d)) h = `<div class="note k">${pill('ok', 'G1 通過')} 存成基準檔，進入階段 6。</div>`;
   else if (bad.length) {
     const t = [];
     if (st.hmin === 'bad') t.push('有吊索受壓或鬆弛：初張力是否輸入、吊索是否懸空、恆載是否在同一工況。');
@@ -591,21 +730,37 @@ function evalG1() {
     if (bad.includes('spr')) t.push('弱彈簧力不小：縱向不平衡，找原因而不是加大彈簧。');
     h = `<div class="note">${pill('bad', '未通過')} 首選回到初張力修正後重算，不要靠放寬收斂準則通過。<ul style="margin:6px 0 0;padding-left:18px">${t.map(x => `<li>${esc(x)}</li>`).join('') || '<li>依標示項目逐一檢查。</li>'}</ul></div>`;
   }
-  document.getElementById('g1diag').innerHTML = h;
+  document.getElementById('g1diag').innerHTML = h || `<div class="note">${pill('idle', '未驗證')} ${missing} 項結果未填。${S.g1.converged ? '' : '請確認分析已收斂。'}</div>`;
 }
-function mSave() { return head('建模 10', '存成基準檔') + path('File > Save As') + `<p>通過 G1 的模型存成基準檔，例如 <code>${esc(baseName())}_DL_OK_R01.mcb</code>。活載、溫度、風、施工階段都從它複製；上游（恆載、EA、線形）一改，全部重新複製。</p>`; }
+function g1Passed(d = g1Def()) {
+  return S.g1.converged === true && d.every(([id, , , , check]) => {
+    const value = parseFloat(S.g1[id]);
+    return Number.isFinite(value) && check(value) === 'ok';
+  });
+}
+function requireG1() {
+  return g1Passed() ? '' : '<div class="card"><p>請先完成 G1 恆載驗證。</p><button class="btn solid" data-go="midas,8">前往 G1</button></div>';
+}
+function mSave() {
+  const n = needResult() || requireConfirmedModel() || requireG1();
+  if (n) return n;
+  return head('建模 10', '存成基準檔') + path('File > Save As') + `<p>通過 G1 的模型存成基準檔，例如 <code>${esc(baseName())}_DL_OK_R01.mcb</code>。活載、溫度、風、施工階段都從它複製；上游（恆載、EA、線形）一改，全部重新複製。</p>`; }
 
 // ---------------------------------------------------------------- 分析
 function aCases() {
-  const n = needResult(); if (n) return n;
-  const x = S.extra, b = x.b || 0, qc = x.qc * b / 2, qh = x.qh * b / 2, db = deckBeams();
-  if (!db.length) return head('分析 1', '追加載重工況') + '<div class="card"><p>找不到吊索下端所在的梁群組，無法產生活載的元素清單。</p></div>';
+  const n = needResult() || requireConfirmedModel() || requireG1(); if (n) return n;
+  const deck = deckLoadPlan(), db = deck.groups;
+  if (!deck.ready) return head('分析 1', '追加載重工況') + `<div class="note">${esc(deck.issue)}</div>`;
+  const x = S.extra, b = Number(x.b), planes = S.src === 'param' ? 2 : R.res.size;
+  if (!(b > 0)) return '<div class="card"><p>請先確認橋面幅員。</p><button class="btn solid" data-go="proj,3">設定追加載重</button></div>';
+  const qc = x.qc * b / planes, qh = x.qh * b / planes;
   const all = db.map(d => compressList(d.els.map(e => e.e))).join(' '), left = db.map(d => compressList(d.els.filter(e => e.x < d.span / 2).map(e => e.e))).join(' ');
+  if (!left) return '<div class="note">找不到左半跨梁元素。請核對橋面梁與載重位置。</div>';
   const cases = [['DL+LLfull', '群集全跨', qc, all, '主纜、控索、塔、錨碇', '(1) 1.00'], ['DL+LLleft', '群集左半跨', qc, left, '縱梁彎矩、撓度、索鞍', '(1) 1.00'], ['DL+LLhang', '吊索用群集全跨', qh, all, '吊索', '(1) 1.00'], ['DL+LL+Tup', '群集全跨＋升溫', qc, all, '塔', '(2) 1.15'], ['DL+LL+Tdn', '群集全跨＋降溫', qc, all, '塔、吊索最小', '(2) 1.15']];
   const mct = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', ...cases.map(k => `   ${k[0]}, USER, ${k[1]} with all dead load`)];
-  for (const k of cases) mct.push(`*USE-STLD, ${k[0]}`, dlBlock([`; 群集 ${fmt(k[2])}/m`, `   ${k[3]}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-k[2])}, 1, ${fmt(-k[2])}, 0, 0, 0, 0, `]));
+  for (const k of cases) mct.push(`*USE-STLD, ${k[0]}`, dlBlock([...(S.deckBeam ? [] : beamLoadHeader), `; 群集 ${fmt(k[2])}/m`, `   ${k[3]}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-k[2])}, 1, ${fmt(-k[2])}, 0, 0, 0, 0, `]));
   return head('分析 1', '追加載重工況', '每個組合是一個含全部恆載的完整非線性工況。') +
-    tiles([['群集（主纜用）', fx(qc, 1), 'kgf/m', `${x.qc} × ${fx(b, 2)} / 2`], ['群集（吊索用）', fx(qh, 1), 'kgf/m', `${x.qh} × ${fx(b, 2)} / 2`]]) +
+    tiles([['群集（主纜用）', fx(qc, 1), 'kgf/m', `${x.qc} × ${fx(b, 2)} / ${planes}`], ['群集（吊索用）', fx(qh, 1), 'kgf/m', `${x.qh} × ${fx(b, 2)} / ${planes}`]]) +
     `<div class="tw"><table><thead><tr><th class="t">工況</th><th class="t">讀什麼</th><th class="t">組合・增額</th></tr></thead><tbody>${cases.map(k => `<tr><td class="t">${k[0]}</td><td class="t">${k[4]}</td><td class="t">${k[5]}</td></tr>`).join('')}</tbody></table></div>` +
     path('Load > Static Load > Static Load Cases') + code('mctLL', 'MCT：五個工況', mct.join('\n')) +
     path('Load > Temp/Prestress > System Temperature') + `<p class="muted" style="font-size:13px">Tup／Tdn 在 System Temperature 輸入最終溫度＝初始溫度 ±${fx(x.dT, 0)} °C（初始溫度在 Structure Type）。指針的群集荷重已含衝擊。</p>`;
@@ -618,12 +773,31 @@ function aComb() {
 }
 function aG2() {
   const n = needResult(); if (n) return n;
-  const list = ['DL+LLfull', 'DL+LLleft', 'DL+LLhang', 'DL+LL+Tup', 'DL+LL+Tdn'];
+  const gate = requireConfirmedModel() || requireG1(); if (gate) return gate;
+  const list = g2Cases();
   return head('分析 3', '關卡 G2：收斂、不鬆弛', '每個工況各自收斂，讀吊索（與繫索）最小張力。') + path('Results > Results > Forces > Truss Forces') +
-    `<div class="card">${list.map(k => `<div class="gin"><label for="g2_${k}">${k}</label><input type="number" step="any" inputmode="decimal" id="g2_${k}" data-g2="${k}" value="${esc(S.g2[k] ?? '')}" placeholder="最小張力"><span id="r2_${k}">${pill('idle', '—')}</span></div>`).join('')}</div>
-    <p class="muted" style="font-size:13px">不收斂 → 改載重步或組合做法；鬆弛 → 提高繫索張力 tie_T 回到初張力；仍不行回到線形。</p>`;
+    `<div class="card">${list.map(k => `<div class="gin"><label for="g2_${k}">${k} 最小張力（kgf）</label><input type="number" step="any" inputmode="decimal" id="g2_${k}" data-g2="${k}" value="${esc(S.g2[k] ?? '')}"><span id="r2_${k}"></span><label class="exp"><input type="checkbox" data-g2="ok:${k}"${S.g2['ok:' + k] ? ' checked' : ''}> 分析已收斂</label></div>`).join('')}</div><div id="g2diag"></div>
+    <p class="muted">有耐風系統時，填吊索與繫索兩者中的最小張力。先在 Civil 設定溫度荷重。</p>`;
 }
-function evalG2() { for (const k of Object.keys(S.g2)) { const el = document.getElementById('r2_' + k); if (!el) continue; const v = parseFloat(S.g2[k]); el.innerHTML = !isFinite(v) ? pill('idle', '—') : v > 0 ? pill('ok', '通過') : pill('bad', '鬆弛'); } }
+function g2Cases() {
+  const cases = ['DL+LLfull', 'DL+LLleft', 'DL+LLhang', 'DL+LL+Tup', 'DL+LL+Tdn'];
+  if (S.src !== 'param' && (R.cfg.wind?.length || windLoads(1).sum.length)) cases.push('DL+W+Y', 'DL+W-Y');
+  return cases;
+}
+function evalG2() {
+  const diag = document.getElementById('g2diag');
+  if (!diag) return;
+  const cases = g2Cases();
+  let passed = 0;
+  for (const k of cases) {
+    const value = parseFloat(S.g2[k]);
+    const el = document.getElementById('r2_' + k);
+    if (Number.isFinite(value) && value <= 0) el.innerHTML = pill('bad', '鬆弛');
+    else if (!Number.isFinite(value) || S.g2['ok:' + k] !== true) el.innerHTML = pill('idle', '未驗證');
+    else { el.innerHTML = pill('ok', '通過'); passed++; }
+  }
+  diag.innerHTML = `<div class="note">${passed === cases.length ? pill('ok', 'G2 通過') : pill('idle', 'G2 未完成')} ${passed}／${cases.length} 個工況通過</div>`;
+}
 function aEig() {
   const n = needResult(); if (n) return n;
   const r = planeRes()[0], hang = R.rep.filter(x => x.role === 'hanger' && r.hang.has(x.top));
@@ -660,6 +834,9 @@ function windLoads(sign) {
 function aWind() {
   if (S.src === 'param') return head('分析 5', '風') + '<div class="card"><p>2D 單一索面模型不做風；風工況要用 3D 模型並含耐風系統。</p></div>';
   const n = needResult(); if (n) return n;
+  const gate = requireConfirmedModel() || requireG1(); if (gate) return gate;
+  const deck = deckLoadPlan();
+  if (S.deckBeam && !deck.ready) return `<div class="note">${esc(deck.issue)}</div>`;
   const x = S.extra, wy = windLoads(1);
   if (!wy.sum.length) {
     const wd = x.pw * (x.hw || 0) / 2, wc = x.pw * (x.Dc || 0);
@@ -779,9 +956,10 @@ document.addEventListener('click', e => {
   else if (b.dataset.copy) copyText(b.dataset.copy);
   else if (b.dataset.code) copyText(CODES[b.dataset.code]);
   else if (b.dataset.dl) download(CODES[b.dataset.dl], b.dataset.name);
-  else if (b.dataset.kind) { S.cfg.output_kind = b.dataset.kind; save(); render(true); }
+  else if (b.dataset.intent) { S.intent = b.dataset.intent; S.confirmed = false; invalidate(); save(); render(true); }
+  else if (b.dataset.kind) { S.cfg.output_kind = b.dataset.kind; invalidate(); save(); render(true); }
   else if (b.dataset.rf) { S.roleFilter = b.dataset.rf; save(); render(true); }
-  else if (b.dataset.route) { S.route = b.dataset.route; save(); render(true); }
+  else if (b.dataset.route) { S.route = b.dataset.route; invalidate(); save(); render(true); }
   else if (b.id === 'btnOpen') document.getElementById('fTop').click();
 });
 document.getElementById('fTop').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => loadMct(r.result, f.name, 'file'); r.readAsText(f); e.target.value = ''; });
@@ -789,15 +967,24 @@ document.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTra
 document.addEventListener('drop', e => { if (e.target.closest('label.file')) return; const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f) return; e.preventDefault(); const r = new FileReader(); r.onload = () => /\.json$/i.test(f.name) ? toast('roles.json 請拖到「專案 > 來源」的 roles.json 欄') : loadMct(r.result, f.name, 'file'); r.readAsText(f); });
 document.addEventListener('input', e => {
   const t = e.target;
-  if (t.dataset.g1) { S.g1[t.dataset.g1] = t.value; save(); evalG1(); }
-  else if (t.dataset.g2) { S.g2[t.dataset.g2] = t.value; save(); evalG2(); }
+  if (t.dataset.g1) { S.g1[t.dataset.g1] = t.type === 'checkbox' ? t.checked : t.value; invalidate(false); save(); evalG1(); }
+  else if (t.dataset.g2) { S.g2[t.dataset.g2] = t.type === 'checkbox' ? t.checked : t.value; save(); evalG2(); }
   else if (t.id === 'freqs') { S.g2.freqs = t.value; save(); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.dataset.area) { const v = parseFloat(t.value); S.extra.area[t.dataset.area] = isFinite(v) ? v : null; save(); render(true); }
+  if (t.hasAttribute('data-cable-group')) {
+    const name = t.dataset.cableGroup;
+    for (const [key] of CABLE_ROLES) S.cfg[key] = (S.cfg[key] || []).filter(g => g !== name);
+    if (t.value) S.cfg[t.value].push(name);
+    S.prov.roles = 'manual'; S.confirmed = false; invalidate(); save(); render(true);
+  } else if (t.id === 'confirmModel') {
+    S.confirmed = t.checked; invalidate(); save();
+  } else if (t.id === 'fixMain') {
+    S.cfg.fix_main_z = t.checked; invalidate(); save(); render(true);
+  } else if (t.dataset.area) { const v = parseFloat(t.value); S.extra.area[t.dataset.area] = isFinite(v) ? v : null; invalidate(); save(); render(true); }
   else if (t.id === 'freqs') render(true);
-  else if (t.id === 'tgDeck') { S.deckBeam = t.checked; save(); render(true); }
+  else if (t.id === 'tgDeck') { S.deckBeam = t.checked; invalidate(); save(); render(true); }
 });
 document.addEventListener('keydown', e => {
   if (e.target.closest('input,textarea,select')) return;
@@ -819,10 +1006,12 @@ function takeHandoff() {
   return false;
 }
 window.addEventListener('message', e => {
+  if (!window.opener || e.source !== window.opener || (location.protocol !== 'file:' && e.origin !== location.origin)) return;
   if (e.data && e.data.type === 'cg-flow-mct' && e.data.mct && loadMctQuiet(e.data.mct, e.data.name || '線形建模器', 'cg')) { S.fileName = '線形建模器 → ' + (e.data.name || ''); go('proj', 1); }
 });
 if ('launchQueue' in window) launchQueue.setConsumer(async p => { for (const h of p.files || []) { const f = await h.getFile(); if (loadMctQuiet(await f.text(), f.name, 'file')) go('proj', 1); } });
-if (location.hash === '#handoff') { if (!takeHandoff() && window.opener) try { window.opener.postMessage({ type: 'cg-flow-ready' }, '*'); } catch (e) {} history.replaceState(null, '', location.pathname); }
+if (location.hash === '#handoff') { if (!takeHandoff() && window.opener) try { window.opener.postMessage({ type: 'cg-flow-ready' }, location.protocol === 'file:' ? '*' : location.origin); } catch (e) {} history.replaceState(null, '', location.pathname); }
+if (location.hash === '#source') { S.tab = 'proj'; S.step.proj = 0; }
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (S.src === 'demo' && !S.mctText) S.src = null;
 render();
