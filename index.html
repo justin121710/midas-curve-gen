@@ -4029,8 +4029,11 @@ function dxfGroups(D, opt){
     const nm = k => pls.length > 1 && !opt.perLayer ? `${layer} ${k}` : layer;
     if (opt.perLayer){
       const g = { ...defaultGroup("CURVE"), name:layer, pieces:pls.flatMap(pl => mkPieces(pl.segs)) };
-      out.push(g);
-    } else pls.forEach((pl, k) => out.push({ ...defaultGroup("CURVE"), name:nm(k+1), pieces:mkPieces(pl.segs) }));
+      out.push(opt.roles?.get(layer) ? setDrawingRole(g, opt.roles.get(layer)) : g);
+    } else pls.forEach((pl, k) => {
+      const g = { ...defaultGroup("CURVE"), name:nm(k+1), pieces:mkPieces(pl.segs) };
+      out.push(opt.roles?.get(layer) ? setDrawingRole(g, opt.roles.get(layer)) : g);
+    });
   });
   return out;
 }
@@ -4041,14 +4044,15 @@ function openDxfDlg(D, name){
   const um = DXF_UNIT_M[D.insunits], k0 = um ? um * (LEN_FACTOR[state.units.length] || 1) : 1;
   const far = Math.max(Math.abs(lo.x), Math.abs(lo.y)) > 1e4;
   const skip = Object.entries(D.skipped).map(([k, v]) => `${k} ${v}`).join("、");
+  const bridgeDrawing = !!state.suspensionProjectId;
   const m = document.createElement("div");
   m.className = "mask";
   const F = (lab, id, v) => `<label class="f"><span>${lab}</span><input type="number" step="any" id="${id}" value="${v}"></label>`;
   m.innerHTML = `<div class="dlg" style="width:min(640px, calc(100vw - 32px))">
       <h3>匯入 DXF「${esc(name)}」</h3>
-      <table class="t" style="margin-top:4px"><thead><tr><th></th><th>圖層</th><th>線</th><th>段</th></tr></thead><tbody>${
+      <table class="t" style="margin-top:4px"><thead><tr><th></th><th>圖層</th><th>線</th><th>段</th>${bridgeDrawing ? "<th>構件角色</th>" : ""}</tr></thead><tbody>${
         [...D.layers].map(([ln, o]) => `<tr><td><input type="checkbox" data-ly="${esc(ln)}" checked></td>
-          <td>${esc(ln)}</td><td class="n">${o.chains}</td><td class="n">${o.segs}</td></tr>`).join("")}</tbody></table>
+          <td>${esc(ln)}</td><td class="n">${o.chains}</td><td class="n">${o.segs}</td>${bridgeDrawing ? `<td><select data-role-layer="${esc(ln)}" aria-label="${esc(ln)} 的構件角色">${drawingRoleOptions()}</select></td>` : ""}</tr>`).join("")}</tbody></table>
       ${skip ? `<div class="hint">未讀:${esc(skip)}</div>` : ""}
       <div class="fields g4" style="margin-top:10px">
         ${F(`比例(DXF → ${UL()})`, "dx-k", +k0.toPrecision(12))}
@@ -4080,6 +4084,8 @@ function openDxfDlg(D, name){
     const opt = { layers, scale:gv("dx-k") > 0 ? gv("dx-k") : 1, ox:o.x, oy:o.y, oz:0,
       zMode:m.querySelector("#dx-z").value, z:gv("dx-zv") || 0, maxLen:Math.max(0, gv("dx-L") || 0),
       perLayer:m.querySelector("#dx-pl").checked };
+    const roles = new Map([...m.querySelectorAll("[data-role-layer]")].map(el => [el.dataset.roleLayer, el.value]));
+    opt.roles = roles;
     const gs = dxfGroups(D, opt);
     close();
     snapshot("dxf:" + Date.now());
@@ -4377,15 +4383,20 @@ const DEMO_VIEW = () => ({ az:135, el:CORNER_EL, zEx:1 });
    橋面下掛一組**箱型桁架**(邊樑當上弦 + 下弦 + 豎桿 / 斜桿 + 下弦橫梁 / 斜撐);
    兩側再各一條**抗風索**(兩端錨在岩壁、向內傾斜 45°、頂點朝橋面板),
    由**抗風支索**把桁架下弦拉到抗風索上。                                        */
-function demoSuspension(){
+function demoSuspension(project = null){
   const s = DEF_STATE();
   s.view = DEMO_VIEW();
   const G = DEMO_G, D = DEMO_D;
-  const Y = 1.2, ZD = 10, ZT = 22, ZA = 6, L = 80, SP = 2.5;
+  const Y = project ? project.width / 2 : 1.2;
+  const ZD = project?.deck ?? 10, ZT = project?.saddle ?? 22, L = project?.span ?? 80;
+  const N = project?.panels ?? 32, SP = L / N;
+  const ZA = project?.anchorLZ ?? 6, ZAR = project?.anchorRZ ?? 6;
+  const left = project?.anchorL ?? 15, right = project?.anchorR ?? 15;
+  const deckSplit = project ? SPL({ count:N }) : SPL({ mode:"spacing", spacing:SP, rem:"keep" });
 
   // 橋面中心線 → 兩側邊樑 → 橫梁
   const deck = G("橋面中心線 DECK", [D("LINE", { x1:0, y1:0, z1:ZD, endMode:"point",
-    x2:L, y2:0, z2:ZD, split:SPL({ mode:"spacing", spacing:SP, rem:"keep" }) })],
+    x2:L, y2:0, z2:ZD, split:deckSplit })],
     { etype:"BEAM", mat:1, sect:1 });
   // 橋沿 +X(東)走,兩側其實是南北 —— 所以用沿線方向的「左 / 右」命名,不用東西
   const edL = { ...defaultGroup("OFFSET"), name:"邊樑左 EDGE_L", ref:deck.id, d:-Y, h:0,
@@ -4409,7 +4420,7 @@ function demoSuspension(){
      橫隔斜撐每 2 個節點(5 m)一組就夠 —— 它是把斷面撐成矩形用的,
      不像側面 / 底面要一路跟著格點走。三個面都封起來才是真正的箱型桁架,
      也才有東西承抗風支索拉進來的橫向力。                                       */
-  const TD = 1.6;                                      // 桁架深度(下弦在橋面下 1.6 m)
+  const TD = project?.depth ?? 1.6;                                      // 桁架深度(下弦在橋面下 1.6 m)
   const bot = (nm, ref) => ({ ...defaultGroup("OFFSET"), name:nm, ref, d:0, h:-TD,
                               etype:"BEAM", mat:1, sect:13 });
   const blL = bot("下弦左 BCH_L", edL.id), blR = bot("下弦右 BCH_R", edR.id);
@@ -4432,16 +4443,16 @@ function demoSuspension(){
 
   // 主索(每側三段:引索 → 懸鏈線 → 引索),接縫節點共用
   const cable = (nm, y, sect) => G(nm, [
-    D("LINE", { x1:-15, y1:y, z1:ZA, endMode:"point", x2:0, y2:y, z2:ZT, split:SPL({ count:3 }) }),
-    D("SAG",  { x2:L, y2:y, z2:ZT, curve:"catenary", fMode:"ratio", f:0.12,
-                split:SPL({ count:32 }) }),
-    D("LINE", { endMode:"point", x2:L+15, y2:y, z2:ZA, split:SPL({ count:3 }) })
+    D("LINE", { x1:-left, y1:y, z1:ZA, endMode:"point", x2:0, y2:y, z2:ZT, split:SPL({ count:3 }) }),
+    D("SAG",  { x2:L, y2:y, z2:ZT, curve:"catenary", fMode:project ? "abs" : "ratio", f:project?.sag ?? 0.12,
+                split:SPL({ count:N }) }),
+    D("LINE", { endMode:"point", x2:L+right, y2:y, z2:ZAR, split:SPL({ count:3 }) })
   ], { etype:"CABLE", mat:2, sect });
   const cL = cable("主索左 CABLE_L", Y, 11), cR = cable("主索右 CABLE_R", -Y, 11);
 
   // 吊索:主索第 5..35 個節點垂落到橋面高程,下端貼附邊樑既有節點
   const hang = (nm, ref) => ({ ...defaultGroup("LINKZ"), name:nm, ref, targetZ:ZD,
-    from:5, to:35, every:1, bottom:"snapOnly", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
+    from:5, to:N+3, every:1, bottom:"snapOnly", snapTol:0.01, etype:"CABLE", mat:2, sect:12 });
   const hL = hang("吊索左 HANG_L", cL.id), hR = hang("吊索右 HANG_R", cR.id);
 
   /* ---- 抗風索 ----
@@ -4473,17 +4484,17 @@ function demoSuspension(){
      才有東西可以支承。塔下橫梁比下弦端點低 0.4 m(支承高):兩者**不能重合**,
      重合會被「合併重合節點」併成剛接;匯入 midas 後在這兩個節點之間拉 Elastic Link。
      v3.44 以前柱子一路切 6 等分到底,塔上沒有任何節點在橋面高度,橋面縱向只靠吊索吊著。 */
-  const ZB = ZD - TD - 0.4;                            // 塔下橫梁 Z = 8.0
-  const tower = (nm, x) => G(nm, [
+  const ZB = ZD - TD - (project?.bearing ?? 0.4);                            // 塔下橫梁 Z = 8.0
+  const tower = (nm, x, base = 0) => G(nm, [
     D("LINE", { x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:-Y, z2:ZB, split:SPL({ count:4 }) }),
-    D("LINE", { endMode:"point", x2:x, y2:-Y, z2:0, split:SPL({ count:2 }) }),
+    D("LINE", { endMode:"point", x2:x, y2:-Y, z2:base, split:SPL({ count:2 }) }),
     D("LINE", { cont:false, x1:x, y1:Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZB, split:SPL({ count:4 }) }),
-    D("LINE", { endMode:"point", x2:x, y2:Y, z2:0, split:SPL({ count:2 }) }),
+    D("LINE", { endMode:"point", x2:x, y2:Y, z2:base, split:SPL({ count:2 }) }),
     D("LINE", { cont:false, x1:x, y1:-Y, z1:ZT, endMode:"point", x2:x, y2:Y, z2:ZT, split:SPL({ count:2 }) }),
     D("LINE", { cont:false, x1:x, y1:-Y, z1:ZB, endMode:"point", x2:x, y2:Y, z2:ZB, split:SPL({ count:2 }) })
   ], { etype:"BEAM", mat:3, sect:4 });
 
-  const twW = tower("塔架西 TOWER_W", 0), twE = tower("塔架東 TOWER_E", L);
+  const twW = tower("塔架西 TOWER_W", 0, project?.baseL), twE = tower("塔架東 TOWER_E", L, project?.baseR);
 
   /* ---- v3.51:吊橋設計值(SPEC §16.28)----
      纜索群組標設計用途、單位長自重與 EA(數值同 tools/examples/suspension_demo_roles.json);
@@ -4504,7 +4515,7 @@ function demoSuspension(){
   const brg = (nm, a, aFrom, b, bFrom, sdz) => ({ ...defaultGroup("LINK2"), name:nm, a, b, pair:"free",
     aFrom, aEvery:1, bFrom, bEvery:1, count:1, etype:"ELINK",
     link:{ ...LINK_DEF(), kind:"GEN", sdx:1e8, sdy:1e8, sdz, srx:0, sry:0, srz:0 } });
-  const NB = Math.round(L / SP) + 1;                   // 下弦節點數(33)
+  const NB = N + 1;                   // 下弦節點數(33)
   const brgs = [brg("支承西左 BRG_WL", blL.id, 1, twW.id, 12, 1000), brg("支承西右 BRG_WR", blR.id, 1, twW.id, 5, 1000),
                 brg("支承東左 BRG_EL", blL.id, NB, twE.id, 12, 0),  brg("支承東右 BRG_ER", blR.id, NB, twE.id, 5, 0)];
   // 自由端約束:塔底、主纜錨碇、耐風索錨碇全部固定
@@ -4512,6 +4523,21 @@ function demoSuspension(){
 
   s.groups = [deck, edL, edR, xb, blL, blR, wbL, wbR, dgL, dgR, xbB, brB, crA, crB,
               cL, cR, hL, hR, wcL, wcR, wsL, wsR, twW, twE, ...brgs];
+
+  if (project){
+    const windGroups = new Set([wcL, wcR, wsL, wsR]);
+    s.groups = s.groups.filter(g => !windGroups.has(g));
+    for (const g of [cL, cR, hL, hR, deck]){
+      delete g.w;
+      delete g.ea;
+      delete g.windW;
+    }
+    delete s.bnd.G_WIND_L;
+    delete s.bnd.G_WIND_R;
+    s.design = { width:project.width };
+    s.out.stage.on = false;
+    return s;
+  }
 
   /* ---- 施工階段 ----
      架設順序:塔 → 主纜 → **抗風索** → 吊索 → 縱橫梁 → 底部桁架 → 抗風支索。
@@ -6823,17 +6849,19 @@ function freeSection(){
    CABLE 的對接 = 繫索(抗風支索),它另一端的 CABLE 線 = 耐風索。載重、EA 留 0 待填 —— 那是工程判斷。 */
 /* 吊橋助手(flow.html,同一個網站／App):把目前的 .mct 交過去。
    同源時寫 localStorage;以 file:// 開啟時改由 postMessage 回應助手的 ready 訊息。 */
-let FLOW_TXT = "";
+let FLOW_TXT = "", FLOW_WINDOW = null;
 function openFlow(){
+  if (state.suspensionProjectId) lsSet("cg.suspension." + state.suspensionProjectId, JSON.stringify(state));
   FLOW_TXT = mctText();
   const pkt = JSON.stringify({ at:Date.now(), name:`model_${stamp()}.mct`, mct:FLOW_TXT });
   try { localStorage.setItem("cg.handoff", pkt); } catch (e) {}
-  const w = window.open("flow.html#handoff", "cg-flow");
-  if (!w) alert("瀏覽器擋住了新視窗:請允許彈出視窗,或直接開啟 flow.html 再拖入 .mct");
+  FLOW_WINDOW = window.open("flow.html#handoff", "cg-flow");
+  if (!FLOW_WINDOW) alert("瀏覽器擋住了新視窗:請允許彈出視窗,或直接開啟 flow.html 再拖入 .mct");
 }
 window.addEventListener("message", e => {
-  if (e.data && e.data.type === "cg-flow-ready" && FLOW_TXT && e.source)
-    e.source.postMessage({ type:"cg-flow-mct", name:`model_${stamp()}.mct`, mct:FLOW_TXT }, "*");
+  if (e.source !== FLOW_WINDOW || !e.data || e.data.type !== "cg-flow-ready" || !FLOW_TXT) return;
+  if (location.protocol !== "file:" && e.origin !== location.origin) return;
+  e.source.postMessage({ type:"cg-flow-mct", name:`model_${stamp()}.mct`, mct:FLOW_TXT }, location.protocol === "file:" ? "*" : location.origin);
 });
 function rolesTemplate(){
   /* 角色:有設計用途就依用途,沒有就依群組關係推定(v3.46 的規則)。
@@ -6911,6 +6939,7 @@ function paneImport(){
         <input type="file" id="file-in" hidden accept=".json,.mct,.cst,.txt,.dxf"></div>
       <div class="hint">本工具匯出的 <b>參數 JSON</b>,或帶有參數檔頭的 <b>.mct</b>,讀進來就會還原整個模型。
         檔案也可以<b>直接拖進頁面</b>。</div>`) +
+    (state.suspensionProjectId ? SEC("吊橋圖說", "", `<div class="btns"><button class="btn p" data-op="sbDrawing">依圖輸入或貼座標</button><button class="btn" data-op="sbReview">確認模型</button></div>`) : "") +
     SEC("CAD 圖說(DXF)", "", `<div class="btns">
         <button class="btn p" data-op="load">選 .dxf 檔…</button></div>
       <div class="hint">LINE、ARC、CIRCLE、LWPOLYLINE、POLYLINE 讀成線群組(直線段、三點圓弧段),可選圖層、比例與原點;
@@ -7187,7 +7216,7 @@ function paneDesign(){
       row("主纜", cr.main) + row("吊索", cr.hanger) + row("耐風索", cr.wind) + row("繫索", cr.tie, true)}</tbody></table>
      <div class="fields g3" style="margin-top:9px">${keys.map(([k, nm, u]) => fld(`${nm} (${U[u]})`, "design." + k, (state.design || {})[k])).join("") +
        (wind ? fld("修正耐風索形狀(力密度法)", "design.fix_wind", !!(state.design || {}).fix_wind, { check:true }) : "")}</div>
-     <div class="btns" style="margin-top:9px"><button class="btn p" data-op="flow">開啟吊橋助手</button>
+     <div class="btns" style="margin-top:9px">${state.suspensionProjectId ? "" : '<button class="btn p" data-op="flow">開啟吊橋助手</button>'}
        <button class="btn" data-op="roles">roles.json</button></div>`);
 }
 /* 自由端約束(v3.51):每個群組的自由端一起指定;約束方向是工程判斷,預設不設 */
@@ -7203,6 +7232,9 @@ function paneBnd(){
 }
 function paneOutput(){
   return `<div class="ptitle"><span class="nm">檢查與匯出</span><span class="fam geo">全域</span></div>` + exportChecks() +
+    (state.suspensionProjectId ? SEC("吊橋建模", "", `<div class="btns">
+      <button class="btn p" data-op="flow"${ERRS.length ? " disabled" : ""}>確認模型並前往吊橋助手</button></div>
+      <div class="hint">核對群組角色、吊索端部連接、邊界與支承。恆載及 EA 可在下一步填寫。</div>`) : "") +
     SEC("下載", "", `<div class="btns">
       <button class="btn p" data-op="mct" title="*UNIT ${UF()}, ${UL()}(不換算)">下載 .mct</button>
       <button class="btn" data-op="mctcopy">複製 MCT</button>
@@ -7600,6 +7632,8 @@ $("#pane").addEventListener("click", e => {
   if (op === "json")    { download(`model_${stamp()}.json`, paramsJSON(), "application/json;charset=utf-8"); DIRTY = false; return; }
   if (op === "load")    { $("#file-in").click(); return; }
   if (op === "pastein") { openPasteDlg(); return; }
+  if (op === "sbDrawing") { openSuspensionDrawing(); return; }
+  if (op === "sbReview") { SEL = "_out"; render(); return; }
   if (op === "clearlib"){ snapshot("clearlib:" + Date.now()); state.lib = { mat:{}, sect:{} };
     recompute(true); return; }
   // 全域操作:在「編號總表」頁按的,沒有選到組,要放在下面 `if (!g) return` 之前
@@ -12599,6 +12633,142 @@ window.addEventListener("beforeunload", e => {
   if (!DIRTY || !(state.groups && state.groups.length)) return;
   e.preventDefault(); e.returnValue = "";             // 瀏覽器會顯示自己的「確定要離開?」
 });
+const SUSPENSION_FIELDS = [
+  ["span", "主跨"], ["width", "兩索面間距"], ["deck", "橋面高程"], ["saddle", "兩端索鞍高程"],
+  ["sag", "主纜跨中垂度"], ["spacing", "吊索間距上限"], ["depth", "橋面桁架深度"],
+  ["bearing", "支承高度"], ["baseL", "左塔底高程"], ["baseR", "右塔底高程"],
+  ["anchorL", "左錨碇距塔"], ["anchorLZ", "左錨碇高程"], ["anchorR", "右錨碇距塔"], ["anchorRZ", "右錨碇高程"]
+];
+
+function validateSuspensionGeometry(p){
+  if (SUSPENSION_FIELDS.some(([k]) => !Number.isFinite(p[k]))) return "請填完每個幾何尺寸。";
+  if (["span", "width", "sag", "spacing", "depth", "bearing", "anchorL", "anchorR"].some(k => p[k] <= 0))
+    return "跨徑、寬度、垂度、間距、桁架深度、支承高度與錨距都要大於零。";
+  if (p.saddle - p.sag <= p.deck) return "主纜最低點必須在橋面以上。";
+  if (p.deck - p.depth - p.bearing <= Math.max(p.baseL, p.baseR)) return "塔下橫梁必須高於塔底。";
+  if (Math.max(p.anchorLZ, p.anchorRZ) >= p.saddle) return "這個模板的錨碇高程須低於索鞍。";
+  if (Math.ceil(p.span / p.spacing) > 300) return "吊索分格超過 300 格，請調整間距或在編輯器自訂。";
+  return "";
+}
+const suspensionId = () => Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+
+function suspensionDialog(body){
+  const dialog = document.createElement("dialog");
+  dialog.className = "dlg";
+  dialog.style.cssText = "width:min(640px,calc(100vw - 32px));max-height:90vh;overflow:auto";
+  dialog.innerHTML = body;
+  dialog.addEventListener("close", () => dialog.remove(), { once:true });
+  dialog.querySelector("[data-sb-close]").onclick = () => dialog.close();
+  document.body.appendChild(dialog);
+  dialog.showModal();
+  return dialog;
+}
+
+function openSuspensionStart(){
+  const dlg = suspensionDialog(`<form><h3>建立 3D 雙索面人行吊橋</h3>
+    <p class="hint">適用於平直橋面、兩端索鞍同高的地錨式單主跨。橋軸為 X，左塔 X＝0，單位 m、kgf。</p>
+    <div class="fields g3">${SUSPENSION_FIELDS.map(([k, label]) => `<label class="f"><span>${label}（m）</span><input type="number" name="${k}" step="any" required></label>`).join("")}</div>
+    <p class="hint">吊索等分，間距不超過輸入值。材料、斷面與支承勁度請按本案核對。耐風系統可在編輯器另建。</p>
+    <p role="alert" data-sb-error></p>
+    <div class="btns"><button type="button" class="btn" data-sb-close>取消</button><button class="btn p">建立並預覽</button></div></form>`);
+  dlg.querySelector("form").onsubmit = e => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const p = Object.fromEntries(SUSPENSION_FIELDS.map(([k]) => [k, data.get(k) === "" ? NaN : Number(data.get(k))]));
+    const error = validateSuspensionGeometry(p);
+    if (error){ dlg.querySelector("[data-sb-error]").textContent = error; return; }
+    if (state.groups.length && !confirm("以新吊橋取代編輯中的幾何？可用復原還原。")) return;
+    const model = demoSuspension({ ...p, panels:Math.max(2, Math.ceil(p.span / p.spacing)) });
+    model.suspensionProjectId = suspensionId();
+    dlg.close();
+    loadState(model);
+    SEL = "_out";
+    render();
+  };
+}
+const SB_DRAWING_ROLES = [
+  ["", "待分類"], ["deck", "橋面／縱梁"], ["pier", "塔柱"], ["cable", "主纜"],
+  ["hanger", "吊索"], ["wind", "耐風索"], ["tie", "繫索"]
+];
+function drawingRoleOptions(){
+  return SB_DRAWING_ROLES.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+}
+function setDrawingRole(group, role){
+  group.use = role;
+  if (["cable", "hanger", "wind", "tie"].includes(role)){
+    group.etype = "CABLE";
+    group.mat = 2;
+    group.sect = { cable:11, hanger:12, wind:18, tie:19 }[role];
+  }
+  return group;
+}
+function beginDrawingProject(){
+  if (state.groups.length && (UF() !== "KGF" || UL() !== "M")){
+    alert("請先將編輯中的模型換成 KGF、M，再加入吊橋圖說。");
+    return false;
+  }
+  if (!state.groups.length) state.units = { ...DEF_STATE().units };
+  if (!state.suspensionProjectId) state.suspensionProjectId = suspensionId();
+  return true;
+}
+function openSuspensionDrawing(){
+  const dlg = suspensionDialog(`<form><h3>已有吊橋設計圖</h3>
+    <div class="btns"><button type="button" class="btn p" data-sb-dxf>選 DXF 圖檔</button>
+      <button type="button" class="btn" data-sb-size>依圖填控制尺寸</button></div>
+    <p class="hint">DWG 可先另存 DXF。從 PDF 或紙本抄錄座標時，依群組貼上 X、Y、Z（m）。</p>
+    <div class="fields g3">
+      <label class="f"><span>群組名稱</span><input name="name" required></label>
+      <label class="f"><span>構件角色</span><select name="role">${drawingRoleOptions()}</select></label>
+      <label class="f"><span>連接方式</span><select name="mode"><option value="chain">逐點串接</option><option value="pairs">每兩列一根</option></select></label>
+    </div>
+    <label class="f"><span>座標表</span><textarea rows="5" name="coords" required></textarea></label>
+    <p class="hint">獨立吊索可選「每兩列一根」。加入群組後，請核對吊索與橋面、主纜的節點是否連通。</p>
+    <p role="alert" data-sb-error></p>
+    <div class="btns"><button type="button" class="btn" data-sb-close>關閉</button><button class="btn p">加入座標群組</button></div></form>`);
+  dlg.querySelector("[data-sb-dxf]").onclick = () => {
+    if (!beginDrawingProject()) return;
+    dlg.close();
+    SEL = "_imp";
+    render();
+    $("#file-in").click();
+  };
+  dlg.querySelector("[data-sb-size]").onclick = () => { dlg.close(); openSuspensionStart(); };
+  dlg.querySelector("form").onsubmit = e => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = data.get("name").trim(), text = data.get("coords"), pts = parseXYZTable(text, 0);
+    const pairs = data.get("mode") === "pairs";
+    if (!name || pts.length < 2 || (pairs && pts.length % 2)){
+      dlg.querySelector("[data-sb-error]").textContent = "請輸入群組名稱與至少兩列 XYZ；成對模式需要偶數列。";
+      return;
+    }
+    if (!beginDrawingProject()) return;
+    const pieces = pairs ? pts.filter((_, i) => i % 2 === 0).map((p, i) => {
+      const q = pts[2 * i + 1];
+      return DEMO_D("LINE", { cont:false, x1:p.x, y1:p.y, z1:p.z, x2:q.x, y2:q.y, z2:q.z, endMode:"point", split:SPL({ count:1 }) });
+    }) : [DEMO_D("POLY", { table:text })];
+    const group = setDrawingRole(DEMO_G(name, pieces), data.get("role"));
+    snapshot("drawing:" + Date.now());
+    state.groups.push(group);
+    selOnly(group.id);
+    recompute(true);
+    SEL = "_imp"; render();
+    dlg.close();
+  };
+}
+function startSuspensionEntry(){
+  const url = new URL(location.href), start = url.searchParams.get("start");
+  if (start === "suspension") openSuspensionStart();
+  if (start === "drawing") openSuspensionDrawing();
+  if (start === "resume"){
+    try {
+      const project = url.searchParams.get("project");
+      const saved = JSON.parse(lsGet("cg.suspension." + project) || "null");
+      if (saved?.suspensionProjectId === project) { loadState(saved); SEL = "_out"; render(); }
+    } catch (e) {}
+  }
+}
+
 function renderEmpty(){
   const wrap = document.querySelector(".cvwrap"); if (!wrap) return;
   let box = $("#empty-start");
@@ -12616,6 +12786,9 @@ function renderEmpty(){
       <div class="es-cards">
         ${saved && saved.state && (saved.state.groups || []).length ? `<button data-es="restore" class="es-c es-r">
           <b>還原上次的工作</b><span>${esc(saved.at || "")} · ${saved.n} 個群組(暫存在這台電腦的瀏覽器)</span></button>` : ""}
+        <button data-es="suspension" class="es-c"><b>從零建立吊橋</b><span>輸入控制尺寸，建立 3D 雙索面</span></button>
+        <button data-es="drawing" class="es-c"><b>已有設計圖</b><span>DXF 圖層、座標表或按圖輸入</span></button>
+        <button data-es="sbFlow" class="es-c"><b>已有 MIDAS 吊橋模型</b><span>開啟助手，檢查或重算 .mct</span></button>
         ${DEMOS.map(([k, nm, tip]) => `<button data-es="demo" data-k="${k}" class="es-c"><b>範例:${esc(nm)}</b><span>${esc(tip)}</span></button>`).join("")}
         <button data-es="add" class="es-c"><b>新增第一條線</b><span>直線、圓弧、懸垂、線形鏈…</span></button>
         <button data-es="imp" class="es-c"><b>匯入既有 Midas 模型</b><span>設為目標模型(避免撞號)或反向匯入幾何</span></button>
@@ -12631,6 +12804,9 @@ function renderEmpty(){
     if (k === "restore" && saved){ loadState(saved.state); DIRTY = true; }
     if (k === "demo"){ const it = DEMOS.find(o => o[0] === b.dataset.k);
       if (it){ const s0 = it[3](); s0.units = { ...s0.units, ...state.units }; loadState(s0); } }
+    if (k === "suspension") openSuspensionStart();
+    if (k === "drawing") openSuspensionDrawing();
+    if (k === "sbFlow") location.href = "flow.html#source";
     if (k === "add"){ const ab = $("#add-btn"); if (ab) ab.click(); }
     if (k === "imp") $("#btn-imp").click();
   };
@@ -12658,6 +12834,7 @@ $("#tests-wrap").addEventListener("toggle", e => {
 });
 AUTO_ON = true;
 renderEmpty();
+startSuspensionEntry();
 
 // 可安裝成 App(PWA,v3.51):以網站開啟時註冊離線快取;直接開本機檔案(file://)時不註冊
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
