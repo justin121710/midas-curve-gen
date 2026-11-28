@@ -644,7 +644,7 @@ function deckLoadPlan() {
   }
   const ready = groups.length === R.res.size && !overlap && groups.every(g => g.wholeSpan);
   const issue = overlap ? '不同索面用到同一梁元素。請確認各索面的橋面梁群組。'
-    : ready ? '' : '有索面的橋面梁未跨越全橋。請確認群組與吊索下端。';
+    : ready ? '' : '有索面的橋面梁未連通全跨。請確認群組與吊索下端。';
   return { groups, ready, issue };
 }
 
