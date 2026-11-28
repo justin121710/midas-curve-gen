@@ -488,7 +488,23 @@ function mImport() {
     `<div class="card"><h3>匯入 Civil 後核對</h3><p>確認材料斷面、邊界、支承、恆載與非線性控制，再填回 G1。已有載重時先核對工況，以免重複施加。</p></div>` +
     `<details class="more"><summary>查看節點與纜索差異</summary>${modelChanges()}</details>` +
     code('mctOut', '新檔（含纜索輸入值）', R.text, baseName() + '_tensioned.mct') +
-    '<div class="pager"><button class="btn solid" data-go="midas,8">前往 G1 恆載驗證</button></div>';
+    civilHandoff();
+}
+function civilHandoff() {
+  const steps = [
+    ['核對單位與結構型式', 'midas,0'],
+    ['確認材料與斷面', 'midas,2'],
+    ['檢查邊界與支承', 'midas,3'],
+    ['檢查橋面支承', 'midas,4'],
+    ['設定旋轉自由度', 'midas,5'],
+    ['設定恆載工況 DL', 'midas,6'],
+    ['設定幾何非線性分析', 'midas,7'],
+    ['分析並填回 G1', 'midas,8']
+  ];
+  return `<div class="card"><h3>Civil 2022 匯入後設定</h3>
+    <p>本檔有 ${R.m0.nodes.size} 個節點與 ${R.m0.elems.size} 個元素。匯入後先核對數量，再完成設定。</p>
+    <ol class="stack">${steps.map(([label, target]) => `<li><button class="btn sm" data-go="${target}">${label}</button></li>`).join('')}</ol>
+    <p>完成 G1 後再保存基準檔並設定追加載重。</p></div>`;
 }
 function modelChanges() {
   const changes = [], updated = new Mct(R.text);
@@ -599,34 +615,62 @@ function mBrg() {
 function mRot() { return head('建模 6', '主纜節點的旋轉自由度') + path('Analysis > Main Control > Main Control Data') + '<p>勾選 <b>Auto Rotational DOF Constraint for Truss/Plane Stress/Solid Elements</b>。主纜節點只連 Cable 元素，沒有旋轉勁度。</p>'; }
 function deckBeams() {
   // 每一索面：吊索下端所在的梁群組（不含全模型群組）
-  const m = R.m0, all = m.elems.size, bots = R.rep.filter(r => r.role === 'hanger').map(r => r.bot), out = [];
+  const m = R.m0, all = m.elems.size, out = [];
   for (const r of planeRes()) {
     const mine = new Set([...r.hang.values()].map(([, b]) => b));
     let best = null, cnt = 0;
     for (const [g, v] of m.groups) { if (v.elems.length >= all || !v.elems.length) continue; const el = v.elems.map(e => m.elems.get(e)).filter(Boolean); if (!el.every(e => /^BEAM$/i.test(e.type))) continue; const c = el.filter(e => mine.has(e.i) || mine.has(e.j)).length; if (c > cnt) { cnt = c; best = g; } }
-    if (best) { const xl = p => (p[0] - r.P0[0]) * r.ax[0] + (p[1] - r.P0[1]) * r.ax[1]; const els = m.groups.get(best).elems.map(e => { const el = m.elems.get(e); return { e, x: (xl(m.nodes.get(el.i)) + xl(m.nodes.get(el.j))) / 2 }; }); out.push({ g: best, els, span: r.span }); }
+    if (!best) continue;
+    const station = node => (node[0] - r.P0[0]) * r.ax[0] + (node[1] - r.P0[1]) * r.ax[1];
+    const els = m.groups.get(best).elems.map(e => {
+      const el = m.elems.get(e);
+      const i = station(m.nodes.get(el.i)), j = station(m.nodes.get(el.j));
+      return { e, x: (i + j) / 2, start: Math.min(i, j), end: Math.max(i, j) };
+    }).sort((a, b) => a.start - b.start);
+    const tol = Math.max(1e-5, r.span * 1e-6);
+    const wholeSpan = Math.abs(els[0].start) <= tol && Math.abs(els.at(-1).end - r.span) <= tol &&
+      els.every((el, i) => el.end - el.start > tol && (i === 0 || Math.abs(el.start - els[i - 1].end) <= tol));
+    out.push({ g: best, els, span: r.span, wholeSpan });
   }
   return out;
 }
-function dlBlock(extra) {
+function deckLoadPlan() {
+  const groups = deckBeams();
+  const assigned = new Set();
+  let overlap = false;
+  for (const group of groups) for (const { e } of group.els) {
+    if (assigned.has(e)) overlap = true;
+    assigned.add(e);
+  }
+  const ready = groups.length === R.res.size && !overlap && groups.every(g => g.wholeSpan);
+  const issue = overlap ? '不同索面用到同一梁元素。請確認各索面的橋面梁群組。'
+    : ready ? '' : '有索面的橋面梁未跨越全橋。請確認群組與吊索下端。';
+  return { groups, ready, issue };
+}
+
+const beamLoadHeader = ['*BEAMLOAD', '; ELEM_LIST, CMD, TYPE, DIR, bPROJ, D1, P1, D2, P2, D3, P3, D4, P4, GROUP'];
+
+function dlBlock(extra, groups = deckBeams()) {
   const c = R.cfg, tops = R.rep.filter(r => r.role === 'hanger').map(r => r.top);
   const L = ['*SELFWEIGHT, 0, 0, -1,', '*CONLOAD', '; NODE_LIST, FX, FY, FZ, MX, MY, MZ, GROUP', `; 索夾 band = ${fmt(c.loads.band)}（吊索上端）`, `   ${compressList(tops)}, 0, 0, ${fmt(-c.loads.band)}, 0, 0, 0,`];
   if (S.deckBeam) {
-    L.push('*BEAMLOAD', '; ELEM_LIST, CMD, TYPE, DIR, bPROJ, D1, P1, D2, P2, D3, P3, D4, P4, GROUP');
-    for (const d of deckBeams()) L.push(`; ${d.g}：橋面恆載 deck_per_len = ${fmt(c.loads.deck_per_len)}`, `   ${compressList(d.els.map(x => x.e))}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-c.loads.deck_per_len)}, 1, ${fmt(-c.loads.deck_per_len)}, 0, 0, 0, 0, `);
+    L.push(...beamLoadHeader);
+    for (const d of groups) L.push(`; ${d.g}：橋面恆載 deck_per_len = ${fmt(c.loads.deck_per_len)}`, `   ${compressList(d.els.map(x => x.e))}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-c.loads.deck_per_len)}, 1, ${fmt(-c.loads.deck_per_len)}, 0, 0, 0, 0, `);
   }
   if (extra) L.push(...extra);
   return L.join('\n');
 }
 function mDL() {
   const n = needResult(); if (n) return n;
-  const dl = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   DL, D, Dead load (all in one case)', '*USE-STLD, DL', dlBlock()].join('\n');
+  const deck = deckLoadPlan();
+  const dl = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   DL, D, Dead load (all in one case)', '*USE-STLD, DL', dlBlock(null, deck.groups)].join('\n');
   const te = R.tieEq && R.tieEq.length ? ['*STLDCASE', '; LCNAME, LCTYPE, DESC', '   TIE_EQ, D, Tie equivalent force', '*USE-STLD, TIE_EQ', '*CONLOAD', '; NODE_LIST, FX, FY, FZ, MX, MY, MZ, GROUP', ...R.tieEq.map(t => `   ${t.node}, ${fmt(t.F[0])}, ${fmt(t.F[1])}, ${fmt(t.F[2])}, 0, 0, 0,`)].join('\n') : null;
   const wind = R.cfg.wind && R.cfg.wind.length;
   return head('建模 7', '恆載：全部放在同一個工況', 'Self Weight＋索夾節點力＋橋面梁載重全部放在 DL。非線性不能疊加：分成幾個工況，每個都從初張力獨立出發。') +
     path('Load > Static Load > Static Load Cases') + path('Load > Static Load > Self Weight') + path('Load > Static Load > Nodal Loads') + path('Load > Static Load > Element Beam Loads') +
     `<div class="toggle"><span>橋面恆載以梁載重輸入（橋面系單位重設 0）</span><input type="checkbox" id="tgDeck" ${S.deckBeam ? 'checked' : ''}></div>` +
-    code('mctDL', 'MCT：工況 DL', dl) +
+    (deck.groups.length ? `<div class="card"><h3>核對橋面載重使用的梁元素</h3>${deck.groups.map(g => `<p>${esc(g.g)} · ${esc(compressList(g.els.map(e => e.e)))}</p>`).join('')}</div>` : '') +
+    (S.deckBeam && !deck.ready ? `<div class="note">${esc(deck.issue)} 請先在 Civil 確認載重元素。</div>` : code('mctDL', 'MCT：工況 DL', dl)) +
     `<div class="note">*BEAMLOAD 依官方手冊 MCT Quick Reference 的欄位，尚未以實機匯出樣本核對。匯入報錯時刪掉這段，改在 GUI 對同一組元素輸入 Uniform Loads、GZ。不論哪種方式，都由 G1 的反力合計核對。</div>` +
     (wind ? `<div class="seg" role="group" aria-label="分析路線">${['A', 'B'].map(x => `<button data-route="${x}" aria-pressed="${S.route === x}">${x === 'A' ? '全橋直接非線性分析' : 'MIDAS SBAC 找形'}</button>`).join('')}</div>` +
       (S.route === 'A' ? '<p class="muted" style="font-size:13px">耐風系統一起保留，不加 TIE_EQ（小規模吊橋推薦）。</p>' : `<p class="muted" style="font-size:13px">找形模型先不啟用耐風索與繫索，把 TIE_EQ 與恆載一起選入找形工況；保存平衡後加入耐風系統、移除 TIE_EQ。</p>${code('mctTie', 'MCT：TIE_EQ（繫索等值節點力）', te || '')}`) : '') +
@@ -705,14 +749,18 @@ function mSave() {
 // ---------------------------------------------------------------- 分析
 function aCases() {
   const n = needResult() || requireConfirmedModel() || requireG1(); if (n) return n;
-  const x = S.extra, b = x.b || 0, qc = x.qc * b / 2, qh = x.qh * b / 2, db = deckBeams();
-  if (!db.length) return head('分析 1', '追加載重工況') + '<div class="card"><p>找不到吊索下端所在的梁群組，無法產生活載的元素清單。</p></div>';
+  const deck = deckLoadPlan(), db = deck.groups;
+  if (!deck.ready) return head('分析 1', '追加載重工況') + `<div class="note">${esc(deck.issue)}</div>`;
+  const x = S.extra, b = Number(x.b), planes = S.src === 'param' ? 2 : R.res.size;
+  if (!(b > 0)) return '<div class="card"><p>請先確認橋面幅員。</p><button class="btn solid" data-go="proj,3">設定追加載重</button></div>';
+  const qc = x.qc * b / planes, qh = x.qh * b / planes;
   const all = db.map(d => compressList(d.els.map(e => e.e))).join(' '), left = db.map(d => compressList(d.els.filter(e => e.x < d.span / 2).map(e => e.e))).join(' ');
+  if (!left) return '<div class="note">找不到左半跨梁元素。請核對橋面梁與載重位置。</div>';
   const cases = [['DL+LLfull', '群集全跨', qc, all, '主纜、控索、塔、錨碇', '(1) 1.00'], ['DL+LLleft', '群集左半跨', qc, left, '縱梁彎矩、撓度、索鞍', '(1) 1.00'], ['DL+LLhang', '吊索用群集全跨', qh, all, '吊索', '(1) 1.00'], ['DL+LL+Tup', '群集全跨＋升溫', qc, all, '塔', '(2) 1.15'], ['DL+LL+Tdn', '群集全跨＋降溫', qc, all, '塔、吊索最小', '(2) 1.15']];
   const mct = ['*STLDCASE', '; LCNAME, LCTYPE, DESC', ...cases.map(k => `   ${k[0]}, USER, ${k[1]} with all dead load`)];
-  for (const k of cases) mct.push(`*USE-STLD, ${k[0]}`, dlBlock([`; 群集 ${fmt(k[2])}/m`, `   ${k[3]}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-k[2])}, 1, ${fmt(-k[2])}, 0, 0, 0, 0, `]));
+  for (const k of cases) mct.push(`*USE-STLD, ${k[0]}`, dlBlock([...(S.deckBeam ? [] : beamLoadHeader), `; 群集 ${fmt(k[2])}/m`, `   ${k[3]}, BEAM, UNILOAD, GZ, NO, 0, ${fmt(-k[2])}, 1, ${fmt(-k[2])}, 0, 0, 0, 0, `]));
   return head('分析 1', '追加載重工況', '每個組合是一個含全部恆載的完整非線性工況。') +
-    tiles([['群集（主纜用）', fx(qc, 1), 'kgf/m', `${x.qc} × ${fx(b, 2)} / 2`], ['群集（吊索用）', fx(qh, 1), 'kgf/m', `${x.qh} × ${fx(b, 2)} / 2`]]) +
+    tiles([['群集（主纜用）', fx(qc, 1), 'kgf/m', `${x.qc} × ${fx(b, 2)} / ${planes}`], ['群集（吊索用）', fx(qh, 1), 'kgf/m', `${x.qh} × ${fx(b, 2)} / ${planes}`]]) +
     `<div class="tw"><table><thead><tr><th class="t">工況</th><th class="t">讀什麼</th><th class="t">組合・增額</th></tr></thead><tbody>${cases.map(k => `<tr><td class="t">${k[0]}</td><td class="t">${k[4]}</td><td class="t">${k[5]}</td></tr>`).join('')}</tbody></table></div>` +
     path('Load > Static Load > Static Load Cases') + code('mctLL', 'MCT：五個工況', mct.join('\n')) +
     path('Load > Temp/Prestress > System Temperature') + `<p class="muted" style="font-size:13px">Tup／Tdn 在 System Temperature 輸入最終溫度＝初始溫度 ±${fx(x.dT, 0)} °C（初始溫度在 Structure Type）。指針的群集荷重已含衝擊。</p>`;
@@ -787,6 +835,8 @@ function aWind() {
   if (S.src === 'param') return head('分析 5', '風') + '<div class="card"><p>2D 單一索面模型不做風；風工況要用 3D 模型並含耐風系統。</p></div>';
   const n = needResult(); if (n) return n;
   const gate = requireConfirmedModel() || requireG1(); if (gate) return gate;
+  const deck = deckLoadPlan();
+  if (S.deckBeam && !deck.ready) return `<div class="note">${esc(deck.issue)}</div>`;
   const x = S.extra, wy = windLoads(1);
   if (!wy.sum.length) {
     const wd = x.pw * (x.hw || 0) / 2, wc = x.pw * (x.Dc || 0);

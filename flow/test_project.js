@@ -69,6 +69,17 @@ vm.runInContext(`
   compute();
   assert.ok(R.ok, R.error);
   assert.equal(R.res.size, 2);
+  assert.equal(deckLoadPlan().ready, true);
+  assert.match(mImport(), /Civil 2022/);
+  assert.match(mImport(), /設定恆載工況 DL/);
+  const fullDeck = deckBeams;
+  deckBeams = () => {
+    const [first] = fullDeck();
+    return [first, first];
+  };
+  assert.equal(deckLoadPlan().ready, false);
+  assert.doesNotMatch(mDL(), /data-code="mctDL"/);
+  deckBeams = fullDeck;
   assert.ok(Math.abs(planeRes()[0].H - 29615.848) < 0.1);
   S.g1 = { dv: 0, converged: true };
   assert.equal(g1Passed(), false, '僅位移符合不能通過');
@@ -82,6 +93,10 @@ vm.runInContext(`
   assert.equal(g1Passed(), false, '全填仍須確認收斂');
   S.g1.converged = true;
   assert.equal(g1Passed(), true);
+  S.deckBeam = false;
+  aCases();
+  assert.ok(CODES.mctLL.indexOf('*BEAMLOAD') >= 0 && CODES.mctLL.indexOf('*BEAMLOAD') < CODES.mctLL.indexOf('BEAM, UNILOAD'));
+  S.deckBeam = true;
   S.g1.R = 61000;
   assert.equal(g1Passed(), false);
   S.g1 = { ...expected, converged: true };
